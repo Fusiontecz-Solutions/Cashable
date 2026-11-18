@@ -1,0 +1,159 @@
+import express, { type Request, type Response } from 'express';
+import { authenticateToken } from '../../middleware/authMiddleware';
+import { PearSignApiError } from './pearsign-client';
+import {
+  PearSignContractError,
+  buildPearSignReviewPreview,
+  downloadPearSignContractPdf,
+  getPearSignContractState,
+  getPearSignFunderStatus,
+  getPearSignReview,
+  savePearSignOverrides,
+  sendPearSignContract,
+  syncPearSignContract,
+  voidPearSignContract,
+} from './pearsign-contract.service';
+import { PearSignPreviewError } from './pearsign-preview.service';
+import {
+  buildPearSignPackagePreview,
+  getPearSignPackageReview,
+  savePearSignPackageOverrides,
+  sendPearSignPackage,
+} from './pearsign-package.service';
+import { listPearSignTemplatesForFunder } from './pearsign-template-registry';
+
+/**
+ * PearSign main-contract API (mounted at /api/v1/pearsign). The API key never leaves the server.
+ *
+ *   GET  /funders/:funderProfileId/status       is a PearSign contract template registered for this funder?
+ *   GET  /funders/:funderProfileId/templates    registered PearSign templates (?documentType=contract|disclosure|…)
+ *   GET  /contracts/:contractId                 saved PearSign state for the contract
+ *   POST /contracts/:contractId/review          Review data: template layout, CRM values, saved edits, recipients
+ *   PUT  /contracts/:contractId/overrides       save Review edits (layout variable → value; "" clears)
+ *   POST /contracts/:contractId/preview         filled preview PDF (nothing sent or saved)
+ *   POST /contracts/:contractId/send            send the envelope (values recomputed server-side)
+ *   POST /contracts/:contractId/sync            refresh status from PearSign
+ *   POST /contracts/:contractId/void            void the active envelope
+ *   GET  /contracts/:contractId/download        PDF (?version=latest|original&envelopeId=…)
+ *
+ * review / preview / send take the same body the Dropbox Sign send uses:
+ *   { funderProfileId, prefillFields: [{id,value}], roles: [{signerRole,signerName,signerEmail}], ownerCount, contractState }
+ */
+const router = express.Router();
+router.use(authenticateToken);
+
+function contractIdParam(req: Request): number {
+  const id = Number.parseInt(String(req.params.contractId), 10);
+  if (!Number.isFinite(id) || id <= 0) throw new PearSignContractError('Invalid contract id.');
+  return id;
+}
+
+function actorId(req: Request): string | null {
+  const id = (req as Request & { user?: { id?: string | number } }).user?.id;
+  return id == null ? null : String(id);
+}
+
+function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
+  return async (req: Request, res: Response) => {
+    try {
+      const data = await fn(req, res);
+      if (!res.headersSent) res.json({ success: true, data });
+    } catch (err) {
+      const status =
+        err instanceof PearSignContractError || err instanceof PearSignPreviewError
+          ? err.status
+          : err instanceof PearSignApiError
+            ? err.status === 401 || err.status === 403
+              ? 502
+              : err.status >= 400 && err.status < 500
+                ? 400
+                : 502
+            : 500;
+      const message = err instanceof Error ? err.message : 'PearSign request failed.';
+      if (status >= 500) console.error('[PearSign]', req.method, req.originalUrl, err);
+      else console.warn('[PearSign]', req.method, req.originalUrl, status, message);
+      if (!res.headersSent) res.status(status).json({ success: false, message });
+    }
+  };
+}
+
+router.get('/funders/:funderProfileId/status', handle((req) => getPearSignFunderStatus(String(req.params.funderProfileId))));
+
+router.get(
+  '/funders/:funderProfileId/templates',
+  handle((req) =>
+    listPearSignTemplatesForFunder(
+      String(req.params.funderProfileId),
+      typeof req.query.documentType === 'string' ? req.query.documentType : null,
+    ),
+  ),
+);
+
+router.get('/contracts/:contractId', handle((req) => getPearSignContractState(contractIdParam(req))));
+
+router.post('/contracts/:contractId/review', handle((req) => getPearSignReview(contractIdParam(req), req.body ?? {})));
+
+router.put('/contracts/:contractId/overrides', handle((req) => savePearSignOverrides(contractIdParam(req), req.body ?? {})));
+
+router.post(
+  '/contracts/:contractId/preview',
+  handle(async (req, res) => {
+    const { pdf, fileName, filledFieldCount } = await buildPearSignReviewPreview(contractIdParam(req), req.body ?? {});
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    res.setHeader('X-Filled-Field-Count', String(filledFieldCount));
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(pdf);
+  }),
+);
+
+router.post(
+  '/contracts/:contractId/send',
+  handle((req) => sendPearSignContract(contractIdParam(req), actorId(req), req.body ?? {})),
+);
+
+// ---- One envelope for the whole package (contract + addendums + disclosure) ----
+// Staged by POST /docusign/merge-and-send with { signingProvider: "pearsign" } (same package build as Dropbox Sign).
+
+router.get('/contracts/:contractId/package', handle((req) => getPearSignPackageReview(contractIdParam(req))));
+
+router.put(
+  '/contracts/:contractId/package/overrides',
+  handle((req) => savePearSignPackageOverrides(contractIdParam(req), req.body ?? {})),
+);
+
+router.post(
+  '/contracts/:contractId/package/preview',
+  handle(async (req, res) => {
+    const { pdf, fileName, filledFieldCount } = await buildPearSignPackagePreview(contractIdParam(req), req.body ?? {});
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    res.setHeader('X-Filled-Field-Count', String(filledFieldCount));
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(pdf);
+  }),
+);
+
+router.post(
+  '/contracts/:contractId/package/send',
+  handle((req) => sendPearSignPackage(contractIdParam(req), actorId(req), req.body ?? {})),
+);
+
+router.post('/contracts/:contractId/sync', handle((req) => syncPearSignContract(contractIdParam(req))));
+
+router.post('/contracts/:contractId/void', handle((req) => voidPearSignContract(contractIdParam(req))));
+
+router.get(
+  '/contracts/:contractId/download',
+  handle(async (req, res) => {
+    const version = req.query.version === 'original' ? 'original' : 'latest';
+    const requested = typeof req.query.envelopeId === 'string' ? req.query.envelopeId : null;
+    const { pdf, envelopeId } = await downloadPearSignContractPdf(contractIdParam(req), version, requested);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="contract_${envelopeId}_${version}.pdf"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(pdf);
+  }),
+);
+
+export default router;

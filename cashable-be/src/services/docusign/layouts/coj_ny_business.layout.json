@@ -1,0 +1,232 @@
+{
+  "layoutVersion": 1,
+  "key": "coj_ny_business",
+  "name": "Cashable NY COJ (Business only)",
+  "description": "NY COJ - business defendant alone (2026 branded form). Wet-notarized; no e-sign fields.",
+  "pdf": {
+    "source": "boldSignTemplate",
+    "fileName": "coj_ny_business.pdf"
+  },
+  "document": {
+    "documentId": "1",
+    "originalFileName": "coj_ny_business.pdf"
+  },
+  "signers": [
+    {
+      "roleName": "Signer",
+      "routingOrder": 1
+    }
+  ],
+  "skipOwner2InitialMirror": true,
+  "variables": [
+    "agreement_date",
+    "business_address_wrap1",
+    "business_address_wrap2",
+    "business_county",
+    "business_name_with_dba",
+    "funder_name",
+    "owner1_guarantor_name",
+    "owner_county",
+    "owner_state",
+    "purchase_amount"
+  ],
+  "placements": [
+    {
+      "id": "p1",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "119",
+      "y": "76",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "180",
+      "variable": "business_county",
+      "sourceTabLabel": "business_county"
+    },
+    {
+      "id": "p2",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "57",
+      "y": "121",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "270",
+      "variable": "funder_name",
+      "sourceTabLabel": "funder_name"
+    },
+    {
+      "id": "p3",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "57",
+      "y": "204",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "270",
+      "variable": "business_name_with_dba",
+      "sourceTabLabel": "business_name_with_dba"
+    },
+    {
+      "id": "p4",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "104",
+      "y": "273",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "163",
+      "variable": "owner_state",
+      "sourceTabLabel": "owner_state"
+    },
+    {
+      "id": "p5",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "114",
+      "y": "309",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "153",
+      "variable": "owner_county",
+      "sourceTabLabel": "owner_county"
+    },
+    {
+      "id": "p6",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "84",
+      "y": "344",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "238",
+      "variable": "owner1_guarantor_name",
+      "sourceTabLabel": "owner1_guarantor_name"
+    },
+    {
+      "id": "p7",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "304",
+      "y": "364",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "197",
+      "variable": "business_name_with_dba",
+      "sourceTabLabel": "business_name_with_dba"
+    },
+    {
+      "id": "p8",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "84",
+      "y": "448",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "56",
+      "variable": "purchase_amount",
+      "sourceTabLabel": "purchase_amount"
+    },
+    {
+      "id": "p9",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "84",
+      "y": "552",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "166",
+      "variable": "business_name_with_dba",
+      "sourceTabLabel": "business_name_with_dba"
+    },
+    {
+      "id": "p10",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "314",
+      "y": "552",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "238",
+      "height": "12",
+      "variable": "business_address_wrap1",
+      "sourceTabLabel": "business_address_wrap1"
+    },
+    {
+      "id": "p11",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "66",
+      "y": "572",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "232",
+      "height": "12",
+      "variable": "business_address_wrap2",
+      "sourceTabLabel": "business_address_wrap2"
+    },
+    {
+      "id": "p12",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "1",
+      "x": "84",
+      "y": "610",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "170",
+      "variable": "business_county",
+      "sourceTabLabel": "business_county"
+    },
+    {
+      "id": "p13",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "2",
+      "x": "206",
+      "y": "80",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "96",
+      "variable": "agreement_date",
+      "sourceTabLabel": "agreement_date"
+    },
+    {
+      "id": "p14",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "3",
+      "x": "244",
+      "y": "103",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "306",
+      "variable": "owner1_guarantor_name",
+      "sourceTabLabel": "owner1_guarantor_name"
+    },
+    {
+      "id": "p15",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "3",
+      "x": "295",
+      "y": "130",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "250",
+      "variable": "business_name_with_dba",
+      "sourceTabLabel": "business_name_with_dba"
+    }
+  ]
+}

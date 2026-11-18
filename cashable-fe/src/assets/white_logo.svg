@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 170" role="img" aria-label="Cashable">
+  <g fill="none">
+    <text x="10" y="118" font-family="'Helvetica Neue', Arial, sans-serif" font-size="92" font-weight="500" letter-spacing="30" fill="#ffffff">CASHABLE</text>
+    <g transform="translate(955,85)" stroke="#75C687" stroke-width="15" stroke-linecap="butt">
+      <path d="M 48.9 -17.8 A 52 52 0 1 1 17.8 -48.9" />
+      <line x1="22" y1="-22" x2="82" y2="-82" />
+      <polyline points="52,-82 82,-82 82,-52" stroke-linejoin="miter" />
+      <line x1="0" y1="-80" x2="0" y2="-50" />
+      <line x1="0" y1="50" x2="0" y2="80" />
+    </g>
+  </g>
+</svg>

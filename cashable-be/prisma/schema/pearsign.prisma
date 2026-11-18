@@ -1,0 +1,32 @@
+/// PearSign-hosted document templates (replaces Dropbox Sign file uploads for these documents).
+/// One row per funder × document purpose × variant. Phase 1 registers the main contract
+/// (documentType "contract", ownerCount 1 | 2). Phase 2 adds addendums / ACH and state
+/// disclosures (state + frequency "daily" | "weekly").
+///
+/// Fields on the PearSign template are named `<layoutVariable>_p<page>[letter]`, so the CRM
+/// fills them from the same coordinate layout (`layoutKey`) the Dropbox Sign send uses.
+model PearSignTemplate {
+  id                 String   @id @default(uuid()) @db.Uuid
+  funderProfileId    String   @db.Uuid
+  /// contract | (phase 2) ach_authorization | coj_* | deposit_control* | prepay_discount | waiver_personal_service | disclosure
+  documentType       String
+  /// Signer variant: 1 = Owner 1 only, 2 = Owner 1 + Owner 2.
+  ownerCount         Int      @default(1)
+  /// Disclosures only: lowercase state name (e.g. "new york").
+  state              String?
+  /// Disclosures only: daily | weekly.
+  frequency          String?
+  /// Coordinate layout the fields were generated from (e.g. "contract").
+  layoutKey          String
+  /// Funder PDF uploaded to PearSign (BoldSignTemplate.pdfUrl at creation time).
+  sourcePdfUrl       String?
+  sourcePdfSha256    String?
+  pearsignTemplateId String   @unique
+  name               String
+  fieldCount         Int      @default(0)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([funderProfileId, documentType, ownerCount, isActive])
+}
