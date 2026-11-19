@@ -109,13 +109,21 @@ export async function sendLoggedContractEmail(input: {
   threading?: ContractEmailThreading;
   /** Called after a successful send with the ids needed to reply to this email later. */
   onDelivered?: (delivered: { messageId?: string; gmailThreadId?: string }) => void;
+  /** CC'd on the same single email. Each gets their own history row. */
+  cc?: ContractEmailRecipient[];
 }): Promise<string> {
   const id = randomUUID();
   const to = lower(input.recipient.email);
+  const everyone = [input.recipient, ...(input.cc ?? [])].filter(
+    (r, i, all) => all.findIndex((x) => lower(x.email) === lower(r.email)) === i,
+  );
+  const allTo = everyone.map((r) => lower(r.email));
+  const ccList = allTo.slice(1);
   let error: unknown = null;
   try {
     const result = (await sendMail({
       to,
+      ...(ccList.length ? { cc: ccList } : {}),
       subject: input.subject,
       html: input.html,
       attachments: input.attachments,
@@ -135,45 +143,50 @@ export async function sendLoggedContractEmail(input: {
   const status = error ? 'failed' : 'sent';
   const errorMessage = error ? (error instanceof Error ? error.message : String(error)) : undefined;
   const log = KIND_LOG[input.kind];
-  try {
-    await recordCommunicationAudit(null, {
-      outboundCommunicationId: id,
-      applicationId: input.applicationId,
-      channel: 'EMAIL',
-      recipientType: input.recipient.role === 'SIGNER' ? 'MERCHANT' : 'OTHER',
-      recipient: to,
-      subject: input.subject,
-      body: input.html,
-      templateName: log.templateName,
-      actionType: error ? 'EMAIL_FAILED' : 'EMAIL_SENT',
-      actionDescription: error ? `${log.description} (failed)` : log.description,
-      user: input.user ?? null,
-      metadata: {
-        source: CONTRACT_EMAIL_SOURCE,
-        kind: input.kind,
-        role: input.recipient.role,
-        recipientName: input.recipient.name ?? null,
-        roleDetail: input.recipient.roleDetail ?? null,
-        groupId: input.groupId,
-        provider: getServerMailVia(),
-        mailboxEmail: senderMailbox(),
-        attachmentNames: input.attachments
-          .map((a) => (typeof a.filename === 'string' ? a.filename : ''))
-          .filter(Boolean),
-        resend: input.resend,
-        ...(input.resendOf ? { resendOf: input.resendOf } : {}),
-        template: log.template,
-        emailSentTo: [to],
-        status,
-        ...(errorMessage ? { error: errorMessage } : {}),
-        delivery: { status, sentAt: new Date().toISOString() },
-      },
-    });
-    if (error) {
-      await prisma.outbound_communications.update({ where: { id }, data: { status: 'failed' } });
+  // One history row per person on the email (the first keeps `id`, the send's tracking id).
+  for (const [index, rcpt] of everyone.entries()) {
+    const rowId = index === 0 ? id : randomUUID();
+    const rcptTo = lower(rcpt.email);
+    try {
+      await recordCommunicationAudit(null, {
+        outboundCommunicationId: rowId,
+        applicationId: input.applicationId,
+        channel: 'EMAIL',
+        recipientType: rcpt.role === 'SIGNER' ? 'MERCHANT' : 'OTHER',
+        recipient: rcptTo,
+        subject: input.subject,
+        body: input.html,
+        templateName: log.templateName,
+        actionType: error ? 'EMAIL_FAILED' : 'EMAIL_SENT',
+        actionDescription: error ? `${log.description} (failed)` : log.description,
+        user: input.user ?? null,
+        metadata: {
+          source: CONTRACT_EMAIL_SOURCE,
+          kind: input.kind,
+          role: rcpt.role,
+          recipientName: rcpt.name ?? null,
+          roleDetail: rcpt.roleDetail ?? null,
+          groupId: input.groupId,
+          provider: getServerMailVia(),
+          mailboxEmail: senderMailbox(),
+          attachmentNames: input.attachments
+            .map((a) => (typeof a.filename === 'string' ? a.filename : ''))
+            .filter(Boolean),
+          resend: input.resend,
+          ...(input.resendOf ? { resendOf: input.resendOf } : {}),
+          template: log.template,
+          emailSentTo: allTo,
+          status,
+          ...(errorMessage ? { error: errorMessage } : {}),
+          delivery: { status, sentAt: new Date().toISOString() },
+        },
+      });
+      if (error) {
+        await prisma.outbound_communications.update({ where: { id: rowId }, data: { status: 'failed' } });
+      }
+    } catch (logError) {
+      console.error('[contract-email] could not log', input.kind, rcptTo, logError);
     }
-  } catch (logError) {
-    console.error('[contract-email] could not log', input.kind, to, logError);
   }
   if (error) throw error;
   return id;

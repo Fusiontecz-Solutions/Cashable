@@ -316,11 +316,20 @@ export async function notifyPearSignContractSent(
   return { ...cc, invites };
 }
 
+/**
+ * The old per-CC copies ("Contract Sent" and "Signed Contract", with the PDF) are off: the team
+ * gets only the two "Contract Update" emails (Viewed, Signed). Set CONTRACT_CC_COPY_EMAILS=on
+ * to send the CC copies again.
+ */
+export function contractCcCopyEmailsEnabled(): boolean {
+  return /^(1|true|yes|on)$/i.test(String(process.env.CONTRACT_CC_COPY_EMAILS ?? '').trim());
+}
+
 async function notifyCcsContractSent(
   input: ContractMailInput & { loadPdf: () => Promise<Buffer> },
 ): Promise<PearSignMailOutcome> {
   try {
-    if (!ccRecipients(input).length) return { emailed: [], failed: [] };
+    if (!contractCcCopyEmailsEnabled() || !ccRecipients(input).length) return { emailed: [], failed: [] };
 
     let pdf: Buffer | null = null;
     try {
@@ -357,7 +366,7 @@ export async function notifyPearSignContractSigned(
   input: ContractMailInput & { pdf: Buffer | null },
 ): Promise<PearSignMailOutcome> {
   try {
-    if (!ccRecipients(input).length) return { emailed: [], failed: [] };
+    if (!contractCcCopyEmailsEnabled() || !ccRecipients(input).length) return { emailed: [], failed: [] };
     const ctx = await emailContext(input);
     const html = renderSignedContractEmailHtml({
       bookName: ctx.bookName,
@@ -414,8 +423,10 @@ function signerStatusLabel(status: string | null | undefined, signedAt?: string 
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Where each team member's email thread for one envelope starts (their first "Contract Update"). */
+/** Where the team's email thread for one envelope starts (its first "Contract Update"). */
 export type ContractUpdateThreads = Record<string, { messageId?: string; gmailThreadId?: string }>;
+/** Key of the single shared thread in ContractUpdateThreads. */
+const TEAM_THREAD = 'team';
 
 /** A Message-ID for the first email of a thread, on the sender mailbox's domain. */
 function newThreadMessageId(): string {
@@ -475,39 +486,46 @@ export async function notifyPearSignStatusChange(input: {
       brandPrimary: BRAND_PRIMARY,
       brandAccent: BRAND_ACCENT,
     });
-    for (const email of to) {
-      const root = threads[email];
-      const reply = Boolean(root?.messageId);
-      const ownMessageId = reply ? undefined : newThreadMessageId();
-      try {
-        await sendLoggedContractEmail({
-          applicationId: input.applicationId,
-          groupId: input.envelopeId,
-          kind: 'status_update',
-          recipient: { email, role: 'CC', roleDetail: 'Status update' },
-          subject: buildContractStatusUpdateSubject(ctx.merchantName, { reply }),
-          html,
-          threading: reply
-            ? { inReplyTo: root!.messageId, references: root!.messageId, gmailThreadId: root!.gmailThreadId }
-            : { messageId: ownMessageId },
-          onDelivered: (d) => {
-            // Only the first email defines the thread; replies keep pointing at it.
-            if (!reply) threads[email] = { messageId: d.messageId ?? ownMessageId, gmailThreadId: d.gmailThreadId };
-          },
-          attachments: ctx.logoAttachments,
-          resend: {
-            contractId: input.contractId,
-            envelopeId: input.envelopeId,
-            attachments: ctx.logoAttachments.length ? ['brand_logo'] : [],
-            pdfFilename: ctx.pdfFilename,
-          },
-        });
-        out.emailed.push(email);
-      } catch (err) {
-        const error = (err as Error)?.message || String(err);
-        console.error(`[PearSign] status update email to ${email} failed:`, error);
-        out.failed.push({ email, error });
-      }
+    // ONE email per update with the whole team (Office + Ariel) in CC, addressed To the CRM's own
+    // sending mailbox. The first update (Viewed) starts the thread; Signed replies into it.
+    const mailbox = lower(process.env.GMAIL_SENDER_EMAIL || '');
+    const [primary, ...ccs] = mailbox && !to.includes(mailbox) ? [mailbox, ...to] : to;
+    const root = threads[TEAM_THREAD];
+    const reply = Boolean(root?.messageId);
+    const ownMessageId = reply ? undefined : newThreadMessageId();
+    try {
+      await sendLoggedContractEmail({
+        applicationId: input.applicationId,
+        groupId: input.envelopeId,
+        kind: 'status_update',
+        recipient: {
+          email: primary,
+          role: 'CC',
+          roleDetail: primary === mailbox ? 'Status update (To: CRM mailbox)' : 'Status update (To)',
+        },
+        cc: ccs.map((email) => ({ email, role: 'CC' as const, roleDetail: 'Status update (CC)' })),
+        subject: buildContractStatusUpdateSubject(ctx.merchantName, { reply }),
+        html,
+        threading: reply
+          ? { inReplyTo: root!.messageId, references: root!.messageId, gmailThreadId: root!.gmailThreadId }
+          : { messageId: ownMessageId },
+        onDelivered: (d) => {
+          // Only the first email defines the thread; replies keep pointing at it.
+          if (!reply) threads[TEAM_THREAD] = { messageId: d.messageId ?? ownMessageId, gmailThreadId: d.gmailThreadId };
+        },
+        attachments: ctx.logoAttachments,
+        resend: {
+          contractId: input.contractId,
+          envelopeId: input.envelopeId,
+          attachments: ctx.logoAttachments.length ? ['brand_logo'] : [],
+          pdfFilename: ctx.pdfFilename,
+        },
+      });
+      out.emailed.push(...to);
+    } catch (err) {
+      const error = (err as Error)?.message || String(err);
+      console.error(`[PearSign] status update email to ${to.join(', ')} failed:`, error);
+      out.failed.push(...to.map((email) => ({ email, error })));
     }
     console.info('[PearSign] status update emailed', { contractId: input.contractId, status: input.status, ...out });
   } catch (err) {
