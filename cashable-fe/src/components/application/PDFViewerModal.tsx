@@ -3862,8 +3862,12 @@ const PDFViewerModal = ({
     const handleSend = async (sendOptions?: { forceNewEnvelope?: boolean; provider?: "pearsign" }) => {
         if (!fileUrl) return;
         const forceNewEnvelope = sendOptions?.forceNewEnvelope === true;
-        /** PearSign: same package (contract + addendums + disclosure) → one PearSign envelope via the CRM Review. */
-        const pearSignMode = sendOptions?.provider === "pearsign";
+        /**
+         * Every send goes through PearSign: the same package (contract + addendums + disclosure)
+         * becomes one PearSign envelope via the CRM Review. Dropbox Sign is turned off — the
+         * server refuses Dropbox Sign sends — so no button may fall back to it.
+         */
+        const pearSignMode = true;
         const packageIncludesMainContract =
             !canSendWithoutContract || includeMainContractInSendRef.current;
         const outForSignatureBeforeSend = getPrimaryContractEnvelopeView(

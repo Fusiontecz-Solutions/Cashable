@@ -173,10 +173,23 @@ function toSummary(sr: Record<string, any>): DropboxSignRequestSummary {
     };
 }
 
-/** Send a signature request (email-delivered or embedded). */
+/**
+ * Cashable sends only through PearSign. Nothing new may be created in Dropbox Sign
+ * (no sends, no embedded drafts). Reading, voiding and downloading envelopes that were
+ * already sent with Dropbox Sign still work, so those contracts can be finished.
+ */
+export const DROPBOX_SIGN_SENDING_DISABLED_MESSAGE =
+    'Dropbox Sign is turned off: Cashable sends contracts only through PearSign. Use "Review & send in PearSign".';
+
+function assertDropboxSignSendingAllowed(): void {
+    throw Object.assign(new Error(DROPBOX_SIGN_SENDING_DISABLED_MESSAGE), { statusCode: 409 });
+}
+
+/** Send a signature request (email-delivered or embedded). Disabled — see assertDropboxSignSendingAllowed. */
 export async function sendSignatureRequest(
     options: SendSignatureRequestOptions,
 ): Promise<DropboxSignRequestSummary> {
+    assertDropboxSignSendingAllowed();
     if (!options.signers?.length) {
         throw Object.assign(new Error('At least one signer is required.'), { statusCode: 400 });
     }
@@ -216,6 +229,7 @@ export async function sendSignatureRequest(
 export async function createEmbeddedDraft(
     options: SendSignatureRequestOptions & { requesterEmail: string },
 ): Promise<{ claimUrl: string; expiresAt: number }> {
+    assertDropboxSignSendingAllowed();
     const clientId = String(options.credentials?.clientId || '').trim() || getDropboxSignClientId();
     if (!clientId) {
         throw Object.assign(

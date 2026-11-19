@@ -131,6 +131,8 @@ import {
 } from "./contractdata/templateRecipients";
 import { parseAchAuthorizationDocuSignFromPrefill } from "./contractdata/achAuthorizationDocuSign";
 import LockedCcChips from "./LockedCcChips";
+import { usePearSignContract } from "./pearsign/usePearSignContract";
+import { PearSignReviewModal, PearSignSendDialog } from "./pearsign/PearSignReviewModal";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -693,6 +695,48 @@ export default function ACHFormViewerModal({
             funders,
         ],
     );
+
+    /**
+     * ACH sends go through PearSign only (Dropbox Sign is turned off): "Review & send" stages
+     * the ACH package on the server, then this opens the CRM PearSign review to send it.
+     */
+    const pearSign = usePearSignContract({
+        enabled: isOpen,
+        contractId,
+        funderProfileId: persistedFunderProfileIdForApi(selectedFunderProfile) || null,
+        // Only the staged-package review is used here; it needs no contract-template payload.
+        getPayload: () => null,
+    });
+    const [pearSignSendOpen, setPearSignSendOpen] = useState(false);
+    const pearSignCcEmails = useMemo(
+        () =>
+            mergeWithDefaultCcEmails(
+                [...new Set(ccEmails.map((e) => e.trim()).filter(Boolean))],
+                contractCcMergeOptions,
+            ),
+        [ccEmails, contractCcMergeOptions],
+    );
+    const handlePearSignSendConfirm = useCallback(async () => {
+        try {
+            const out = await pearSign.send({ ccEmails: pearSignCcEmails });
+            setPearSignSendOpen(false);
+            toast.success(
+                `ACH form sent via PearSign (${out.prefilledFieldCount} values prefilled${
+                    out.blankFieldCount ? `, ${out.blankFieldCount} blank` : ""
+                }). ${out.emailSent ? "Signing invites emailed to the signers." : ""}`.trim(),
+                { autoClose: 9000 },
+            );
+            if (out.invitesFailed?.length) {
+                toast.warning(
+                    `Signing invite not sent to ${out.invitesFailed.map((f) => f.email).join(", ")}: ${out.invitesFailed[0].error}`,
+                    { autoClose: false },
+                );
+            }
+            onContractDocumentsChanged?.();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "PearSign send failed.");
+        }
+    }, [pearSign, pearSignCcEmails, onContractDocumentsChanged]);
 
     const contractDefaultCcEmails = useMemo(
         () => resolveContractDefaultCcEmails(contractCcMergeOptions),
@@ -2220,9 +2264,9 @@ export default function ACHFormViewerModal({
             );
         }
 
-        let docuSignTab: Window | null = null;
+        // PearSign only: the review opens inside the CRM, so no separate editor tab is opened.
+        const docuSignTab = null as Window | null;
         try {
-            docuSignTab = window.open("about:blank", "_blank");
             if (docuSignTab) {
                 try {
                     writeDocuSignLoadingTab(docuSignTab.document);
@@ -2334,6 +2378,14 @@ export default function ACHFormViewerModal({
             const draftProvider = String(
                 (prepared as { provider?: string } | undefined)?.provider ?? "",
             ).trim();
+            if (draftProvider === "pearsign") {
+                // Package staged on the server → review it in the CRM, then send from there.
+                await pearSign.openPackageReview();
+                return;
+            }
+            if (draftProvider !== "dropboxsign" || !preparedSenderUrl) {
+                throw new Error("The PearSign package could not be prepared.");
+            }
             if (draftProvider === "dropboxsign" && preparedSenderUrl) {
                 await openDropboxSignEmbedded(
                     preparedSenderUrl,
@@ -3413,6 +3465,21 @@ export default function ACHFormViewerModal({
                 }}
             />
 
+            {/* ACH sends go through PearSign only: review the staged package, then send. */}
+            <PearSignReviewModal ctl={pearSign} onDone={() => setPearSignSendOpen(true)} />
+            <PearSignSendDialog
+                ctl={pearSign}
+                open={pearSignSendOpen}
+                ccEmails={pearSignCcEmails}
+                onCancel={() => setPearSignSendOpen(false)}
+                onConfirm={() => void handlePearSignSendConfirm()}
+                onBackToReview={() => {
+                    setPearSignSendOpen(false);
+                    void pearSign.openPackageReview().catch((e: unknown) =>
+                        toast.error(e instanceof Error ? e.message : "Could not open the PearSign review."),
+                    );
+                }}
+            />
         </>
     );
 }

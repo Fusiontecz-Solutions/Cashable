@@ -661,7 +661,6 @@ export const mergeAndSendTemplates = async (req: Request, res: Response) => {
       funderProfileId,
       contractState,
       forceNewEnvelope,
-      signingProvider,
     } = req.body;
 
     if (!roles?.length) {
@@ -670,8 +669,9 @@ export const mergeAndSendTemplates = async (req: Request, res: Response) => {
 
     const result = await docusignService.mergeAndSendTemplates(userId, {
       forceNewEnvelope: forceNewEnvelope === true,
-      // PearSign: build the same package, then stage it for the CRM Review instead of Dropbox Sign.
-      ...(signingProvider === 'pearsign' ? { signingProvider: 'pearsign' as const } : {}),
+      // Cashable sends only through PearSign: build the package, then stage it for the CRM
+      // PearSign Review. Never Dropbox Sign, whatever the client asks for.
+      signingProvider: 'pearsign' as const,
       templates,
       templateIds,
       supplementalLayoutKeys,
