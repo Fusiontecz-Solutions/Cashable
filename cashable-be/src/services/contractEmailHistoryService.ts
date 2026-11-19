@@ -22,7 +22,7 @@ import { recordCommunicationAudit } from './systemActivityLogService';
 
 export const CONTRACT_EMAIL_SOURCE = 'contract_email';
 
-export type ContractEmailKind = 'signing_invite' | 'cc_copy' | 'signed_copy';
+export type ContractEmailKind = 'signing_invite' | 'cc_copy' | 'signed_copy' | 'status_update';
 export type ContractEmailRole = 'SIGNER' | 'CC';
 export type ContractEmailAttachmentKind = 'contract_pdf' | 'brand_logo';
 
@@ -65,6 +65,11 @@ const KIND_LOG: Record<ContractEmailKind, { template: string; templateName: stri
     template: 'contract-signed-cc',
     templateName: 'Contract signed (CC)',
     description: 'Signed contract notice with the executed PDF emailed to a CC recipient.',
+  },
+  status_update: {
+    template: 'contract-status-update',
+    templateName: 'Contract status update',
+    description: 'PearSign contract status change (viewed, signed, completed …) emailed to the Cashable team.',
   },
 };
 

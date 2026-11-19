@@ -46,8 +46,11 @@ import { computePearSignCrmValues, type PearSignSignerRoleInput } from './pearsi
 import {
   notifyPearSignContractSent,
   notifyPearSignContractSigned,
+  notifyPearSignStatusChange,
   pearSignShouldEmailSigners,
 } from './pearsign-mail.service';
+import { CONTRACT_STATUS_UPDATE_STATUSES } from '../emailTemplates/contractStatusEmailHtml';
+import { handleContractSigningStatusTransition } from '../contractSigningStatusEffects';
 
 /**
  * PearSign main-contract flow for Cashable (phase 1 of the Dropbox Sign → PearSign move).
@@ -719,6 +722,73 @@ export async function sendPearSignContract(
   };
 }
 
+/** PearSign envelope status → the CRM's in-app contract-signing stage (see contractSigningStatusEffects). */
+const PEARSIGN_IN_APP_STAGE: Record<string, string> = {
+  sent: 'sent',
+  viewed: 'viewed',
+  partially_signed: 'signed',
+  signed: 'signed',
+  completed: 'completed',
+  declined: 'declined',
+  voided: 'revoked',
+  expired: 'expired',
+};
+
+/** Last `<envelopeId>:<status>` the team was emailed about (outside the state, like the signed notice). */
+const STATUS_NOTICE_KEY = 'pearsignStatusNotice';
+const statusNoticeClaimed = new Set<string>();
+
+/**
+ * Email the Cashable team once per envelope status (viewed, signed, completed, declined,
+ * voided, expired …). Claimed atomically first so the webhook, the status job and
+ * Refresh never send the same update twice.
+ */
+async function sendStatusNoticeOnce(
+  contractId: number,
+  applicationId: string,
+  funderName: string | null,
+  state: PearSignContractState,
+  priorStatus: string | null | undefined,
+  recipientStatuses?: PearSignEnvelopeDetails['recipients'],
+): Promise<void> {
+  const envelopeId = state.envelopeId;
+  const status = String(state.status || '').toLowerCase();
+  if (!envelopeId || !CONTRACT_STATUS_UPDATE_STATUSES.has(status)) return;
+  const claim = `${envelopeId}:${status}`;
+  if (statusNoticeClaimed.has(claim)) return;
+  statusNoticeClaimed.add(claim);
+  const claimed = await prisma.$executeRaw`
+    UPDATE "Contract"
+    SET "contractPrefillOverrides" = jsonb_set(coalesce("contractPrefillOverrides", '{}'::jsonb), ARRAY[${STATUS_NOTICE_KEY}]::text[], to_jsonb(${claim}::text), true)
+    WHERE id = ${contractId}
+      AND coalesce("contractPrefillOverrides" ->> ${STATUS_NOTICE_KEY}, '') <> ${claim}
+  `;
+  if (!claimed) return;
+  // In-app: Notifications inbox (Contracts), live refresh of open contract screens, activity log.
+  const inAppStage = PEARSIGN_IN_APP_STAGE[status];
+  if (inAppStage) {
+    await handleContractSigningStatusTransition({
+      applicationId,
+      priorStatus: priorStatus ? PEARSIGN_IN_APP_STAGE[String(priorStatus).toLowerCase()] ?? 'sent' : 'sent',
+      newStatus: inAppStage,
+      envelopeId,
+      documentName: `${String(state.values?.client_legal_name || '').trim() || 'Merchant'} contract`,
+      provider: 'pearsign',
+    }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
+  }
+  await notifyPearSignStatusChange({
+    contractId,
+    applicationId,
+    envelopeId,
+    title: state.title || 'Contract',
+    funderName,
+    values: state.values,
+    status,
+    signers: state.recipients ?? [],
+    recipientStatuses,
+  });
+}
+
 /** Last envelope whose signed copy was emailed to the CCs (outside the state, so a state write never clears it). */
 const SIGNED_NOTICE_KEY = 'pearsignSignedNoticeEnvelopeId';
 const signedNoticeClaimed = new Set<string>();
@@ -873,6 +943,12 @@ export async function syncPearSignContract(contractId: number) {
     await sendSignedNoticeOnce(contractId, contract.applicationId, contract.funderName, next, signedPdf).catch((err) =>
       console.error('[PearSign] signed-copy CC email failed', err),
     );
+    // "Contract Update: <Merchant> - <Status>" to the Cashable team (once per envelope + status).
+    if (status !== String(state.status || '').toLowerCase()) {
+      await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName, next, state.status, env.recipients).catch((err) =>
+        console.error('[PearSign] status update email failed', err),
+      );
+    }
   }
 
   return { state: next, changed };
@@ -914,6 +990,9 @@ export async function voidPearSignContract(contractId: number) {
       contractStatusPrevious: String(contract.status),
       contractStatusNew: 'REVOKED',
     }).catch((err) => console.warn('[PearSign] workflow sync after void failed', err?.message));
+    await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName, next, state.status).catch((err) =>
+      console.error('[PearSign] status update email after void failed', err),
+    );
   }
   return { state: next };
 }

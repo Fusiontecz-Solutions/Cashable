@@ -3,8 +3,10 @@ import { BRAND_DISPLAY_NAME, BRAND_LOGO_URL, buildBrandLogoAttachments } from '.
 import { APPROVAL_BANNER_LOGO_URL } from '../emailService';
 import {
   buildContractSentEmailSubject,
+  buildContractStatusUpdateSubject,
   buildSignedContractEmailSubject,
   renderContractSentEmailHtml,
+  renderContractStatusUpdateEmailHtml,
   renderSignedContractEmailHtml,
 } from '../emailTemplates/contractStatusEmailHtml';
 import {
@@ -376,4 +378,116 @@ export async function notifyPearSignContractSigned(
     console.error('[PearSign] signed-copy CC emails failed:', err);
     return { emailed: [], failed: input.ccEmails.map((email) => ({ email, error: String((err as Error)?.message || err) })) };
   }
+}
+
+// ---------- Contract status updates (internal team notice) ----------
+
+/** Who gets the "Contract Update" notice. Override with CONTRACT_STATUS_NOTIFY_EMAILS (comma separated). */
+const DEFAULT_STATUS_NOTIFY_EMAILS = ['office@cashablefunding.com', 'ariel@cashablefunding.com'];
+
+export function contractStatusNotifyEmails(): string[] {
+  const raw = String(process.env.CONTRACT_STATUS_NOTIFY_EMAILS ?? '').trim();
+  const list = raw ? raw.split(/[,;\s]+/) : DEFAULT_STATUS_NOTIFY_EMAILS;
+  return [...new Set(list.map(lower))].filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+}
+
+function formatEmailDateTime(d = new Date()): string {
+  const s = d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+  });
+  return `${s} ET`;
+}
+
+/** PearSign recipient status → wording for the Signers row. */
+function signerStatusLabel(status: string | null | undefined, signedAt?: string | null): string {
+  const s = lower(status);
+  if (signedAt || s === 'signed' || s === 'completed') return 'Signed';
+  if (s === 'viewed' || s === 'opened') return 'Viewed';
+  if (s === 'declined') return 'Declined';
+  if (s === 'sent' || s === 'pending' || s === 'waiting' || !s) return 'Not signed yet';
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * "Contract Update: <Merchant> - <Status>" to the Cashable team (Office + Ariel by default),
+ * from the CRM mailbox, each logged to the deal's Mail Log. Never throws.
+ */
+export async function notifyPearSignStatusChange(input: {
+  contractId: number;
+  applicationId: string;
+  envelopeId: string;
+  title: string;
+  funderName?: string | null;
+  values?: Record<string, string> | null;
+  status: string;
+  /** Signers as sent (role order), matched to PearSign's per-recipient status by email. */
+  signers: Array<{ email: string; name?: string | null; roleName?: string | null }>;
+  recipientStatuses?: Array<{ signerEmail: string; status: string; signedAt?: string | null }>;
+}): Promise<PearSignMailOutcome> {
+  const out: PearSignMailOutcome = { emailed: [], failed: [] };
+  const to = contractStatusNotifyEmails();
+  if (!to.length) return out;
+  try {
+    const ctx = await emailContext({ ...input, ccEmails: [] });
+    const byEmail = new Map((input.recipientStatuses ?? []).map((r) => [lower(r.signerEmail), r]));
+    const signers = input.signers
+      .filter((s) => String(s.name || s.email || '').trim())
+      .map((s) => {
+        const r = byEmail.get(lower(s.email));
+        const who = String(s.name || s.email).trim();
+        const role = String(s.roleName || '').trim();
+        return {
+          name: role ? `${who} (${role})` : who,
+          detail: r ? signerStatusLabel(r.status, r.signedAt) : null,
+        };
+      });
+    const html = renderContractStatusUpdateEmailHtml({
+      bookName: ctx.bookName,
+      merchantName: ctx.merchantName,
+      applicationId: ctx.applicationNumber,
+      fundedAmount: ctx.fundedAmount,
+      status: input.status,
+      updatedAt: formatEmailDateTime(),
+      signers,
+      companyName: BRAND_DISPLAY_NAME,
+      logoSrc: ctx.logoSrc,
+      brandPrimary: BRAND_PRIMARY,
+      brandAccent: BRAND_ACCENT,
+    });
+    const subject = buildContractStatusUpdateSubject(ctx.merchantName, input.status);
+    for (const email of to) {
+      try {
+        await sendLoggedContractEmail({
+          applicationId: input.applicationId,
+          groupId: input.envelopeId,
+          kind: 'status_update',
+          recipient: { email, role: 'CC', roleDetail: 'Status update' },
+          subject,
+          html,
+          attachments: ctx.logoAttachments,
+          resend: {
+            contractId: input.contractId,
+            envelopeId: input.envelopeId,
+            attachments: ctx.logoAttachments.length ? ['brand_logo'] : [],
+            pdfFilename: ctx.pdfFilename,
+          },
+        });
+        out.emailed.push(email);
+      } catch (err) {
+        const error = (err as Error)?.message || String(err);
+        console.error(`[PearSign] status update email to ${email} failed:`, error);
+        out.failed.push({ email, error });
+      }
+    }
+    console.info('[PearSign] status update emailed', { contractId: input.contractId, status: input.status, ...out });
+  } catch (err) {
+    console.error('[PearSign] status update emails failed:', err);
+    for (const email of to) if (!out.emailed.includes(email)) out.failed.push({ email, error: String((err as Error)?.message || err) });
+  }
+  return out;
 }

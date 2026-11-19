@@ -300,6 +300,149 @@ export function renderSignedContractEmailHtml(fields: SignedContractEmailFields)
   });
 }
 
+// ---------- Contract status update (internal team notice) ----------
+
+/** Wording per PearSign envelope status for the internal "Contract Update" notice. */
+type StatusCopy = {
+  /** Short label used in the subject and the Status row, e.g. "Viewed". */
+  label: string;
+  title: string;
+  badge: Badge;
+  /** Lead sentence; `{book}` and `{merchant}` are replaced with escaped, bolded values. */
+  lead: string;
+  preheader: string;
+};
+
+const BADGE_INFO: Badge = { label: '', background: '#eff8ff', border: '#b2ddff', color: '#175cd3' };
+const BADGE_PROGRESS: Badge = { label: '', background: '#fffaeb', border: '#fedf89', color: '#b54708' };
+const BADGE_DONE: Badge = { label: '', background: '#ecfdf3', border: '#abefc6', color: '#067647' };
+const BADGE_STOPPED: Badge = { label: '', background: '#fef3f2', border: '#fecdca', color: '#b42318' };
+
+const STATUS_COPY: Record<string, StatusCopy> = {
+  viewed: {
+    label: 'Viewed',
+    title: 'Contract Viewed',
+    badge: { ...BADGE_INFO, label: '&#9679;&nbsp; Viewed' },
+    lead: '{merchant} has opened the {book} contract in PearSign. It has not been signed yet.',
+    preheader: 'the merchant has opened the contract.',
+  },
+  in_signing: {
+    label: 'Signing in Progress',
+    title: 'Signing in Progress',
+    badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Signing in Progress' },
+    lead: '{merchant} has started signing the {book} contract in PearSign.',
+    preheader: 'the merchant has started signing.',
+  },
+  partially_signed: {
+    label: 'Partially Signed',
+    title: 'Contract Partially Signed',
+    badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Partially Signed' },
+    lead: 'The {book} contract for {merchant} has been signed by at least one signer and is waiting on the remaining signer(s).',
+    preheader: 'one signer has signed; waiting on the others.',
+  },
+  signed: {
+    label: 'Signed',
+    title: 'Contract Signed',
+    badge: { ...BADGE_DONE, label: '&#10003;&nbsp; Signed' },
+    lead: '{merchant} has signed the {book} contract in PearSign.',
+    preheader: 'the merchant has signed the contract.',
+  },
+  completed: {
+    label: 'Completed',
+    title: 'Contract Completed',
+    badge: { ...BADGE_DONE, label: '&#10003;&nbsp; Fully Executed' },
+    lead: 'All signers have completed the {book} contract for {merchant}. The contract is fully executed, and the signed copy is saved on the deal in the CRM.',
+    preheader: 'every signer has signed. The contract is fully executed.',
+  },
+  declined: {
+    label: 'Declined',
+    title: 'Contract Declined',
+    badge: { ...BADGE_STOPPED, label: '&#10005;&nbsp; Declined' },
+    lead: '{merchant} has declined to sign the {book} contract. The envelope is closed and can no longer be signed.',
+    preheader: 'the merchant declined to sign.',
+  },
+  voided: {
+    label: 'Voided',
+    title: 'Contract Voided',
+    badge: { ...BADGE_STOPPED, label: '&#10005;&nbsp; Voided' },
+    lead: 'The {book} contract for {merchant} has been voided. The signers can no longer sign it.',
+    preheader: 'the contract envelope was voided.',
+  },
+  expired: {
+    label: 'Expired',
+    title: 'Contract Expired',
+    badge: { ...BADGE_STOPPED, label: '&#9679;&nbsp; Expired' },
+    lead: 'The signing link for the {book} contract for {merchant} has expired before every signer completed it.',
+    preheader: 'the signing link expired.',
+  },
+};
+
+/** Statuses that get a "Contract Update" notice (sent / draft are not updates). */
+export const CONTRACT_STATUS_UPDATE_STATUSES = new Set(Object.keys(STATUS_COPY));
+
+function statusCopyFor(status: string): StatusCopy {
+  const key = clean(status).toLowerCase();
+  const known = STATUS_COPY[key];
+  if (known) return known;
+  const label = key ? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Updated';
+  return {
+    label,
+    title: 'Contract Status Updated',
+    badge: { ...BADGE_INFO, label: `&#9679;&nbsp; ${escapeHtml(label)}` },
+    lead: `The status of the {book} contract for {merchant} has changed to ${escapeHtml(label)}.`,
+    preheader: 'the contract status has changed.',
+  };
+}
+
+/** Subject label for a status, e.g. "Viewed". */
+export function contractStatusUpdateLabel(status: string): string {
+  return statusCopyFor(status).label;
+}
+
+/** `Contract Update: ACME LLC - Viewed` */
+export function buildContractStatusUpdateSubject(merchantName: string, status: string): string {
+  const merchant = clean(merchantName) || 'Merchant';
+  return `Contract Update: ${merchant} - ${contractStatusUpdateLabel(status)}`;
+}
+
+export interface ContractStatusUpdateEmailFields extends ContractEmailBrandFields {
+  /** PearSign envelope status, e.g. "viewed". */
+  status: string;
+  /** Pre-formatted, e.g. "November 19, 2026, 2:15 PM ET". */
+  updatedAt?: string | null;
+  /** Each signer with their own PearSign status, e.g. { name: "Jane Doe", detail: "Viewed" }. */
+  signers?: Array<{ name: string; detail?: string | null }> | null;
+}
+
+export function renderContractStatusUpdateEmailHtml(fields: ContractStatusUpdateEmailFields): string {
+  const book = escapeHtml(clean(fields.bookName) || 'Contract');
+  const merchant = escapeHtml(clean(fields.merchantName) || 'the merchant');
+  const copy = statusCopyFor(fields.status);
+  const strong = (v: string) => `<strong style="color:#101828;">${v}</strong>`;
+  const lead = copy.lead.replace('{book}', strong(book)).replace('{merchant}', strong(merchant));
+  const extraRows: Array<[string, string]> = [['Status', escapeHtml(copy.label)]];
+  if (clean(fields.updatedAt)) extraRows.push(['Updated', escapeHtml(clean(fields.updatedAt))]);
+  const signers = (fields.signers || []).filter((s) => clean(s.name));
+  if (signers.length) {
+    extraRows.push([
+      'Signers',
+      signers
+        .map((s) => `${escapeHtml(clean(s.name))}${clean(s.detail) ? ` &mdash; <span style="font-weight:normal;color:#475467;">${escapeHtml(clean(s.detail))}</span>` : ''}`)
+        .join('<br />'),
+    ]);
+  }
+  return renderContractEmail(fields, {
+    title: copy.title,
+    preheader: copy.preheader,
+    badge: copy.badge,
+    leadHtml: lead,
+    extraRows,
+    attachmentCaption: '',
+    noteText: 'You can open the deal in the Cashable CRM to see the contract and its full signing history.',
+    footerText: 'This is an automated notification sent when a PearSign contract changes status.',
+  });
+}
+
 export function renderContractSentEmailHtml(fields: ContractSentEmailFields): string {
   const book = escapeHtml(clean(fields.bookName) || 'Contract');
   const merchant = escapeHtml(clean(fields.merchantName) || 'the merchant');

@@ -55,7 +55,7 @@ export type ContractSigningStatusRealtimePayload = {
   envelopeId?: string | null;
   status: string;
   priorStatus?: string | null;
-  provider?: 'docusign' | 'boldsign';
+  provider?: 'docusign' | 'boldsign' | 'pearsign';
   envelopeKind?: string | null;
 };
 
@@ -268,7 +268,7 @@ export interface ContractSigningStatusTransitionInput {
   newStatus: string;
   envelopeId?: string;
   documentName?: string;
-  provider?: 'docusign' | 'boldsign';
+  provider?: 'docusign' | 'boldsign' | 'pearsign';
 }
 
 /**
@@ -306,7 +306,13 @@ export async function handleContractSigningStatusTransition(
   const stageLabel = STAGE_LABEL[next] ?? next;
   const stageSubtitle = STAGE_SUBTITLE[next] ?? next;
   const providerLabel =
-    input.provider === 'boldsign' ? 'BoldSign' : input.provider === 'docusign' ? 'Dropbox Sign' : 'E-sign';
+    input.provider === 'pearsign'
+      ? 'PearSign'
+      : input.provider === 'boldsign'
+        ? 'BoldSign'
+        : input.provider === 'docusign'
+          ? 'Dropbox Sign'
+          : 'E-sign';
 
   const title = `Contract ${stageLabel}`;
   const message = `Application #${appNumber} — ${docLabel}: ${stageSubtitle} (${stageLabel}).`;

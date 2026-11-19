@@ -14,7 +14,7 @@ import { formatDateTimeUS } from "@/lib/utils";
 
 type ContractEmailRole = "SIGNER" | "CC";
 
-type ContractEmailKind = "signing_invite" | "cc_copy" | "signed_copy";
+type ContractEmailKind = "signing_invite" | "cc_copy" | "signed_copy" | "status_update";
 
 type ContractEmailHistoryRow = {
     id: string;
@@ -67,6 +67,7 @@ const KIND_LABEL: Record<ContractEmailKind, string> = {
     signing_invite: "Signing invite",
     cc_copy: "Contract sent",
     signed_copy: "Signed contract",
+    status_update: "Status update",
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
