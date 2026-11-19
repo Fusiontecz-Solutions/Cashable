@@ -27,6 +27,7 @@ import {
   loadContract,
   readState,
   writeState,
+  sendStatusNoticeOnce,
   type PearSignContractState,
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
@@ -720,6 +721,12 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     ].slice(-20),
   };
   await writeState(contractId, next, { status: 'SENT' });
+  // Notifications inbox: "Contract Sent" (in-app only; the team is emailed from Viewed on).
+  if (contract.applicationId) {
+    await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName ?? null, next, null).catch((err) =>
+      console.error('[PearSign] sent notification failed', err),
+    );
+  }
   await linkDocument(contract.applicationId, actorUserId, result.envelopeId, sentAt);
   await syncApplicationWorkflowFromContractEnvelopeStatus(prisma, contract.applicationId, 'SENT', {
     source: 'pearsign_package_send',

@@ -176,6 +176,10 @@ interface SendMailOptions {
     inReplyTo?: string;
     /** RFC 2822 `References` for email threading. */
     references?: string;
+    /** Our own RFC 2822 `Message-ID` (so later emails can reply to this one). */
+    messageId?: string;
+    /** Gmail API only: conversation in the sender mailbox to add this message to. */
+    gmailThreadId?: string;
     attachments?: Array<{
         filename?: string | false;
         content?: Buffer | string;
@@ -447,7 +451,7 @@ async function deliverViaGmailApi(options: SendMailOptions): Promise<SendMailRes
     gmailMessageId?: string;
     gmailThreadId?: string;
 }> {
-    const { to, subject, html, from, cc, bcc, replyTo, attachments, inReplyTo, references } =
+    const { to, subject, html, from, cc, bcc, replyTo, attachments, inReplyTo, references, messageId, gmailThreadId } =
         options;
     const result = await sendViaGmailApi({
         fromName: buildMailFrom(from).name,
@@ -460,10 +464,13 @@ async function deliverViaGmailApi(options: SendMailOptions): Promise<SendMailRes
         ...(attachments?.length ? { attachments } : {}),
         ...(inReplyTo ? { inReplyTo } : {}),
         ...(references ? { references } : {}),
+        ...(messageId ? { messageId } : {}),
+        ...(gmailThreadId ? { gmailThreadId } : {}),
     });
     return {
         accepted: result.accepted,
         rejected: result.rejected,
+        messageId: result.messageId ?? messageId,
         gmailMessageId: result.gmailMessageId,
         gmailThreadId: result.gmailThreadId,
     };
@@ -504,6 +511,7 @@ const sendMail = async (
             categories,
             inReplyTo,
             references,
+            messageId,
         } = options;
 
         const threadingHeaders = buildThreadingHeaders({ inReplyTo, references });
@@ -531,6 +539,7 @@ const sendMail = async (
             cc,
             bcc,
             replyTo,
+            ...(messageId ? { messageId } : {}),
             ...(attachments?.length ? { attachments } : {}),
             ...(smtpApiHeader || threadingHeaders
                 ? {

@@ -83,6 +83,13 @@ function senderMailbox(): string | null {
   return getServerMailVia() === 'gmail' ? getGmailSenderEmail() ?? null : null;
 }
 
+export type ContractEmailThreading = {
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string;
+  gmailThreadId?: string;
+};
+
 /**
  * Send one contract email and log it (sent or failed) to the history + Mail Log.
  * Throws when the send fails, after logging the failure.
@@ -98,12 +105,30 @@ export async function sendLoggedContractEmail(input: {
   resend: ContractEmailResendPayload;
   resendOf?: string | null;
   user?: AuthenticatedUser | null;
+  /** Keep this email in one conversation: reply headers, our Message-ID, Gmail thread. */
+  threading?: ContractEmailThreading;
+  /** Called after a successful send with the ids needed to reply to this email later. */
+  onDelivered?: (delivered: { messageId?: string; gmailThreadId?: string }) => void;
 }): Promise<string> {
   const id = randomUUID();
   const to = lower(input.recipient.email);
   let error: unknown = null;
   try {
-    await sendMail({ to, subject: input.subject, html: input.html, attachments: input.attachments, trackingId: id });
+    const result = (await sendMail({
+      to,
+      subject: input.subject,
+      html: input.html,
+      attachments: input.attachments,
+      trackingId: id,
+      ...(input.threading?.messageId ? { messageId: input.threading.messageId } : {}),
+      ...(input.threading?.inReplyTo ? { inReplyTo: input.threading.inReplyTo } : {}),
+      ...(input.threading?.references ? { references: input.threading.references } : {}),
+      ...(input.threading?.gmailThreadId ? { gmailThreadId: input.threading.gmailThreadId } : {}),
+    })) as { messageId?: string; gmailThreadId?: string } | undefined;
+    input.onDelivered?.({
+      messageId: result?.messageId ?? input.threading?.messageId,
+      gmailThreadId: result?.gmailThreadId,
+    });
   } catch (err) {
     error = err;
   }

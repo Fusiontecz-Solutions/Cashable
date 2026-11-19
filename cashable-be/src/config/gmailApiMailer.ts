@@ -64,6 +64,8 @@ function toBase64Url(buffer: Buffer): string {
 export type GmailApiSendResult = {
     gmailMessageId?: string;
     gmailThreadId?: string;
+    /** RFC 822 Message-ID as delivered. */
+    messageId?: string;
     accepted: string[];
     rejected: string[];
 };
@@ -82,14 +84,18 @@ function listAddresses(value: Mail.Options['to']): string[] {
  * attachments incl. inline `cid`, custom headers) through the Gmail API.
  */
 export async function sendViaGmailApi(
-    mail: Omit<Mail.Options, 'from'> & { fromName?: string },
+    mail: Omit<Mail.Options, 'from'> & {
+        fromName?: string;
+        /** Gmail thread to add this message to (the sender mailbox's conversation). */
+        gmailThreadId?: string;
+    },
 ): Promise<GmailApiSendResult> {
     const senderEmail = getGmailSenderEmail();
     if (!senderEmail) {
         throw new Error('Gmail API mailer is not configured. Set GMAIL_SENDER_EMAIL.');
     }
 
-    const { fromName, ...rest } = mail;
+    const { fromName, gmailThreadId, ...rest } = mail;
     const raw = await new MailComposer({
         ...rest,
         from: fromName ? { name: fromName, address: senderEmail } : senderEmail,
@@ -100,7 +106,7 @@ export async function sendViaGmailApi(
     const post = (accessToken: string) =>
         axios.post(
             GMAIL_SEND_URL,
-            { raw: toBase64Url(raw) },
+            { raw: toBase64Url(raw), ...(gmailThreadId ? { threadId: gmailThreadId } : {}) },
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -124,10 +130,33 @@ export async function sendViaGmailApi(
         }
     }
 
+    const gmailMessageId = response.data?.id ? String(response.data.id) : undefined;
     return {
-        gmailMessageId: response.data?.id ? String(response.data.id) : undefined,
+        gmailMessageId,
         gmailThreadId: response.data?.threadId ? String(response.data.threadId) : undefined,
+        // Gmail may replace the Message-ID it was given; read back the one recipients see,
+        // so later emails can reply to it (In-Reply-To / References).
+        messageId: gmailMessageId ? await readGmailRfcMessageId(senderEmail, gmailMessageId) : undefined,
         accepted: [...listAddresses(mail.to), ...listAddresses(mail.cc), ...listAddresses(mail.bcc)],
         rejected: [],
     };
+}
+
+/** The RFC 822 `Message-ID` header of a sent Gmail message (best effort). */
+async function readGmailRfcMessageId(senderEmail: string, gmailMessageId: string): Promise<string | undefined> {
+    try {
+        const res = await axios.get(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(gmailMessageId)}`,
+            {
+                params: { format: 'metadata', metadataHeaders: 'Message-ID' },
+                headers: { Authorization: `Bearer ${await getSenderAccessToken(senderEmail)}` },
+            },
+        );
+        const headers: Array<{ name?: string; value?: string }> = res.data?.payload?.headers ?? [];
+        const value = headers.find((h) => String(h.name || '').toLowerCase() === 'message-id')?.value;
+        return value ? String(value).trim() : undefined;
+    } catch (err: any) {
+        console.warn('[gmail-mailer] could not read the sent Message-ID:', err?.response?.data?.error?.message || err?.message);
+        return undefined;
+    }
 }

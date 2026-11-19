@@ -49,7 +49,8 @@ import {
   notifyPearSignStatusChange,
   pearSignShouldEmailSigners,
 } from './pearsign-mail.service';
-import { CONTRACT_STATUS_UPDATE_STATUSES } from '../emailTemplates/contractStatusEmailHtml';
+import { contractStatusNoticeGroup } from '../emailTemplates/contractStatusEmailHtml';
+import type { ContractUpdateThreads } from './pearsign-mail.service';
 import { handleContractSigningStatusTransition } from '../contractSigningStatusEffects';
 
 /**
@@ -688,6 +689,12 @@ export async function sendPearSignContract(
   };
 
   await writeState(contractId, next, { status: 'SENT' });
+  // Notifications inbox: "Contract Sent" (in-app only; the team is emailed from Viewed on).
+  if (contract.applicationId) {
+    await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName ?? null, next, null).catch((err) =>
+      console.error('[PearSign] sent notification failed', err),
+    );
+  }
   await linkDocument(contract.applicationId, actorUserId, result.envelopeId, sentAt);
   await syncApplicationWorkflowFromContractEnvelopeStatus(prisma, contract.applicationId, 'SENT', {
     source: 'pearsign_send',
@@ -722,28 +729,50 @@ export async function sendPearSignContract(
   };
 }
 
-/** PearSign envelope status → the CRM's in-app contract-signing stage (see contractSigningStatusEffects). */
-const PEARSIGN_IN_APP_STAGE: Record<string, string> = {
+/** Notice group → the CRM's in-app contract-signing stage (see contractSigningStatusEffects). */
+const IN_APP_STAGE: Record<'sent' | 'viewed' | 'signed', string> = {
   sent: 'sent',
   viewed: 'viewed',
-  partially_signed: 'signed',
   signed: 'signed',
-  completed: 'completed',
-  declined: 'declined',
-  voided: 'revoked',
-  expired: 'expired',
 };
 
-/** Last `<envelopeId>:<status>` the team was emailed about (outside the state, like the signed notice). */
+/** Notice groups that are also emailed to the team (Sent is in-app only). */
+const EMAILED_NOTICE_GROUPS = new Set(['viewed', 'signed']);
+
+/** Last `<envelopeId>:<group>` announced (outside the state, like the signed notice). */
 const STATUS_NOTICE_KEY = 'pearsignStatusNotice';
+/** The team's email thread per envelope: `{ envelopeId, byRecipient: { email: { messageId, gmailThreadId } } }`. */
+const TEAM_THREAD_KEY = 'pearsignTeamThread';
 const statusNoticeClaimed = new Set<string>();
+/** Per-contract queue, so two updates arriving together never both start a new email thread. */
+const statusNoticeQueue = new Map<number, Promise<void>>();
 
 /**
- * Email the Cashable team once per envelope status (viewed, signed, completed, declined,
- * voided, expired …). Claimed atomically first so the webhook, the status job and
- * Refresh never send the same update twice.
+ * Tell the Cashable team about a contract once per envelope and notice: Sent, Viewed, Signed
+ * (PearSign "signed" and "completed" both count as Signed). Every notice goes to the
+ * Notifications inbox; Viewed and Signed are also emailed, in one thread per envelope.
+ * Claimed atomically first so the webhook, the status job and Refresh never repeat one.
  */
-async function sendStatusNoticeOnce(
+export function sendStatusNoticeOnce(
+  contractId: number,
+  applicationId: string,
+  funderName: string | null,
+  state: PearSignContractState,
+  priorStatus: string | null | undefined,
+  recipientStatuses?: PearSignEnvelopeDetails['recipients'],
+): Promise<void> {
+  const prev = statusNoticeQueue.get(contractId) ?? Promise.resolve();
+  const run = prev
+    .catch(() => undefined)
+    .then(() => announceStatus(contractId, applicationId, funderName, state, priorStatus, recipientStatuses));
+  statusNoticeQueue.set(contractId, run);
+  void run.finally(() => {
+    if (statusNoticeQueue.get(contractId) === run) statusNoticeQueue.delete(contractId);
+  });
+  return run;
+}
+
+async function announceStatus(
   contractId: number,
   applicationId: string,
   funderName: string | null,
@@ -752,9 +781,9 @@ async function sendStatusNoticeOnce(
   recipientStatuses?: PearSignEnvelopeDetails['recipients'],
 ): Promise<void> {
   const envelopeId = state.envelopeId;
-  const status = String(state.status || '').toLowerCase();
-  if (!envelopeId || !CONTRACT_STATUS_UPDATE_STATUSES.has(status)) return;
-  const claim = `${envelopeId}:${status}`;
+  const group = contractStatusNoticeGroup(String(state.status || ''));
+  if (!envelopeId || !group) return;
+  const claim = `${envelopeId}:${group}`;
   if (statusNoticeClaimed.has(claim)) return;
   statusNoticeClaimed.add(claim);
   const claimed = await prisma.$executeRaw`
@@ -764,29 +793,54 @@ async function sendStatusNoticeOnce(
       AND coalesce("contractPrefillOverrides" ->> ${STATUS_NOTICE_KEY}, '') <> ${claim}
   `;
   if (!claimed) return;
+
   // In-app: Notifications inbox (Contracts), live refresh of open contract screens, activity log.
-  const inAppStage = PEARSIGN_IN_APP_STAGE[status];
-  if (inAppStage) {
-    await handleContractSigningStatusTransition({
-      applicationId,
-      priorStatus: priorStatus ? PEARSIGN_IN_APP_STAGE[String(priorStatus).toLowerCase()] ?? 'sent' : 'sent',
-      newStatus: inAppStage,
-      envelopeId,
-      documentName: `${String(state.values?.client_legal_name || '').trim() || 'Merchant'} contract`,
-      provider: 'pearsign',
-    }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
-  }
-  await notifyPearSignStatusChange({
+  const priorGroup = priorStatus ? contractStatusNoticeGroup(String(priorStatus)) : null;
+  await handleContractSigningStatusTransition({
+    applicationId,
+    priorStatus: priorGroup && priorGroup !== group ? IN_APP_STAGE[priorGroup] : null,
+    newStatus: IN_APP_STAGE[group],
+    envelopeId,
+    documentName: `${String(state.values?.client_legal_name || '').trim() || 'Merchant'} contract`,
+    provider: 'pearsign',
+  }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
+
+  if (!EMAILED_NOTICE_GROUPS.has(group)) return;
+  const threads = await readTeamThreads(contractId, envelopeId);
+  const result = await notifyPearSignStatusChange({
     contractId,
     applicationId,
     envelopeId,
     title: state.title || 'Contract',
     funderName,
     values: state.values,
-    status,
+    status: group,
     signers: state.recipients ?? [],
     recipientStatuses,
+    threads,
   });
+  if (JSON.stringify(result.threads) !== JSON.stringify(threads)) {
+    await writeTeamThreads(contractId, envelopeId, result.threads).catch((err) =>
+      console.warn('[PearSign] could not save the team email thread', (err as Error)?.message),
+    );
+  }
+}
+
+async function readTeamThreads(contractId: number, envelopeId: string): Promise<ContractUpdateThreads> {
+  const row = await prisma.contract.findUnique({ where: { id: contractId }, select: { contractPrefillOverrides: true } });
+  const overrides = row?.contractPrefillOverrides as Record<string, unknown> | null | undefined;
+  const raw = overrides?.[TEAM_THREAD_KEY] as { envelopeId?: string; byRecipient?: ContractUpdateThreads } | undefined;
+  // A new envelope (resend) starts a new thread.
+  return raw?.envelopeId === envelopeId && raw.byRecipient && typeof raw.byRecipient === 'object' ? raw.byRecipient : {};
+}
+
+async function writeTeamThreads(contractId: number, envelopeId: string, byRecipient: ContractUpdateThreads): Promise<void> {
+  const value = JSON.stringify({ envelopeId, byRecipient });
+  await prisma.$executeRaw`
+    UPDATE "Contract"
+    SET "contractPrefillOverrides" = jsonb_set(coalesce("contractPrefillOverrides", '{}'::jsonb), ARRAY[${TEAM_THREAD_KEY}]::text[], ${value}::jsonb, true)
+    WHERE id = ${contractId}
+  `;
 }
 
 /** Last envelope whose signed copy was emailed to the CCs (outside the state, so a state write never clears it). */

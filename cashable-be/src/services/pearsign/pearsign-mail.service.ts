@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import prisma from '../../config/prismaClient';
 import { BRAND_DISPLAY_NAME, BRAND_LOGO_URL, buildBrandLogoAttachments } from '../../constants/brand';
 import { APPROVAL_BANNER_LOGO_URL } from '../emailService';
@@ -413,9 +414,21 @@ function signerStatusLabel(status: string | null | undefined, signedAt?: string 
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Where each team member's email thread for one envelope starts (their first "Contract Update"). */
+export type ContractUpdateThreads = Record<string, { messageId?: string; gmailThreadId?: string }>;
+
+/** A Message-ID for the first email of a thread, on the sender mailbox's domain. */
+function newThreadMessageId(): string {
+  const sender = String(process.env.GMAIL_SENDER_EMAIL || process.env.SMTP_FROM || '').trim();
+  const domain = sender.split('@')[1]?.replace(/[>\s].*$/, '') || 'cashable.crm';
+  return `<contract-update-${randomUUID()}@${domain}>`;
+}
+
 /**
- * "Contract Update: <Merchant> - <Status>" to the Cashable team (Office + Ariel by default),
- * from the CRM mailbox, each logged to the deal's Mail Log. Never throws.
+ * "Contract Update: <Merchant>" to the Cashable team (Office + Ariel by default), from the CRM
+ * mailbox, each logged to the deal's Mail Log. One thread per envelope and recipient: the first
+ * email (normally "Sent") starts it and every later update replies into it ("Re: …"), with the
+ * status as the email's heading. Returns the updated `threads`. Never throws.
  */
 export async function notifyPearSignStatusChange(input: {
   contractId: number;
@@ -428,8 +441,11 @@ export async function notifyPearSignStatusChange(input: {
   /** Signers as sent (role order), matched to PearSign's per-recipient status by email. */
   signers: Array<{ email: string; name?: string | null; roleName?: string | null }>;
   recipientStatuses?: Array<{ signerEmail: string; status: string; signedAt?: string | null }>;
-}): Promise<PearSignMailOutcome> {
-  const out: PearSignMailOutcome = { emailed: [], failed: [] };
+  /** Existing threads for this envelope (from earlier updates). */
+  threads?: ContractUpdateThreads | null;
+}): Promise<PearSignMailOutcome & { threads: ContractUpdateThreads }> {
+  const threads: ContractUpdateThreads = { ...(input.threads ?? {}) };
+  const out: PearSignMailOutcome & { threads: ContractUpdateThreads } = { emailed: [], failed: [], threads };
   const to = contractStatusNotifyEmails();
   if (!to.length) return out;
   try {
@@ -459,16 +475,25 @@ export async function notifyPearSignStatusChange(input: {
       brandPrimary: BRAND_PRIMARY,
       brandAccent: BRAND_ACCENT,
     });
-    const subject = buildContractStatusUpdateSubject(ctx.merchantName, input.status);
     for (const email of to) {
+      const root = threads[email];
+      const reply = Boolean(root?.messageId);
+      const ownMessageId = reply ? undefined : newThreadMessageId();
       try {
         await sendLoggedContractEmail({
           applicationId: input.applicationId,
           groupId: input.envelopeId,
           kind: 'status_update',
           recipient: { email, role: 'CC', roleDetail: 'Status update' },
-          subject,
+          subject: buildContractStatusUpdateSubject(ctx.merchantName, { reply }),
           html,
+          threading: reply
+            ? { inReplyTo: root!.messageId, references: root!.messageId, gmailThreadId: root!.gmailThreadId }
+            : { messageId: ownMessageId },
+          onDelivered: (d) => {
+            // Only the first email defines the thread; replies keep pointing at it.
+            if (!reply) threads[email] = { messageId: d.messageId ?? ownMessageId, gmailThreadId: d.gmailThreadId };
+          },
           attachments: ctx.logoAttachments,
           resend: {
             contractId: input.contractId,

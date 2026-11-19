@@ -316,9 +316,19 @@ type StatusCopy = {
 const BADGE_INFO: Badge = { label: '', background: '#eff8ff', border: '#b2ddff', color: '#175cd3' };
 const BADGE_PROGRESS: Badge = { label: '', background: '#fffaeb', border: '#fedf89', color: '#b54708' };
 const BADGE_DONE: Badge = { label: '', background: '#ecfdf3', border: '#abefc6', color: '#067647' };
-const BADGE_STOPPED: Badge = { label: '', background: '#fef3f2', border: '#fecdca', color: '#b42318' };
 
-const STATUS_COPY: Record<string, StatusCopy> = {
+/**
+ * The team is told about three moments only: Sent, Viewed, Signed. PearSign's "signed" and
+ * "completed" both mean Signed (whichever arrives first is announced; see contractStatusNoticeGroup).
+ */
+const STATUS_COPY: Record<'sent' | 'viewed' | 'signed', StatusCopy> = {
+  sent: {
+    label: 'Sent',
+    title: 'Contract Sent',
+    badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Sent for Signature' },
+    lead: 'The {book} contract for {merchant} has been sent to the merchant for signature through PearSign. Updates on this contract will follow in this email thread.',
+    preheader: 'the contract is out for signature.',
+  },
   viewed: {
     label: 'Viewed',
     title: 'Contract Viewed',
@@ -326,83 +336,42 @@ const STATUS_COPY: Record<string, StatusCopy> = {
     lead: '{merchant} has opened the {book} contract in PearSign. It has not been signed yet.',
     preheader: 'the merchant has opened the contract.',
   },
-  in_signing: {
-    label: 'Signing in Progress',
-    title: 'Signing in Progress',
-    badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Signing in Progress' },
-    lead: '{merchant} has started signing the {book} contract in PearSign.',
-    preheader: 'the merchant has started signing.',
-  },
-  partially_signed: {
-    label: 'Partially Signed',
-    title: 'Contract Partially Signed',
-    badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Partially Signed' },
-    lead: 'The {book} contract for {merchant} has been signed by at least one signer and is waiting on the remaining signer(s).',
-    preheader: 'one signer has signed; waiting on the others.',
-  },
   signed: {
     label: 'Signed',
     title: 'Contract Signed',
     badge: { ...BADGE_DONE, label: '&#10003;&nbsp; Signed' },
-    lead: '{merchant} has signed the {book} contract in PearSign.',
+    lead: '{merchant} has signed the {book} contract in PearSign. The signed copy is saved on the deal in the CRM.',
     preheader: 'the merchant has signed the contract.',
-  },
-  completed: {
-    label: 'Completed',
-    title: 'Contract Completed',
-    badge: { ...BADGE_DONE, label: '&#10003;&nbsp; Fully Executed' },
-    lead: 'All signers have completed the {book} contract for {merchant}. The contract is fully executed, and the signed copy is saved on the deal in the CRM.',
-    preheader: 'every signer has signed. The contract is fully executed.',
-  },
-  declined: {
-    label: 'Declined',
-    title: 'Contract Declined',
-    badge: { ...BADGE_STOPPED, label: '&#10005;&nbsp; Declined' },
-    lead: '{merchant} has declined to sign the {book} contract. The envelope is closed and can no longer be signed.',
-    preheader: 'the merchant declined to sign.',
-  },
-  voided: {
-    label: 'Voided',
-    title: 'Contract Voided',
-    badge: { ...BADGE_STOPPED, label: '&#10005;&nbsp; Voided' },
-    lead: 'The {book} contract for {merchant} has been voided. The signers can no longer sign it.',
-    preheader: 'the contract envelope was voided.',
-  },
-  expired: {
-    label: 'Expired',
-    title: 'Contract Expired',
-    badge: { ...BADGE_STOPPED, label: '&#9679;&nbsp; Expired' },
-    lead: 'The signing link for the {book} contract for {merchant} has expired before every signer completed it.',
-    preheader: 'the signing link expired.',
   },
 };
 
-/** Statuses that get a "Contract Update" notice (sent / draft are not updates). */
-export const CONTRACT_STATUS_UPDATE_STATUSES = new Set(Object.keys(STATUS_COPY));
-
-function statusCopyFor(status: string): StatusCopy {
-  const key = clean(status).toLowerCase();
-  const known = STATUS_COPY[key];
-  if (known) return known;
-  const label = key ? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Updated';
-  return {
-    label,
-    title: 'Contract Status Updated',
-    badge: { ...BADGE_INFO, label: `&#9679;&nbsp; ${escapeHtml(label)}` },
-    lead: `The status of the {book} contract for {merchant} has changed to ${escapeHtml(label)}.`,
-    preheader: 'the contract status has changed.',
-  };
+/**
+ * Which notice a PearSign status belongs to, or null for statuses the team is not told
+ * about (partially signed, declined, voided, expired …).
+ */
+export function contractStatusNoticeGroup(status: string): 'sent' | 'viewed' | 'signed' | null {
+  const s = clean(status).toLowerCase();
+  if (s === 'sent' || s === 'viewed') return s;
+  if (s === 'signed' || s === 'completed') return 'signed';
+  return null;
 }
 
-/** Subject label for a status, e.g. "Viewed". */
+function statusCopyFor(status: string): StatusCopy {
+  return STATUS_COPY[contractStatusNoticeGroup(status) ?? 'sent'];
+}
+
+/** Status label shown in the email, e.g. "Viewed". */
 export function contractStatusUpdateLabel(status: string): string {
   return statusCopyFor(status).label;
 }
 
-/** `Contract Update: ACME LLC - Viewed` */
-export function buildContractStatusUpdateSubject(merchantName: string, status: string): string {
+/**
+ * One subject for every email about a contract, so mail clients keep them in one thread:
+ * `Contract Update: ACME LLC`, and `Re: Contract Update: ACME LLC` for the follow-ups.
+ */
+export function buildContractStatusUpdateSubject(merchantName: string, opts: { reply?: boolean } = {}): string {
   const merchant = clean(merchantName) || 'Merchant';
-  return `Contract Update: ${merchant} - ${contractStatusUpdateLabel(status)}`;
+  return `${opts.reply ? 'Re: ' : ''}Contract Update: ${merchant}`;
 }
 
 export interface ContractStatusUpdateEmailFields extends ContractEmailBrandFields {

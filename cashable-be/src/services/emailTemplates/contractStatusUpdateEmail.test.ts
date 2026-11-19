@@ -1,6 +1,6 @@
 import {
-  CONTRACT_STATUS_UPDATE_STATUSES,
   buildContractStatusUpdateSubject,
+  contractStatusNoticeGroup,
   contractStatusUpdateLabel,
   renderContractStatusUpdateEmailHtml,
 } from './contractStatusEmailHtml';
@@ -15,27 +15,31 @@ const base = {
 };
 
 describe('Contract Update email', () => {
+  it('keeps one subject per contract so updates stay in one thread', () => {
+    expect(buildContractStatusUpdateSubject('ACME LLC')).toBe('Contract Update: ACME LLC');
+    expect(buildContractStatusUpdateSubject('ACME LLC', { reply: true })).toBe('Re: Contract Update: ACME LLC');
+    expect(buildContractStatusUpdateSubject('')).toBe('Contract Update: Merchant');
+  });
+
   it.each([
-    ['viewed', 'Contract Update: ACME LLC - Viewed'],
-    ['partially_signed', 'Contract Update: ACME LLC - Partially Signed'],
-    ['signed', 'Contract Update: ACME LLC - Signed'],
-    ['completed', 'Contract Update: ACME LLC - Completed'],
-    ['declined', 'Contract Update: ACME LLC - Declined'],
-    ['voided', 'Contract Update: ACME LLC - Voided'],
-    ['expired', 'Contract Update: ACME LLC - Expired'],
-  ])('subject for %s', (status, subject) => {
-    expect(buildContractStatusUpdateSubject('ACME LLC', status)).toBe(subject);
+    ['sent', 'sent'],
+    ['viewed', 'viewed'],
+    ['signed', 'signed'],
+    ['completed', 'signed'],
+    ['partially_signed', null],
+    ['in_signing', null],
+    ['declined', null],
+    ['voided', null],
+    ['expired', null],
+    ['draft', null],
+  ])('notice group for %s is %s', (status, group) => {
+    expect(contractStatusNoticeGroup(status)).toBe(group);
   });
 
-  it('notifies on status changes but not on the initial send', () => {
-    expect(CONTRACT_STATUS_UPDATE_STATUSES.has('viewed')).toBe(true);
-    expect(CONTRACT_STATUS_UPDATE_STATUSES.has('completed')).toBe(true);
-    expect(CONTRACT_STATUS_UPDATE_STATUSES.has('sent')).toBe(false);
-    expect(CONTRACT_STATUS_UPDATE_STATUSES.has('draft')).toBe(false);
-  });
-
-  it('labels an unknown status readably', () => {
-    expect(contractStatusUpdateLabel('awaiting_bank')).toBe('Awaiting Bank');
+  it('labels the three notices', () => {
+    expect(contractStatusUpdateLabel('sent')).toBe('Sent');
+    expect(contractStatusUpdateLabel('viewed')).toBe('Viewed');
+    expect(contractStatusUpdateLabel('completed')).toBe('Signed');
   });
 
   it('renders the status, merchant and signers, escaping HTML', () => {
@@ -51,5 +55,10 @@ describe('Contract Update email', () => {
     expect(html).not.toContain('<Corp>');
     expect(html).toContain('Jane Doe (Owner 1)');
     expect(html).toContain('November 19, 2026, 2:15 PM ET');
+  });
+
+  it('shows Signed for a completed contract', () => {
+    const html = renderContractStatusUpdateEmailHtml({ ...base, status: 'completed' });
+    expect(html).toContain('Contract Signed');
   });
 });
