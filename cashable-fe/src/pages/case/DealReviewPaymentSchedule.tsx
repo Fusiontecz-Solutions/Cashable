@@ -89,7 +89,7 @@ export default function DealReviewPaymentSchedule({
     <>
       <header className="relative overflow-hidden border-b border-slate-100/90 px-5 py-4 dark:border-slate-800">
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-50/90 via-white to-indigo-50/30 dark:from-blue-950/25 dark:via-[#1A1B1F] dark:to-indigo-950/15"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-50/90 via-white to-indigo-50/30 dark:from-blue-950/25 dark:via-[#0f1d33] dark:to-indigo-950/15"
           aria-hidden
         />
         <div className="relative flex flex-wrap items-start justify-between gap-3">

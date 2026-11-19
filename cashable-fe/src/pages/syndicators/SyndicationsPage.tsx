@@ -153,7 +153,7 @@ export default function SyndicationsPage() {
     }
   };
 
-  const card = isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#E8EBF2] bg-card';
+  const card = isDark ? 'border-[#243a58] bg-card' : 'border-[#E8EBF2] bg-card';
 
   return (
     <div className="w-full px-4 pb-6 pt-6">
@@ -306,7 +306,7 @@ export default function SyndicationsPage() {
                     {isOpen ? (
                       <div className={cn('grid gap-4 px-4 pb-4 pt-1', isDark ? 'bg-[#101114]' : 'bg-[#F7F8FB]')}>
                         {/* Syndicators — share, invested, repayment & above principal */}
-                        <div className={cn('overflow-hidden rounded-lg border shadow-md', isDark ? 'border-[#3A3B40] bg-[#141517]' : 'border-slate-300 bg-white')}>
+                        <div className={cn('overflow-hidden rounded-lg border shadow-md', isDark ? 'border-[#3A3B40] bg-card' : 'border-slate-300 bg-white')}>
                           <p className="border-b border-border/60 bg-gradient-to-r from-slate-100 to-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:from-slate-800/40 dark:to-transparent">
                             Syndicators in this deal ({d.syndicators.length})
                           </p>
@@ -340,7 +340,7 @@ export default function SyndicationsPage() {
                         </div>
 
                         {/* Transactions + per-syndicator allocation */}
-                        <div className={cn('overflow-hidden rounded-lg border shadow-md', isDark ? 'border-[#3A3B40] bg-[#141517]' : 'border-slate-300 bg-white')}>
+                        <div className={cn('overflow-hidden rounded-lg border shadow-md', isDark ? 'border-[#3A3B40] bg-card' : 'border-slate-300 bg-white')}>
                           <p className="border-b border-border/60 bg-gradient-to-r from-slate-100 to-white px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:from-slate-800/40 dark:to-transparent">
                             Transactions &amp; syndicator allocation{Array.isArray(t) ? ` (${t.length})` : ''}
                           </p>

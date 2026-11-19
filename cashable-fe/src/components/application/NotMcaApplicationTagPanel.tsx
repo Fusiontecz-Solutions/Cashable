@@ -152,14 +152,14 @@ export default function NotMcaApplicationTagPanel() {
             <div
                 className={`mb-6 overflow-hidden rounded-xl border shadow-sm ${
                     isDark
-                        ? "border-[#374151] bg-[#141517]"
+                        ? "border-[#243a58] bg-card"
                         : "border-[#FDFDFD] bg-white"
                 }`}
             >
                 <h2
                     className={`border-b px-4 py-3 text-base font-roboto font-[600] uppercase tracking-wide sm:px-5 ${
                         isDark
-                            ? "border-[#374151] bg-[#2A2B2F] text-white"
+                            ? "border-[#243a58] bg-[#1a2c47] text-white"
                             : "border-slate-100 bg-[#F9FAFD] text-[#374151]"
                     }`}
                 >

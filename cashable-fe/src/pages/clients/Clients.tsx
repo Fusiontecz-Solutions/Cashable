@@ -868,7 +868,7 @@ export default function Clients() {
 
       <div
         className={`mt-0 flex flex-col md:flex-row items-stretch md:items-center gap-3 justify-between px-6 py-5 ${
-          isDark ? "bg-[#141517]" : "bg-[white]"
+          isDark ? "bg-card" : "bg-[white]"
         }`}
       >
         <div className="flex items-center w-full md:max-w-[520px] border border-input rounded-md bg-card overflow-hidden">
@@ -974,13 +974,13 @@ export default function Clients() {
         <div
           className={`mt-5 rounded-sm border shadow-[0px_4px_20px_0px_#00000005] ${
             isDark
-              ? "bg-[#141517] border-[#374151]"
+              ? "bg-card border-[#243a58]"
               : "bg-card border-[#FDFDFD]"
           }`}
         >
           <div
             className={`px-6 py-2 border-none rounded-t-sm flex items-center justify-between gap-6 ${
-              isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+              isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
             }`}
           >
             <span className="font-semibold text-foreground text-base uppercase">
@@ -1028,7 +1028,7 @@ export default function Clients() {
       {/* <div
                 className={`flex items-center justify-between gap-4 px-6 py-3 mt-5 border rounded-sm ${
                     isDark
-                        ? 'bg-[#141517] border-[#374151]'
+                        ? 'bg-card border-[#243a58]'
                         : 'bg-card border-[#FDFDFD]'
                 }`}
             >

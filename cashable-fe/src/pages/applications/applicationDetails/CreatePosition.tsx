@@ -369,7 +369,7 @@ const CreatePosition = () => {
                 <div className="space-y-6">
                     {/* Title Card */}
                     <Card className={`flex justify-between px-2 py-3 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${
-                        isDark ? 'bg-[#141517]' : 'bg-white'
+                        isDark ? 'bg-card' : 'bg-white'
                     }`}>
                         <CardContent className="flex items-center gap-3 px-0">
                             <Button
@@ -388,7 +388,7 @@ const CreatePosition = () => {
                     {/* Form Card */}
                     {(isEditMode || isViewMode) && positionLoading ? (
                         <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border ${
-                            isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                            isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                         }`}>
                             <CardContent className="flex items-center justify-center py-12 px-6">
                                 <p className="text-muted-foreground">Loading position data...</p>
@@ -397,11 +397,11 @@ const CreatePosition = () => {
                     ) : (
                         <form onSubmit={isViewMode ? (e) => e.preventDefault() : handleSubmit(onSubmit)} className="space-y-6">
                         <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${
-                            isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                            isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                         }`}>
                             <CardContent className="space-y-3 p-0">
                                 <h2 className={`text-base font-[600] font-roboto px-6 py-3 ${
-                                    isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                                    isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                                 }`}>
                                     Position Details
                                 </h2>

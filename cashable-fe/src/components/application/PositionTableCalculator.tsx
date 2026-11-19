@@ -1281,7 +1281,7 @@ export default function PositionTableCalculator({
 
   /** Sticky header: solid bg + nowrap so labels stay on one line while body scrolls. */
   const thBase =
-    "sticky top-0 z-10 whitespace-nowrap px-3 py-2.5 text-left bg-[#f4f9fc] text-[#64748b] dark:bg-[#141517] dark:text-slate-300";
+    "sticky top-0 z-10 whitespace-nowrap px-3 py-2.5 text-left bg-[#f4f9fc] text-[#64748b] dark:bg-card dark:text-slate-300";
 
   const cellClass = isReadOnly
     ? "px-3 py-2.5 align-middle text-left"
@@ -1925,12 +1925,12 @@ export default function PositionTableCalculator({
   return (
     <div
       data-scrubbing-preview-theme
-      className="w-full overflow-hidden scrub-merged-card scrub-band-tall rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-[#141517]"
+      className="w-full overflow-hidden scrub-merged-card scrub-band-tall rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-card"
     >
       {/* Header Section */}
       {/* Three-column grid keeps the title centred whether or not the
           Create Position button is showing. */}
-      <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 scrub-merged-bar px-4 py-1.5 dark:bg-[#2A2B2F]">
+      <div className="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 scrub-merged-bar px-4 py-1.5 dark:bg-[#1a2c47]">
         <span aria-hidden />
         <h2 className="scrub-merged-title text-center text-[16px] font-bold uppercase text-slate-700 dark:text-slate-100">Positions</h2>
         <div className="flex justify-end">
@@ -2891,7 +2891,7 @@ export default function PositionTableCalculator({
                         ? "bg-[rgba(171,255,171,0.14)] dark:bg-emerald-900/20"
                         : isAlertRow && !isReadOnly
                           ? "bg-rose-50 dark:bg-rose-900/20"
-                          : `${groupBackground} dark:bg-[#141517]`
+                          : `${groupBackground} dark:bg-card`
                     }
                   >
                     {isPageEditing ? (
@@ -3341,7 +3341,7 @@ export default function PositionTableCalculator({
       </div>
       {allocationModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-[#141517]">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl dark:bg-card">
             <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               Allocate Amount Funded to Bank Analysis
             </h3>

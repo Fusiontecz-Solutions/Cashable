@@ -134,7 +134,7 @@ export default function MerchantDeals() {
     return [data.deal, ...rest.filter((s) => s.id !== data.deal.id)];
   }, [data]);
 
-  const card = isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#E8EBF2] bg-card';
+  const card = isDark ? 'border-[#243a58] bg-card' : 'border-[#E8EBF2] bg-card';
   const ein = maskEin(m?.ein);
   const books = (m?.books ?? []).map((b) => b.code).filter(Boolean) as string[];
   const merchantAbovePrincipal = m ? m.repaid - m.funded : 0;

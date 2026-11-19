@@ -1493,10 +1493,10 @@ function IsoDetailView({ app, store, actions, onBack }: SectionProps & { app: Is
                         </linearGradient>
                       ))}
                     </defs>
-                    <CartesianGrid horizontal={false} stroke={isDark ? '#2A2B2F' : '#EEF1F6'} />
+                    <CartesianGrid horizontal={false} stroke={isDark ? '#243a58' : '#EEF1F6'} />
                     <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: isDark ? '#9ca3af' : '#6b7280' }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fill: isDark ? '#d1d5db' : '#374151' }} axisLine={false} tickLine={false} />
-                    <RTooltip formatter={(v) => [`${v ?? 0}/100`, 'Score'] as [string, string]} contentStyle={{ background: isDark ? '#141517' : '#fff', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                    <RTooltip formatter={(v) => [`${v ?? 0}/100`, 'Score'] as [string, string]} contentStyle={{ background: isDark ? '#122036' : '#fff', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                     <Bar dataKey="v" radius={[0, 4, 4, 0]} barSize={16} label={{ position: 'right', fontSize: 11, fill: isDark ? '#9ca3af' : '#6b7280' }}>
                       {['scVolume', 'scConversion', 'scProfit', 'scSubmission'].map((g, i) => <Cell key={i} fill={`url(#${g})`} stroke={['#7c3aed', '#0284c7', '#d97706', '#475569'][i]} strokeWidth={0.5} />)}
                     </Bar>
@@ -1529,7 +1529,7 @@ function IsoDetailView({ app, store, actions, onBack }: SectionProps & { app: Is
                           <Pie data={mix} dataKey="value" nameKey="name" innerRadius={44} outerRadius={70} paddingAngle={2}>
                             {mix.map((m) => <Cell key={m.name} fill={`url(#mix-${m.name})`} stroke={m.color} strokeWidth={1} />)}
                           </Pie>
-                          <RTooltip contentStyle={{ background: isDark ? '#141517' : '#fff', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                          <RTooltip contentStyle={{ background: isDark ? '#122036' : '#fff', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="space-y-1.5">

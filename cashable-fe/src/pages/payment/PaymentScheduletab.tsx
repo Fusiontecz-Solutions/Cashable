@@ -743,7 +743,7 @@ function PaymentScheduletab({
       )}
 
       <Dialog open={showAddPayment} onOpenChange={setShowAddPayment}>
-        <DialogContent className={cn("payment-module", isDark ? "bg-[#141517] text-slate-100" : "")}>
+        <DialogContent className={cn("payment-module", isDark ? "bg-card text-slate-100" : "")}>
           <DialogHeader>
             <DialogTitle>Add Payment</DialogTitle>
           </DialogHeader>
@@ -847,7 +847,7 @@ function PaymentScheduletab({
           if (!open) setShowUpdateModal(null);
         }}
       >
-        <DialogContent className={cn("payment-module", isDark ? "bg-[#141517] text-slate-100" : "")}>
+        <DialogContent className={cn("payment-module", isDark ? "bg-card text-slate-100" : "")}>
           <DialogHeader>
             <DialogTitle>Update Payment Status</DialogTitle>
           </DialogHeader>

@@ -256,9 +256,9 @@ function StatusFilterCards({
               disabled && "pointer-events-none opacity-60",
               isActive
                 ? cn(
-                    "border-2 bg-white shadow-md ring-2 dark:bg-[#1e2024]",
+                    "border-2 bg-white shadow-md ring-2 dark:bg-[#0f1d33]",
                     activeRing,
-                    isDark && "bg-[#1e2024]",
+                    isDark && "bg-[#0f1d33]",
                   )
                 : isDark
                   ? "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
@@ -406,14 +406,14 @@ export function SchedulePaymentTrackingModal({
       <DialogContent
         className={cn(
           "max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-4xl",
-          isDark ? "border-white/10 bg-[#141517] text-slate-100" : "border-slate-200",
+          isDark ? "border-white/10 bg-card text-slate-100" : "border-slate-200",
         )}
       >
         <div
           className={cn(
             "border-b px-6 py-5",
             isDark
-              ? "border-white/10 bg-gradient-to-br from-[var(--brand)]/20 via-[#141517] to-[#141517]"
+              ? "border-white/10 bg-gradient-to-br from-[var(--brand)]/20 via-[#122036] to-[#122036]"
               : "border-slate-200/80 bg-gradient-to-br from-[var(--brand)]/8 via-white to-slate-50",
           )}
         >

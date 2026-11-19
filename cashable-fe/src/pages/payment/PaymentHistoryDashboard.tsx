@@ -3395,12 +3395,12 @@ export const PaymentHistoryDashboard = () => {
       ) : (
       <div
         className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${
-          isDark ? "border-[#374151] bg-[#141517]" : "border-[#FDFDFD] bg-card"
+          isDark ? "border-[#243a58] bg-card" : "border-[#FDFDFD] bg-card"
         }`}
       >
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-t-[5px] px-4 py-2 md:px-5 ${
-            isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+            isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
           }`}
         >
           <span className="inline-flex items-center gap-2 font-roboto text-[1rem] font-semibold uppercase tracking-wide text-foreground">

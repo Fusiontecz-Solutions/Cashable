@@ -157,7 +157,7 @@ export default function IsoCommissionDashboard({ isDark }: Props) {
   return (
     <div className="space-y-5">
       <div
-        className={`rounded-2xl border p-5 ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#FDFDFD]'
+        className={`rounded-2xl border p-5 ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#FDFDFD]'
           }`}
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -190,11 +190,11 @@ export default function IsoCommissionDashboard({ isDark }: Props) {
       </div>
 
       <div
-        className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#FDFDFD]'
+        className={`rounded-2xl border overflow-hidden ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#FDFDFD]'
           }`}
       >
         <div
-          className={`p-4 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${isDark ? 'border-[#374151]' : 'border-[#E2E8F0]'
+          className={`p-4 border-b flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between ${isDark ? 'border-[#243a58]' : 'border-[#E2E8F0]'
             }`}
         >
           <p className="text-sm font-semibold text-foreground">
@@ -219,7 +219,7 @@ export default function IsoCommissionDashboard({ isDark }: Props) {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr
-                className={`border-b text-[10px] font-semibold uppercase tracking-widest text-muted-foreground ${isDark ? 'border-[#374151]' : 'border-[#E2E8F0]'
+                className={`border-b text-[10px] font-semibold uppercase tracking-widest text-muted-foreground ${isDark ? 'border-[#243a58]' : 'border-[#E2E8F0]'
                   }`}
               >
                 <th className="px-4 py-3">ISO</th>

@@ -169,7 +169,7 @@ const BackgroundCheckPanel = ({ applicationId }: Props) => {
             <div className="rounded-xl border bg-card overflow-hidden">
                 <div className="flex items-center justify-between gap-3 px-4 py-3.5">
                     <div className="flex items-center gap-3 min-w-0">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1f2937] dark:text-[#5AACEA]">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1a2c47] dark:text-[#5AACEA]">
                             <ShieldCheck className="h-[18px] w-[18px]" />
                         </span>
                         <div className="min-w-0">

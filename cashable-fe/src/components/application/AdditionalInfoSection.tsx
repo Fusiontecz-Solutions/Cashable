@@ -89,7 +89,7 @@ export function AdditionalInfoPreview({
 
   return (
     <div
-      data-scrub-type className={`w-full overflow-x-auto rounded-xl border border-[#e2e2e2] bg-white dark:border-slate-700 dark:bg-[#141517] ${className}`.trim()}
+      data-scrub-type className={`w-full overflow-x-auto rounded-xl border border-[#e2e2e2] bg-white dark:border-slate-700 dark:bg-card ${className}`.trim()}
     >
       <div
         className="flex h-10 items-center justify-center gap-4 rounded-t-lg px-4"
@@ -99,7 +99,7 @@ export function AdditionalInfoPreview({
           Additional Info &amp; Critical Wire Transactions
         </span>
       </div>
-      <div className="overflow-x-auto bg-white dark:bg-[#141517]">
+      <div className="overflow-x-auto bg-white dark:bg-card">
         <table className="w-full min-w-[700px] table-fixed border-collapse text-sm [&_td]:px-2 [&_td]:py-1.5">
           <colgroup>
             <col style={{ width: "22%" }} />
@@ -109,7 +109,7 @@ export function AdditionalInfoPreview({
             {rows.map((row, index) => (
               <tr
                 key={row.label}
-                className={`bg-white dark:bg-[#141517] ${index < rows.length - 1 ? "border-b border-[#E2E8F0] dark:border-slate-700" : ""}`}
+                className={`bg-white dark:bg-card ${index < rows.length - 1 ? "border-b border-[#E2E8F0] dark:border-slate-700" : ""}`}
               >
                 <td className="border-r border-[#E2E8F0] px-3 py-2 align-top text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                   {row.label}
@@ -357,7 +357,7 @@ export default function AdditionalInfoSection({
     createPortal(
       <div
         ref={sourceDropdownRef}
-        className="overflow-hidden overflow-y-auto rounded-xl border bg-white text-sm shadow-xl dark:border-slate-700 dark:bg-[#141517]"
+        className="overflow-hidden overflow-y-auto rounded-xl border bg-white text-sm shadow-xl dark:border-slate-700 dark:bg-card"
         style={{
           ...dropdownStyle,
           borderColor: CARD_BORDER,
@@ -396,7 +396,7 @@ export default function AdditionalInfoSection({
     "w-full rounded border border-[#E2E8F0] bg-white px-2 py-1.5 text-sm font-medium text-black focus:outline-none focus:ring-0 disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:disabled:bg-slate-800/70";
 
   return (
-    <div data-scrub-type className="w-full overflow-x-auto rounded-xl border border-[#e2e2e2] bg-white dark:border-slate-700 dark:bg-[#141517]">
+    <div data-scrub-type className="w-full overflow-x-auto rounded-xl border border-[#e2e2e2] bg-white dark:border-slate-700 dark:bg-card">
       <div
         className="flex h-10 items-center justify-center gap-4 rounded-t-lg px-4"
         style={{ backgroundColor: HEADER_BG, backgroundImage: WHITE_VEIL }}
@@ -412,7 +412,7 @@ export default function AdditionalInfoSection({
             <col style={{ width: "78%" }} />
           </colgroup>
           <tbody>
-            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-[#141517]">
+            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-card">
               <td className="border-r border-[#E2E8F0] px-3 py-2 align-middle text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                 Source of revenue
               </td>
@@ -487,7 +487,7 @@ export default function AdditionalInfoSection({
               </td>
             </tr>
 
-            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-[#141517]">
+            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-card">
               <td className="border-r border-[#E2E8F0] px-3 py-2 align-middle text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                 Business Model
               </td>
@@ -503,7 +503,7 @@ export default function AdditionalInfoSection({
               </td>
             </tr>
 
-            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-[#141517]">
+            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-card">
               <td className="border-r border-[#E2E8F0] px-3 py-2 align-middle text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                 Online Presence
               </td>
@@ -519,7 +519,7 @@ export default function AdditionalInfoSection({
               </td>
             </tr>
 
-            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-[#141517]">
+            <tr className="border-b border-[#E2E8F0] bg-white dark:border-slate-700 dark:bg-card">
               <td className="border-r border-[#E2E8F0] px-3 py-2 align-top text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                 Pros
               </td>
@@ -536,7 +536,7 @@ export default function AdditionalInfoSection({
               </td>
             </tr>
 
-            <tr className="bg-white dark:bg-[#141517]">
+            <tr className="bg-white dark:bg-card">
               <td className="border-r border-[#E2E8F0] px-3 py-2 align-top text-sm font-bold text-[#143c2e] dark:border-slate-700 dark:text-slate-200">
                 Cons
               </td>
@@ -552,7 +552,7 @@ export default function AdditionalInfoSection({
                 />
               </td>
             </tr>
-            <tr className="bg-white dark:bg-[#141517]">
+            <tr className="bg-white dark:bg-card">
               <td colSpan={2} className="p-0 align-top" style={{ padding: 0 }}>
                 {/* A table, not flex or grid, so the two-column layout survives
                     a copy into email. */}

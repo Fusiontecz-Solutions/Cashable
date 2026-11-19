@@ -412,7 +412,7 @@ function ApplicationPipelineFunnelCard({
 
   return (
     <div
-      className={`flex min-h-[320px] flex-col overflow-hidden rounded-xl border shadow-md ${isDark ? "border-slate-700/80 bg-[#141517]" : "border-slate-200/90 bg-white"} ${className}`}
+      className={`flex min-h-[320px] flex-col overflow-hidden rounded-xl border shadow-md ${isDark ? "border-slate-700/80 bg-card" : "border-slate-200/90 bg-white"} ${className}`}
     >
       <div
         className={`flex shrink-0 items-center justify-between gap-3 border-b px-5 py-4 ${isDark ? "border-white/10" : "border-slate-100"}`}
@@ -511,7 +511,7 @@ function ApplicationPipelineFunnelCard({
       </div>
 
       <div
-        className={`mt-auto flex shrink-0 items-center justify-between gap-4 border-t px-5 py-4 ${isDark ? "border-white/10 bg-[#1c1d21]" : "border-slate-100 bg-[#eef3ff]"}`}
+        className={`mt-auto flex shrink-0 items-center justify-between gap-4 border-t px-5 py-4 ${isDark ? "border-white/10 bg-[#0f1d33]" : "border-slate-100 bg-[#eef3ff]"}`}
       >
         <span className="text-sm font-semibold tracking-tight text-foreground">
           Conversion Rate
@@ -1799,11 +1799,11 @@ export default function DashboardPage() {
   const dashboardRecentApplicationsSection = (
     <section className="mt-6">
       <div
-        className={`rounded-[5px] border shadow-lg ${isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+        className={`rounded-[5px] border shadow-lg ${isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
           }`}
       >
         <div
-          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
             }`}
         >
           <span className="font-semibold text-[1rem] text-foreground uppercase">
@@ -2141,7 +2141,7 @@ export default function DashboardPage() {
                   <DropdownMenuTrigger asChild>
                     <button
                       className={`flex items-center gap-2 px-3 py-2 h-9 rounded-md transition-colors ${isDark
-                        ? 'bg-[#141517] hover:bg-[#374151] text-white'
+                        ? 'bg-card hover:bg-[#374151] text-white'
                         : 'bg-white hover:bg-gray-50 text-black border border-[var(--brand)]'
                         }`}
                       style={isDark ? { border: '1px solid rgba(118, 183, 226, 0.5)' } : {}}
@@ -2315,7 +2315,7 @@ export default function DashboardPage() {
             {/* Monthly Trend + Pipeline */}
             <section className="mt-6 grid grid-cols-1 xl:grid-cols-[2fr_1.3fr] gap-5">
               <div className={`rounded-md border p-5 shadow-lg ${isDark
-                ? 'bg-[#141517] border-[#374151]'
+                ? 'bg-card border-[#243a58]'
                 : 'bg-card border-[#FDFDFD]'
                 }`}>
                 <div className="flex items-center justify-between gap-4">
@@ -2439,7 +2439,7 @@ export default function DashboardPage() {
             {/* Syndicator Donut + Commission */}
             <section className="mt-6 grid grid-cols-1 xl:grid-cols-[1.4fr_1.6fr] gap-5">
 
-              <div className={`rounded-xl border p-6 shadow-sm ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#f0f0f0]'
+              <div className={`rounded-xl border p-6 shadow-sm ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#f0f0f0]'
                 }`}>
                 <h3 className="text-md font-bold text-foreground mb-4">Invested Amount By Syndicator</h3>
 
@@ -2490,7 +2490,7 @@ export default function DashboardPage() {
               </div>
 
               <div className={`rounded-md border p-5 shadow-lg ${isDark
-                ? 'bg-[#141517] border-[#374151]'
+                ? 'bg-card border-[#243a58]'
                 : 'bg-card border-[#FDFDFD]'
                 }`}>
                 <div className="flex items-center justify-between gap-4">
@@ -2593,7 +2593,7 @@ export default function DashboardPage() {
             </section>
 
             <section className={`mt-6 rounded-md border shadow-lg p-0 ${isDark
-              ? 'bg-[#141517] border-[#374151]'
+              ? 'bg-card border-[#243a58]'
               : 'bg-card border-[#FDFDFD]'
               }`}>
               <div className={`rounded-xl border shadow-sm overflow-hidden ${surfaceBase}`}>
@@ -2663,7 +2663,7 @@ export default function DashboardPage() {
                   <DropdownMenuTrigger asChild>
                     <button
                       className={`flex items-center gap-2 px-3 py-2 h-9 rounded-md transition-colors ${isDark
-                        ? "bg-[#141517] hover:bg-[#374151] text-white"
+                        ? "bg-card hover:bg-[#374151] text-white"
                         : "bg-white hover:bg-gray-50 text-black border border-[var(--brand)]"
                         }`}
                       style={isDark ? { border: "1px solid rgba(118, 183, 226, 0.5)" } : {}}
@@ -2771,7 +2771,7 @@ export default function DashboardPage() {
                   ? "min-h-[350px] h-full min-w-0"
                   : "w-full h-[350px]"
                   } rounded-md border p-5 shadow-lg ${isDark
-                    ? "bg-[#141517] border-[#374151]"
+                    ? "bg-card border-[#243a58]"
                     : "bg-card border-[#FDFDFD]"
                   }`}
               >
@@ -2953,7 +2953,7 @@ export default function DashboardPage() {
               ) : (
                 <div
                   className={`w-[70%] h-[350px] flex flex-col justify-between rounded-md border p-5 shadow-lg ${isDark
-                    ? "bg-[#141517] border-[#374151]"
+                    ? "bg-card border-[#243a58]"
                     : "bg-card border-[#FDFDFD]"
                     }`}
                 >
@@ -3176,7 +3176,7 @@ export default function DashboardPage() {
                     <DropdownMenuTrigger asChild>
                       <button
                         className={`flex items-center gap-2 px-3 py-2 h-9 rounded-md transition-colors ${isDark
-                          ? "bg-[#141517] hover:bg-[#374151] text-white"
+                          ? "bg-card hover:bg-[#374151] text-white"
                           : "bg-white hover:bg-gray-50 text-black border border-[var(--brand)]"
                           }`}
                         style={
@@ -3333,7 +3333,7 @@ export default function DashboardPage() {
               <section className="mt-6 grid grid-cols-1 xl:grid-cols-[7fr_3fr] gap-5">
                 <div
                   className={`min-h-[350px] h-full min-w-0 rounded-md border p-5 shadow-lg ${isDark
-                    ? "bg-[#141517] border-[#374151]"
+                    ? "bg-card border-[#243a58]"
                     : "bg-card border-[#FDFDFD]"
                     }`}
                 >

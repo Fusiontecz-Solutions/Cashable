@@ -670,7 +670,7 @@ const CreateApplication = () => {
             <div className="w-full mx-auto">
                 <div className="space-y-6">
                     {/* Title Card */}
-                    <Card className={`flex justify-between px-2 py-3 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517]' : 'bg-white'
+                    <Card className={`flex justify-between px-2 py-3 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card' : 'bg-white'
                         }`}>
                         <CardContent className="flex items-center gap-3 px-0">
                             <Button
@@ -689,7 +689,7 @@ const CreateApplication = () => {
                     {/* Form - key forces re-render after form reset */}
                     <form key={isFormReset ? 'reset' : 'initial'} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                         {/* Business Profile Section */}
-                        <Card className={`overflow-hidden rounded-sm border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#FDFDFD]'
+                        <Card className={`overflow-hidden rounded-sm border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'border-[#243a58] bg-card' : 'border-[#FDFDFD]'
                             }`}>
                             <CardContent className="space-y-3 p-0">
                                 <h2 className={sectionHeaderBarClass}>
@@ -908,7 +908,7 @@ const CreateApplication = () => {
                                                     onBlur={field.onBlur}
                                                     name={field.name}
                                                     ref={field.ref}
-                                                    className={`h-9 w-full rounded-md bg-background border ${isDark ? 'border-[#374151]' : 'border-[#E5E7EB]'}`}
+                                                    className={`h-9 w-full rounded-md bg-background border ${isDark ? 'border-[#243a58]' : 'border-[#E5E7EB]'}`}
                                                 />
                                             )}
                                         />
@@ -983,7 +983,7 @@ const CreateApplication = () => {
                         {isNewClientMode && <NewClientFormSection ref={newClientFormRef} />}
 
                         {/* Documents Section */}
-                        <Card className={`overflow-hidden rounded-sm border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#FDFDFD]'
+                        <Card className={`overflow-hidden rounded-sm border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'border-[#243a58] bg-card' : 'border-[#FDFDFD]'
                             }`}>
                             <CardContent className="space-y-4 p-0">
                                 <div className="space-y-0">
@@ -1063,21 +1063,21 @@ const CreateApplication = () => {
                         </Card>
 
                         {/* Uploaded Documents Table — title strip + thead use Applications list colors; row hover matches DataTableContent */}
-                        <Card className={`overflow-hidden rounded-[5px] border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#FDFDFD] bg-card'
+                        <Card className={`overflow-hidden rounded-[5px] border box-border p-0 pb-5 shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? 'border-[#243a58] bg-card' : 'border-[#FDFDFD] bg-card'
                             }`}>
                             <CardContent className="p-0">
                                 <h2
                                     className={cn(
                                         'flex h-12 w-full shrink-0 items-center px-6 font-roboto text-[1rem] font-semibold uppercase tracking-wide border-b',
                                         isDark
-                                            ? 'border-[#374151] bg-[#2A2B2F] text-foreground'
+                                            ? 'border-[#243a58] bg-[#1a2c47] text-foreground'
                                             : 'border-[#ECEFF5] bg-[#F9FAFD] text-slate-800',
                                     )}
                                 >
                                     Uploaded Documents
                                 </h2>
 
-                                <div className={cn('overflow-hidden p-1', isDark ? 'bg-[#141517]' : 'bg-card')}>
+                                <div className={cn('overflow-hidden p-1', isDark ? 'bg-card' : 'bg-card')}>
                                     <Table>
                                         <TableHeader>
                                             <TableRow
@@ -1108,7 +1108,7 @@ const CreateApplication = () => {
                                                     className={cn(
                                                         'border-b transition-colors',
                                                         isDark
-                                                            ? 'border-[#374151] bg-[#141517] hover:!bg-[#141517]'
+                                                            ? 'border-[#243a58] bg-card hover:!bg-card'
                                                             : 'border-transparent bg-card hover:!bg-card',
                                                     )}
                                                 >
@@ -1128,7 +1128,7 @@ const CreateApplication = () => {
                                                         key={file.id}
                                                         className={cn(
                                                             'border-b transition-colors hover:bg-accent',
-                                                            isDark ? 'border-[#374151]' : 'border-[#ECEFF5]',
+                                                            isDark ? 'border-[#243a58]' : 'border-[#ECEFF5]',
                                                             rowIdx % 2 ? 'bg-muted/50' : '',
                                                         )}
                                                     >

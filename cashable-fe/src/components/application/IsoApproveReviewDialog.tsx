@@ -781,12 +781,12 @@ function DocRow({
     return (
         <div
             className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${pinned
-                ? "border-[var(--brand)]/40 bg-[#EAF1FA]/50 dark:border-[#C07BE0]/30 dark:bg-[#1f2937]/40"
+                ? "border-[var(--brand)]/40 bg-[#EAF1FA]/50 dark:border-[#C07BE0]/30 dark:bg-[#1a2c47]/40"
                 : ""
                 }`}
         >
             <div className="flex items-center gap-3 min-w-0">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1f2937] dark:text-[#C07BE0]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1a2c47] dark:text-[#C07BE0]">
                     <Icon className="h-[18px] w-[18px]" />
                 </span>
                 <div className="min-w-0">

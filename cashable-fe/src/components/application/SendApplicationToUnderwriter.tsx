@@ -157,7 +157,7 @@ export default function SendApplicationToUnderwriter({
         <div
             className={`overflow-hidden rounded-2xl border shadow-md ${
                 isDark
-                    ? "border-slate-700 bg-[#141517]"
+                    ? "border-slate-700 bg-card"
                     : "border-slate-200 bg-white"
             }`}
         >
@@ -228,7 +228,7 @@ export default function SendApplicationToUnderwriter({
                             <div
                                 className={cn(
                                     "sticky top-0 z-10 -mx-1 -mt-1 mb-1 px-2 pb-2 pt-2",
-                                    isDark ? "bg-[#141517]" : "bg-white",
+                                    isDark ? "bg-card" : "bg-white",
                                 )}
                             >
                                 <div className="relative">

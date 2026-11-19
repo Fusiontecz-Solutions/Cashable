@@ -640,7 +640,7 @@ export const FundingCall = ({ applicationId, onSaved, onCallStatusChange }: Fund
     <div
       className={cn(
         'relative mx-auto rounded-lg border border-slate-200/80 bg-white p-4 font-sans shadow-sm',
-        'dark:border-slate-700 dark:bg-[#1c1d21] dark:shadow-black/20',
+        'dark:border-slate-700 dark:bg-[#0f1d33] dark:shadow-black/20',
       )}
     >
       {(fetchingExistingCalls || saving) && (

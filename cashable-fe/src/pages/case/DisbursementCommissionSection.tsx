@@ -1370,7 +1370,7 @@ export function DisbursementCommissionSection({
   }
 
   return (
-    <div className="bg-white px-4 py-5 md:px-6 md:py-6 rounded-lg shadow-md border border-slate-100 dark:border-slate-700 dark:bg-[#141517] dark:shadow-lg dark:shadow-black/20">
+    <div className="bg-white px-4 py-5 md:px-6 md:py-6 rounded-lg shadow-md border border-slate-100 dark:border-slate-700 dark:bg-card dark:shadow-lg dark:shadow-black/20">
       <div className="mb-6 pb-3 border-b border-slate-100 dark:border-slate-700">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide dark:text-slate-100">

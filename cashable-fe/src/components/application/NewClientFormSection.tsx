@@ -252,10 +252,10 @@ const NewClientFormSection = forwardRef<NewClientFormHandle>(function NewClientF
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+            <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                 }`}>
                 <CardContent className="space-y-3 p-0">
-                    <h2 className={`text-base font-[600] font-roboto px-6 py-3 ${isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                    <h2 className={`text-base font-[600] font-roboto px-6 py-3 ${isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                         }`}>Business Profile</h2>
                     <div className="px-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <TextField control={control} name="business.name" label="Business Name" placeholder="Enter business name" labelClassName={labelClassName} required />
@@ -291,10 +291,10 @@ const NewClientFormSection = forwardRef<NewClientFormHandle>(function NewClientF
                 </CardContent>
             </Card>
 
-            <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+            <Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                 }`}>
                 <CardContent className="space-y-3 p-0">
-                    <div className={`flex items-center justify-between px-6 py-3 ${isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                    <div className={`flex items-center justify-between px-6 py-3 ${isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                         }`}>
                         <h2 className="text-base font-[600] font-roboto">Business Owner Detail</h2>
                         <Button
@@ -315,7 +315,7 @@ const NewClientFormSection = forwardRef<NewClientFormHandle>(function NewClientF
                             return (
                                 <div
                                     key={field.id}
-                                    className={`rounded-md border overflow-hidden ${isDark ? 'border-[#374151]' : hasErrors ? 'border-red-300' : 'border-[#E5E7EB]'
+                                    className={`rounded-md border overflow-hidden ${isDark ? 'border-[#243a58]' : hasErrors ? 'border-red-300' : 'border-[#E5E7EB]'
                                         }`}
                                 >
                                     <button

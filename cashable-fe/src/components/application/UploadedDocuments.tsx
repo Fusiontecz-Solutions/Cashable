@@ -238,7 +238,7 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
 
     return (
         <Card
-            className={`rounded-lg box-border p-0 border py-0 gap-0 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.14),0_4px_14px_-4px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.55)] ${isDark ? "border-[#374151] bg-[#141517]" : "border-slate-200/90 bg-card"
+            className={`rounded-lg box-border p-0 border py-0 gap-0 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.14),0_4px_14px_-4px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.55)] ${isDark ? "border-[#243a58] bg-card" : "border-slate-200/90 bg-card"
                 }`}
         >
             <CardContent className="p-0">
@@ -257,7 +257,7 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
                     className={cn(
                         'flex items-center justify-between gap-3 border-b px-6 py-3',
                         isDark
-                            ? 'border-[#374151] bg-[#2A2B2F]'
+                            ? 'border-[#243a58] bg-[#1a2c47]'
                             : 'border-[#ECEFF5] bg-[#F9FAFD]',
                     )}
                 >
@@ -338,7 +338,7 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
                     </div>
                 )}
 
-                <div className={cn('overflow-hidden border-none p-1', isDark ? 'bg-[#141517]' : 'bg-card')}>
+                <div className={cn('overflow-hidden border-none p-1', isDark ? 'bg-card' : 'bg-card')}>
                     <Table>
                         <TableHeader>
                             <TableRow
@@ -391,7 +391,7 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
                                     className={cn(
                                         'border-b transition-colors',
                                         isDark
-                                            ? 'border-[#374151] bg-[#141517] hover:!bg-[#141517]'
+                                            ? 'border-[#243a58] bg-card hover:!bg-card'
                                             : 'border-transparent bg-card hover:!bg-card',
                                     )}
                                 >
@@ -414,9 +414,9 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
                                         key={file._id}
                                         className={cn(
                                             'border-b transition-colors hover:bg-accent',
-                                            isDark ? 'border-[#374151]' : 'border-[#ECEFF5]',
+                                            isDark ? 'border-[#243a58]' : 'border-[#ECEFF5]',
                                             pinned
-                                                ? 'bg-[#EAF1FA]/60 hover:!bg-[#EAF1FA]/80 dark:bg-[#1f2937]/50 dark:hover:!bg-[#1f2937]/70'
+                                                ? 'bg-[#EAF1FA]/60 hover:!bg-[#EAF1FA]/80 dark:bg-[#1a2c47]/50 dark:hover:!bg-[#1f2937]/70'
                                                 : rowIdx % 2 ? 'bg-muted/50' : '',
                                         )}
                                     >
@@ -444,7 +444,7 @@ const UploadedDocuments = ({ applicationId, readOnly = false }: UploadedDocument
                                                                 'inline-flex w-fit items-center rounded-md px-2 py-0.5 text-[10px] font-semibold',
                                                                 pinned
                                                                     ? 'bg-[image:var(--brand-gradient)] text-white dark:bg-[#C07BE0] dark:text-[#0b1220]'
-                                                                    : 'bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1f2937] dark:text-[#C07BE0]',
+                                                                    : 'bg-[#EAF1FA] text-[var(--brand)] dark:bg-[#1a2c47] dark:text-[#C07BE0]',
                                                             )}
                                                         >
                                                             {label}

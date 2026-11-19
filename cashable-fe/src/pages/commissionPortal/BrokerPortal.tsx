@@ -890,7 +890,7 @@ export default function BrokerPortal() {
         }
     }
 
-    const cardClass = `rounded-2xl border ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#E2E8F0]'
+    const cardClass = `rounded-2xl border ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#E2E8F0]'
         }`
 
     const bottomCardClass = cn(cardClass, 'shadow-sm')
@@ -921,7 +921,7 @@ export default function BrokerPortal() {
     return (
         <div className="w-full space-y-6">
             <Dialog open={bankOpen} onOpenChange={setBankOpen}>
-                <DialogContent className={isDark ? 'border-[#374151] bg-[#141517]' : ''}>
+                <DialogContent className={isDark ? 'border-[#243a58] bg-card' : ''}>
                     <DialogHeader>
                         <DialogTitle>Banking information</DialogTitle>
                         <DialogDescription>
@@ -965,7 +965,7 @@ export default function BrokerPortal() {
             </Dialog>
 
             <Dialog open={dealEditOpen} onOpenChange={setDealEditOpen}>
-                <DialogContent className={cn(isDark ? 'border-[#374151] bg-[#141517]' : '')}>
+                <DialogContent className={cn(isDark ? 'border-[#243a58] bg-card' : '')}>
                     <DialogHeader>
                         <DialogTitle>Update commission payout</DialogTitle>
                         <DialogDescription>
@@ -986,7 +986,7 @@ export default function BrokerPortal() {
                                     setDealEditForm((f) => ({ ...f, payoutStatus: v as CommissionPayoutStatus }))
                                 }
                             >
-                                <SelectTrigger className={cn('h-10', isDark ? 'border-[#374151]' : '')}>
+                                <SelectTrigger className={cn('h-10', isDark ? 'border-[#243a58]' : '')}>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1020,7 +1020,7 @@ export default function BrokerPortal() {
                                     inputMode="numeric"
                                     placeholder="mm/dd/yyyy"
                                     autoComplete="off"
-                                    className={cn('h-10 pr-10', isDark ? 'border-[#374151]' : '')}
+                                    className={cn('h-10 pr-10', isDark ? 'border-[#243a58]' : '')}
                                     value={dealEditForm.plannedPayDateDisplay}
                                     onChange={(e) =>
                                         setDealEditForm((f) => ({
@@ -1095,7 +1095,7 @@ export default function BrokerPortal() {
                                                 inputMode="numeric"
                                                 placeholder="mm/dd/yyyy"
                                                 autoComplete="off"
-                                                className={cn('h-10 pr-10', isDark ? 'border-[#374151]' : '')}
+                                                className={cn('h-10 pr-10', isDark ? 'border-[#243a58]' : '')}
                                                 value={dealEditForm.paidAtDateDisplay}
                                                 onChange={(e) =>
                                                     setDealEditForm((f) => ({
@@ -1180,7 +1180,7 @@ export default function BrokerPortal() {
                 <DialogContent
                     className={cn(
                         'flex max-h-[92vh] w-[min(100vw-2rem,56rem)] max-w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl',
-                        isDark ? 'border-[#374151] bg-[#141517]' : '',
+                        isDark ? 'border-[#243a58] bg-card' : '',
                     )}
                 >
                     <DialogHeader className="shrink-0 space-y-1 border-b px-4 py-3 pr-14 text-left">
@@ -1193,13 +1193,13 @@ export default function BrokerPortal() {
                     </DialogHeader>
                     <div className="relative min-h-[50vh] flex-1 bg-slate-100 p-2 dark:bg-black/50">
                         {isoDocPreviewLoading ? (
-                            <div className="flex h-[min(75vh,720px)] w-full items-center justify-center rounded-md border border-dashed border-border bg-white dark:border-[#374151] dark:bg-neutral-950">
+                            <div className="flex h-[min(75vh,720px)] w-full items-center justify-center rounded-md border border-dashed border-border bg-white dark:border-[#243a58] dark:bg-neutral-950">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
                             </div>
                         ) : null}
                         {isoDocViewer?.blobUrl && isoDocViewer.mimeType ? (
                             isoDocViewer.mimeType === 'application/pdf' ? (
-                                <div className="h-[min(75vh,720px)] w-full overflow-auto rounded-md border border-border bg-neutral-100 dark:border-[#374151] dark:bg-black/60">
+                                <div className="h-[min(75vh,720px)] w-full overflow-auto rounded-md border border-border bg-neutral-100 dark:border-[#243a58] dark:bg-black/60">
                                     <IsoPortalPdfPages
                                         key={isoDocViewer.blobUrl}
                                         fileUrl={isoDocViewer.blobUrl}
@@ -1207,7 +1207,7 @@ export default function BrokerPortal() {
                                     />
                                 </div>
                             ) : isoDocViewer.mimeType.startsWith('image/') ? (
-                                <div className="flex h-[min(75vh,720px)] w-full items-start justify-center overflow-auto rounded-md border border-border bg-neutral-100 p-2 dark:border-[#374151] dark:bg-black/60">
+                                <div className="flex h-[min(75vh,720px)] w-full items-start justify-center overflow-auto rounded-md border border-border bg-neutral-100 p-2 dark:border-[#243a58] dark:bg-black/60">
                                     <img
                                         src={isoDocViewer.blobUrl}
                                         alt=""
@@ -1219,7 +1219,7 @@ export default function BrokerPortal() {
                                     key={isoDocViewer.blobUrl}
                                     title={isoDocViewer.title}
                                     src={isoDocViewer.blobUrl}
-                                    className="h-[min(75vh,720px)] w-full rounded-md border border-border bg-white dark:border-[#374151] dark:bg-neutral-950"
+                                    className="h-[min(75vh,720px)] w-full rounded-md border border-border bg-white dark:border-[#243a58] dark:bg-neutral-950"
                                 />
                             )
                         ) : null}
@@ -1329,13 +1329,13 @@ export default function BrokerPortal() {
             <div
                 className={cn(
                     'mt-5 overflow-hidden rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005]',
-                    isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]',
+                    isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]',
                 )}
             >
                 <div
                     className={cn(
                         'flex flex-col gap-4 border-b px-4 py-3 md:px-5',
-                        isDark ? 'border-[#374151] bg-[#2A2B2F]' : 'border-[#ECEFF5] bg-[#F9FAFD]',
+                        isDark ? 'border-[#243a58] bg-[#1a2c47]' : 'border-[#ECEFF5] bg-[#F9FAFD]',
                     )}
                 >
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1356,7 +1356,7 @@ export default function BrokerPortal() {
                                 onChange={(e) => setDealsSearchInput(e.target.value)}
                                 className={cn(
                                     'h-9 border-[#E5E7EB] bg-white pl-9 text-sm text-[#111827] placeholder:text-[#9CA3AF] focus:ring-2 focus:ring-[var(--brand)]/25',
-                                    isDark ? 'border-[#374151] bg-transparent text-foreground placeholder:text-muted-foreground' : '',
+                                    isDark ? 'border-[#243a58] bg-transparent text-foreground placeholder:text-muted-foreground' : '',
                                 )}
                                 aria-label="Search deals"
                             />
@@ -1476,7 +1476,7 @@ export default function BrokerPortal() {
                     <div
                         className={cn(
                             'flex flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:items-center sm:justify-between',
-                            isDark ? 'border-[#374151] bg-[#1f2024]' : 'border-[#ECEFF5] bg-[#F8FAFC]',
+                            isDark ? 'border-[#243a58] bg-[#1f2024]' : 'border-[#ECEFF5] bg-[#F8FAFC]',
                         )}
                     >
                         <div className="flex flex-wrap items-center gap-3">
@@ -1495,7 +1495,7 @@ export default function BrokerPortal() {
                                     }}
                                 >
                                     <SelectTrigger
-                                        className={cn('h-8 w-[72px] text-xs', isDark ? 'border-[#374151]' : '')}
+                                        className={cn('h-8 w-[72px] text-xs', isDark ? 'border-[#243a58]' : '')}
                                     >
                                         <SelectValue />
                                     </SelectTrigger>

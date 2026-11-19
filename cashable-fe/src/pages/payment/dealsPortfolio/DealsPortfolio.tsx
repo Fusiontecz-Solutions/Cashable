@@ -200,7 +200,7 @@ function MerchantBlock({
   const merchantOverdue = merchantPaidOff ? 0 : m.overdueAmount;
 
   return (
-    <article className={cn('border-b last:border-b-0', isDark ? 'border-[#374151]' : 'border-[#E8EBF2]')}>
+    <article className={cn('border-b last:border-b-0', isDark ? 'border-[#243a58]' : 'border-[#E8EBF2]')}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -279,7 +279,7 @@ function MerchantBlock({
                   className={cn(
                     'mt-2 grid w-full cursor-pointer gap-3 rounded-md border px-3 py-3 text-left md:items-center',
                     ROW_GRID,
-                    isDark ? 'border-[#2A2B2F] bg-[#141517] hover:border-[var(--brand)]/40' : 'border-[#E8EBF2] bg-white hover:border-[var(--brand)]/35',
+                    isDark ? 'border-[#1a2c47] bg-card hover:border-[var(--brand)]/40' : 'border-[#E8EBF2] bg-white hover:border-[var(--brand)]/35',
                   )}
                 >
                   <div className="min-w-0">
@@ -406,12 +406,12 @@ export default function DealsPortfolio({ search, organization }: { search: strin
       staleTime: 0,
     });
   };
-  const card = isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#E8EBF2] bg-card';
+  const card = isDark ? 'border-[#243a58] bg-card' : 'border-[#E8EBF2] bg-card';
   const repaidPct = totals && totals.payback > 0 ? Math.round((totals.repaid / totals.payback) * 100) : 0;
   const asOf = q.data?.dataAsOf || q.data?.asOf;
   const selectCls = cn(
     'h-8 rounded-md border px-2 text-sm',
-    isDark ? 'border-[#374151] bg-[#141517] text-foreground' : 'border-border bg-card',
+    isDark ? 'border-[#243a58] bg-card text-foreground' : 'border-border bg-card',
   );
 
   return (
@@ -422,7 +422,7 @@ export default function DealsPortfolio({ search, organization }: { search: strin
         </div>
       ) : (
         <section className={cn('overflow-hidden rounded-md border', card)}>
-          <div className={cn('border-b px-4 py-4', isDark ? 'border-[#374151]' : 'border-[#E8EBF2]')}>
+          <div className={cn('border-b px-4 py-4', isDark ? 'border-[#243a58]' : 'border-[#E8EBF2]')}>
             <p className="text-sm font-semibold text-foreground">Portfolio payback progress</p>
             {totals ? (
               <div className="mt-3">
@@ -495,7 +495,7 @@ export default function DealsPortfolio({ search, organization }: { search: strin
             </div>
           </div>
 
-          <div className={cn('flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5', isDark ? 'border-[#374151]' : 'border-[#E8EBF2]')}>
+          <div className={cn('flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5', isDark ? 'border-[#243a58]' : 'border-[#E8EBF2]')}>
             <p className="text-sm font-medium text-foreground">
               Merchants
               <span className="ml-2 font-normal text-muted-foreground">
@@ -504,7 +504,7 @@ export default function DealsPortfolio({ search, organization }: { search: strin
               </span>
             </p>
           </div>
-          <div className={cn('hidden border-b px-4 py-2 md:grid md:items-center', ROW_GRID, isDark ? 'border-[#374151]' : 'border-[#E8EBF2]')}>
+          <div className={cn('hidden border-b px-4 py-2 md:grid md:items-center', ROW_GRID, isDark ? 'border-[#243a58]' : 'border-[#E8EBF2]')}>
             <p className={MUTED}>Merchant</p>
             <p className={MUTED}>Funded · Payback</p>
             <p className={cn(MUTED, 'md:text-right')}>Next payment</p>

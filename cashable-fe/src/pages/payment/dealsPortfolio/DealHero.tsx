@@ -219,7 +219,7 @@ function ScheduleSummary({
   const first = strip[0]?.date;
   const last = strip[strip.length - 1]?.date;
   return (
-    <div className={cn('rounded-md border p-4', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>
+    <div className={cn('rounded-md border p-4', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>
       <div className="mb-2 text-sm font-semibold text-foreground">Schedule</div>
       <div className={cn('flex h-3 w-full overflow-hidden rounded-full', isDark ? 'bg-[#1f2023]' : 'bg-[#EEF1F6]')}>
         {total > 0
@@ -352,7 +352,7 @@ export function DealHero({
   const q = useDealDetail(dealRef);
   const d = q.data?.deal;
   const m = q.data?.merchant;
-  const card = isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#F1F3F7] bg-card';
+  const card = isDark ? 'border-[#243a58] bg-card' : 'border-[#F1F3F7] bg-card';
   const figures = useMemo(() => (d ? dealStateCards(d) : FIGURE_SKELETONS), [d]);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const tagApplicationId = applicationId || d?.applicationUuid || null;
@@ -457,7 +457,7 @@ export function DealHero({
             >
               <div className="flex flex-col gap-5">
                 {d ? (
-                  <div className={cn('rounded-md border p-4', isDark ? 'border-[#2A2B2F] bg-[#101114]' : 'border-[#E8EBF2] bg-[#F7F8FB]')}>
+                  <div className={cn('rounded-md border p-4', isDark ? 'border-[#1a2c47] bg-[#101114]' : 'border-[#E8EBF2] bg-[#F7F8FB]')}>
                     <div className="mb-2 flex items-baseline justify-between gap-2">
                       <span className="text-base font-semibold text-foreground">Payback</span>
                       <span className="text-xl font-semibold tabular-nums text-foreground">
@@ -510,11 +510,11 @@ export function DealHero({
                     <ScheduleSummary schedule={q.data.schedule} paidOff={d.health === 'paid_off'} payback={d.payback} isDark={isDark} />
                     <div className="@container">
                     <div className="grid items-stretch gap-3 @3xl:grid-cols-2">
-                      <div className={cn('rounded-md border p-4', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>
+                      <div className={cn('rounded-md border p-4', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>
                         <div className="mb-2 text-sm font-semibold text-foreground">Paydown</div>
                         <DealPaydownChart strip={q.data.schedule.strip} payback={d.payback} isDark={isDark} />
                       </div>
-                      <div className={cn('flex flex-col rounded-md border p-4', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>
+                      <div className={cn('flex flex-col rounded-md border p-4', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>
                         <div className="mb-3 text-sm font-semibold text-foreground">Timeline</div>
                         <Timeline deal={d} />
                       </div>
@@ -544,7 +544,7 @@ export function DealSidebar({ dealRef }: { dealRef: string | undefined }) {
   if (q.isError || !data) return null;
   const m = data.merchant;
   const currentId = data.deal.id;
-  const card = isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#F1F3F7] bg-card';
+  const card = isDark ? 'border-[#243a58] bg-card' : 'border-[#F1F3F7] bg-card';
 
   return (
     <motion.aside className="space-y-3" initial="hidden" animate="show" variants={listStagger}>
@@ -572,7 +572,7 @@ export function DealSidebar({ dealRef }: { dealRef: string | undefined }) {
 
       {merchantDeals.length > 0 ? (
         <motion.section variants={fadeUp} className={cn('rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005]', card)}>
-          <div className={cn('border-b px-5 py-3 text-base font-semibold text-foreground', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>
+          <div className={cn('border-b px-5 py-3 text-base font-semibold text-foreground', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>
             Deals
             <span className="ml-2 font-normal text-muted-foreground">{merchantDeals.length}</span>
           </div>
@@ -601,7 +601,7 @@ export function DealSidebar({ dealRef }: { dealRef: string | undefined }) {
                 </>
               );
               return (
-                <li key={s.id} className={cn('border-b last:border-b-0', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>
+                <li key={s.id} className={cn('border-b last:border-b-0', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>
                   {isCurrent ? (
                     <div className="bg-muted/40 px-5 py-3.5">{body}</div>
                   ) : (
@@ -617,7 +617,7 @@ export function DealSidebar({ dealRef }: { dealRef: string | undefined }) {
       ) : null}
 
       <motion.section variants={fadeUp} className={cn('overflow-hidden rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005]', card)}>
-        <div className={cn('border-b px-5 py-3 text-base font-semibold text-foreground', isDark ? 'border-[#2A2B2F]' : 'border-[#E8EBF2]')}>Upcoming</div>
+        <div className={cn('border-b px-5 py-3 text-base font-semibold text-foreground', isDark ? 'border-[#1a2c47]' : 'border-[#E8EBF2]')}>Upcoming</div>
         {data.schedule.upcoming.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">Nothing scheduled.</p>
         ) : (

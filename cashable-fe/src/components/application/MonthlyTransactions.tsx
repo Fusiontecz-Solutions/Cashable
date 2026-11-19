@@ -103,10 +103,10 @@ const MonthlyTransactions = ({ data }: MonthlyTransactionsProps) => {
             {/* Transactions Chart - Left Side (wider, primary focus) */}
             <div className="w-full flex-1 min-w-0 lg:min-w-[55%]">
                 <Card className={`gap-0 w-full border shadow-[0px_4px_20px_0px_#00000005] p-0 rounded-b-md pb-4 ${
-                    isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                    isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                 }`}>
                 <CardHeader className={`flex flex-row items-center justify-between px-4 py-2 ${
-                    isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                    isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                 }`}>
                     <CardTitle className={`font-roboto text-base font-semibold ${
                         isDark ? 'text-white' : 'text-[#374151]'
@@ -204,17 +204,17 @@ const MonthlyTransactions = ({ data }: MonthlyTransactionsProps) => {
                     style={{ maxHeight: "min(520px, 60vh)" }}
                 >
                     {transactionsData.length === 0 ? (
-                        <div className={`rounded-md border py-8 px-4 text-center text-sm ${isDark ? "bg-[#141517] border-[#374151] text-gray-400" : "bg-white border-gray-200 text-gray-500"}`}>
+                        <div className={`rounded-md border py-8 px-4 text-center text-sm ${isDark ? "bg-card border-[#243a58] text-gray-400" : "bg-white border-gray-200 text-gray-500"}`}>
                             No monthly transactions to display.
                         </div>
                     ) : (
                         transactionsData.map((monthData, monthIndex) => (
                             <div
                                 key={`${monthData.month}-${monthIndex}`}
-                                className={`w-full shrink-0 overflow-hidden rounded-md border ${isDark ? "border-[#374151] bg-[#141517]" : "border-gray-200 bg-white"}`}
+                                className={`w-full shrink-0 overflow-hidden rounded-md border ${isDark ? "border-[#243a58] bg-card" : "border-gray-200 bg-white"}`}
                             >
                                 {/* Month header: light blue-grey bar, uppercase bold centered */}
-                                <div className={`px-4 py-3 ${isDark ? "bg-[#2A2B2F]" : "bg-[#f0f2f5]"}`}>
+                                <div className={`px-4 py-3 ${isDark ? "bg-[#1a2c47]" : "bg-[#f0f2f5]"}`}>
                                     <h3 className={`text-sm font-bold uppercase text-center ${isDark ? "text-white" : "text-[#374151]"}`}>
                                         {monthData.month}
                                     </h3>
@@ -224,13 +224,13 @@ const MonthlyTransactions = ({ data }: MonthlyTransactionsProps) => {
                                     <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
                                         <thead>
                                             <tr className={isDark ? "bg-[#1f2937]" : "bg-white"}>
-                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#374151]"}`}>
+                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#374151]"}`}>
                                                     CATEGORY
                                                 </th>
-                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#374151]"}`}>
+                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#374151]"}`}>
                                                     AMOUNT
                                                 </th>
-                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#374151]"}`}>
+                                                <th className={`border border-gray-200 px-3 py-2 text-left text-[10px] font-bold uppercase ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#374151]"}`}>
                                                     NOTE
                                                 </th>
                                             </tr>
@@ -242,20 +242,20 @@ const MonthlyTransactions = ({ data }: MonthlyTransactionsProps) => {
                                                     className={
                                                         txIndex % 2 === 0
                                                             ? isDark
-                                                                ? "bg-[#141517]"
+                                                                ? "bg-card"
                                                                 : "bg-white"
                                                             : isDark
                                                                 ? "bg-[#1f2937]/50"
                                                                 : "bg-[#fbfbfb]"
                                                     }
                                                 >
-                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
+                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
                                                         {transaction.category || "—"}
                                                     </td>
-                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs tabular-nums ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
+                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs tabular-nums ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
                                                         {formatAmountForDisplay(transaction.amount)}
                                                     </td>
-                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs ${isDark ? "border-[#374151] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
+                                                    <td className={`border border-gray-200 px-3 py-2 text-left text-xs ${isDark ? "border-[#243a58] text-[#E5E7EB]" : "text-[#4B5563]"}`}>
                                                         {transaction.note || "—"}
                                                     </td>
                                                 </tr>

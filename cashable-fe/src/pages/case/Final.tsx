@@ -261,7 +261,7 @@ export const Final = ({
         ) : null}
 
         {/* Form Section - Now its own white card */}
-        <div className="bg-white px-3 py-4 md:px-5 md:py-5 rounded-lg shadow-md dark:border dark:border-slate-700 dark:bg-[#141517] dark:shadow-lg dark:shadow-black/20">
+        <div className="bg-white px-3 py-4 md:px-5 md:py-5 rounded-lg shadow-md dark:border dark:border-slate-700 dark:bg-card dark:shadow-lg dark:shadow-black/20">
           <div className="mb-4 border-b border-gray-200 pb-2 dark:border-slate-700">
             <h2 className="text-sm md:text-md font-bold text-gray-700 dark:text-slate-100">
               Merchant Interview

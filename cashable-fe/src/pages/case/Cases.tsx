@@ -437,7 +437,7 @@ const Cases = () => {
     >
       <div
         className={`flex flex-col gap-3 md:flex-row md:items-center md:justify-between p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${
-          isDark ? "bg-[#141517]" : "bg-white"
+          isDark ? "bg-card" : "bg-white"
         }`}
       >
         <div className="space-y-1">
@@ -525,12 +525,12 @@ const Cases = () => {
 
       <div
         className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${
-          isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+          isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
         }`}
       >
         <div
           className={`px-4 md:px-5 py-2 rounded-t-[5px] flex items-center justify-between gap-6 ${
-            isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+            isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
           }`}
         >
           <span className="font-semibold text-[1rem] text-foreground font-roboto">

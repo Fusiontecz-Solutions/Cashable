@@ -669,7 +669,7 @@ export default function ApplicationsBrowsePage() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div
-        className={`rounded-xl border px-4 py-3 md:px-5 md:py-4 shadow-sm ${isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#EEF2F7]"
+        className={`rounded-xl border px-4 py-3 md:px-5 md:py-4 shadow-sm ${isDark ? "bg-card border-[#243a58]" : "bg-card border-[#EEF2F7]"
           }`}
       >
         {/* <div className="flex flex-wrap items-center gap-2">
@@ -751,11 +751,11 @@ export default function ApplicationsBrowsePage() {
       )}
 
       <div
-        className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+        className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
           }`}
       >
         <div
-          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex items-center justify-between gap-6 ${isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex items-center justify-between gap-6 ${isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
             }`}
         >
           <span className="font-semibold text-[1rem] text-foreground font-roboto inline-flex items-center gap-2">

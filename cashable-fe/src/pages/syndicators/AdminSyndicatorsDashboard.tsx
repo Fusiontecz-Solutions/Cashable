@@ -433,7 +433,7 @@ export default function AdminSyndicatorsDashboard() {
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value ?? 0))}
                     contentStyle={{
-                      background: isDark ? '#141517' : '#ffffff',
+                      background: isDark ? '#122036' : '#ffffff',
                       border: '1px solid var(--border)',
                       borderRadius: 8,
                       fontSize: 12,
@@ -491,7 +491,7 @@ export default function AdminSyndicatorsDashboard() {
                   <Tooltip
                     formatter={(value) => formatCurrency(Number(value ?? 0))}
                     contentStyle={{
-                      background: isDark ? '#141517' : '#ffffff',
+                      background: isDark ? '#122036' : '#ffffff',
                       border: '1px solid var(--border)',
                       borderRadius: 8,
                       fontSize: 12,

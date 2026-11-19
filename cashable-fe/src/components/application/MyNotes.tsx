@@ -242,7 +242,7 @@ const MyNotes = ({
     if (wide) {
         return (
             <Card className={`w-full gap-0 overflow-hidden rounded-md border p-0 shadow-[0px_4px_20px_0px_#00000005] ${
-                isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
             }`}>
                 <style>{`
                     .notes-scroll { scrollbar-gutter: stable; scrollbar-width: thin;
@@ -259,7 +259,7 @@ const MyNotes = ({
                         border: 2px solid rgba(20, 21, 23, 0.7); }
                 `}</style>
 
-                <CardHeader className={`px-4 py-2 ${isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'}`}>
+                <CardHeader className={`px-4 py-2 ${isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'}`}>
                     <CardTitle
                         className={`text-base font-semibold uppercase tracking-wide ${
                             isDark ? 'text-white' : 'text-[#374151]'
@@ -285,7 +285,7 @@ const MyNotes = ({
                             placeholder="Write your notes here.."
                             rows={1}
                             className={`max-h-[120px] min-h-[44px] flex-1 resize-none rounded-sm py-2.5 text-sm outline-none focus:ring-2 focus:ring-[var(--brand)]/20 ${
-                                isDark ? 'bg-[#1c1f23] border-[#374151] text-white' : 'border-border'
+                                isDark ? 'bg-[#1c1f23] border-[#243a58] text-white' : 'border-border'
                             }`}
                         />
                         <Button
@@ -305,7 +305,7 @@ const MyNotes = ({
                     {/* Newest first, under the composer */}
                     <div
                         className={`notes-scroll max-h-[320px] min-h-0 overflow-y-auto rounded-md border ${
-                            isDark ? 'border-[#374151]' : 'border-[#ECECEC]'
+                            isDark ? 'border-[#243a58]' : 'border-[#ECECEC]'
                         }`}
                     >
                         {notesLoading ? (
@@ -333,7 +333,7 @@ const MyNotes = ({
                                                 : ''
                                         } ${
                                             isDark
-                                                ? index % 2 === 1 ? 'bg-[#17191c]' : 'bg-[#141517]'
+                                                ? index % 2 === 1 ? 'bg-[#17191c]' : 'bg-card'
                                                 : index % 2 === 1 ? 'bg-[#FAFBFC]' : 'bg-white'
                                         }`}
                                     >
@@ -401,10 +401,10 @@ const MyNotes = ({
         <Card className={`gap-2 w-full border shadow-[0px_4px_20px_0px_#00000005] p-0 rounded-b-md flex flex-col ${
             compact ? (tall ? 'h-[560px] pb-2' : 'h-auto pb-2') : 'pb-3 h-[500px]'
         } ${
-            isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+            isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
         }`}>
             <CardHeader className={`${compact ? 'px-3 py-1.5' : 'px-4 py-2'} ${
-                isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
             }`}>
                 <CardTitle
                     className={`${compact ? 'text-sm' : 'text-base'} font-semibold uppercase tracking-wide ${
@@ -425,7 +425,7 @@ const MyNotes = ({
                         onChange={(e) => setNewNote(e.target.value)}
                         placeholder="Write your notes here.."
                         className={`${compact ? (tall ? 'min-h-[140px]' : 'min-h-[72px]') : 'min-h-[120px]'} resize-none rounded-sm text-sm outline-none focus:ring-2 focus:ring-[var(--brand)]/20 ${
-                            isDark ? 'bg-[#141517] border-[#374151] text-white' : 'border-border'
+                            isDark ? 'bg-card border-[#243a58] text-white' : 'border-border'
                         }`}
                     />
                     <Button
@@ -503,7 +503,7 @@ const MyNotes = ({
                                 <div
                                     key={note._id}
                                     className={`rounded-lg px-4 py-2 shadow-[0px_4px_20px_0px_rgba(0,0,0,0.02)] ${
-                                        isDark ? 'bg-[#141517] border border-[#374151]' : 'bg-white border border-[#FDF0F0]'
+                                        isDark ? 'bg-card border border-[#243a58]' : 'bg-white border border-[#FDF0F0]'
                                     }`}
                                 >
                                     <div className="mb-2 flex items-start justify-between gap-2">

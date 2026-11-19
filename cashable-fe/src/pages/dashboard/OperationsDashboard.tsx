@@ -857,12 +857,12 @@ export const OperationsDashboard = () => {
       <section>
         <div
           className={`rounded-[5px] border ${sectionShadowClass} ${
-            isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+            isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
           }`}
         >
           <div
             className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${
-              isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+              isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
             }`}
           >
             <div className="min-w-0">

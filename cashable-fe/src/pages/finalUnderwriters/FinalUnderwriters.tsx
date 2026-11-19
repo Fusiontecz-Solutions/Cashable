@@ -185,7 +185,7 @@
 //   return (
 //     <div
 //       className={`min-h-screen flex flex-col ${
-//         isDark ? 'bg-[#141517] text-white' : 'bg-background text-[#111827]'
+//         isDark ? 'bg-card text-white' : 'bg-background text-[#111827]'
 //       }`}
 //     >
 //       {/* Header */}
@@ -626,7 +626,7 @@ export default function FinalUnderwritersDashboard() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col ${isDark ? 'bg-[#141517] text-white' : 'bg-background text-[#111827]'}`}
+      className={`min-h-screen flex flex-col ${isDark ? 'bg-card text-white' : 'bg-background text-[#111827]'}`}
     >
 
       {/* Header */}

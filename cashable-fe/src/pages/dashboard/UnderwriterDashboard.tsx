@@ -100,7 +100,7 @@ export default function UnderwriterDashboard() {
           <div
             className={`rounded-lg border shadow-sm px-4 py-4 ${
               isDark
-                ? 'bg-[#141517] border-[#374151]'
+                ? 'bg-card border-[#243a58]'
                 : 'bg-card border-[#FDFDFD]'
             }`}
           >
@@ -122,7 +122,7 @@ export default function UnderwriterDashboard() {
           <div
             className={`rounded-lg border shadow-sm px-4 py-4 ${
               isDark
-                ? 'bg-[#141517] border-[#374151]'
+                ? 'bg-card border-[#243a58]'
                 : 'bg-card border-[#FDFDFD]'
             }`}
           >
@@ -150,7 +150,7 @@ export default function UnderwriterDashboard() {
               key={i}
               className={`rounded-lg border shadow-sm px-4 py-4 ${
                 isDark
-                  ? 'bg-[#141517] border-[#374151]'
+                  ? 'bg-card border-[#243a58]'
                   : 'bg-card border-[#FDFDFD]'
               }`}
             >
@@ -186,7 +186,7 @@ export default function UnderwriterDashboard() {
         <section
           className={`mt-8 rounded-lg border p-6 ${
             isDark
-              ? 'bg-[#141517] border-[#374151]'
+              ? 'bg-card border-[#243a58]'
               : 'bg-card border-[#FDFDFD]'
           }`}
         >

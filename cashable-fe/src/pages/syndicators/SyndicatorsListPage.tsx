@@ -309,7 +309,7 @@ export default function SyndicatorsListPage() {
                 barGap={2}
                 barCategoryGap={14}
               >
-                <CartesianGrid horizontal={false} stroke={isDark ? '#2A2B2F' : '#EEF1F6'} />
+                <CartesianGrid horizontal={false} stroke={isDark ? '#243a58' : '#EEF1F6'} />
                 <XAxis
                   type="number"
                   tickFormatter={(v) => formatUSDShort(v as number)}
@@ -329,8 +329,8 @@ export default function SyndicatorsListPage() {
                   cursor={{ fill: isDark ? '#ffffff08' : '#00000005' }}
                   formatter={(value, name) => [formatUSD(Number(value ?? 0)), String(name)] as [string, string]}
                   contentStyle={{
-                    background: isDark ? '#141517' : '#ffffff',
-                    border: `1px solid ${isDark ? '#2A2B2F' : '#E8EBF2'}`,
+                    background: isDark ? '#122036' : '#ffffff',
+                    border: `1px solid ${isDark ? '#243a58' : '#E8EBF2'}`,
                     borderRadius: 8,
                     fontSize: 12,
                   }}

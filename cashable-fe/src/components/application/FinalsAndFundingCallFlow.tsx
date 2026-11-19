@@ -215,7 +215,7 @@ export default function FinalsAndFundingCallFlow({
           className={cn(
             'relative min-h-0 overflow-x-hidden overflow-y-visible rounded-xl border',
             isDark
-              ? 'border-slate-700 bg-[#141517]/40'
+              ? 'border-slate-700 bg-card/40'
               : 'border-[#FDFDFD] bg-white shadow-[0px_4px_20px_0px_#00000005]',
           )}
         >

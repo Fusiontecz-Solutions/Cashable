@@ -236,13 +236,13 @@ export default function ReverseDisbursementScheduleSection({
             {enabled ? (
                 <div className="space-y-4">
                     <div
-                        className={`overflow-hidden rounded-lg border max-w-md ${isDark ? "border-[#374151]" : "border-[#D1D5DB]"}`}
+                        className={`overflow-hidden rounded-lg border max-w-md ${isDark ? "border-[#243a58]" : "border-[#D1D5DB]"}`}
                     >
                         {REVERSE_DISBURSEMENT_SUMMARY_FIELDS.map(({ key, label }, idx) => (
                             <div
                                 key={key}
                                 className={`flex items-center gap-3 px-3 py-1.5 ${
-                                    idx > 0 ? (isDark ? "border-t border-[#374151]" : "border-t border-[#E5E7EB]") : ""
+                                    idx > 0 ? (isDark ? "border-t border-[#243a58]" : "border-t border-[#E5E7EB]") : ""
                                 } ${isDark ? "even:bg-[#111827]" : "even:bg-[#F9FAFB]"}`}
                             >
                                 <Label
@@ -282,7 +282,7 @@ export default function ReverseDisbursementScheduleSection({
                         </div>
                     ) : null}
 
-                    <div className="overflow-x-auto rounded-lg border border-[#D1D5DB] dark:border-[#374151]">
+                    <div className="overflow-x-auto rounded-lg border border-[#D1D5DB] dark:border-[#243a58]">
                         <table className="min-w-full text-xs">
                             <thead>
                                 <tr className={isDark ? "bg-[#111827]" : "bg-[#F3F4F6]"}>
@@ -300,7 +300,7 @@ export default function ReverseDisbursementScheduleSection({
                                 {rows.map((row, rowIndex) => (
                                     <tr
                                         key={`schedule-row-${rowIndex}`}
-                                        className="border-t border-[#E5E7EB] dark:border-[#374151]"
+                                        className="border-t border-[#E5E7EB] dark:border-[#243a58]"
                                     >
                                         <td className="p-1">
                                             <Input

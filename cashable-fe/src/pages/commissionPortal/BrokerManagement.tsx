@@ -459,10 +459,10 @@ export default function isoManagement() {
         }
     }, [dispatch, selectedId, selectediso, isos, isoState.deleteLoading])
 
-    const sidebarBg = isDark ? 'bg-[#141517] border-[#374151]' : 'bg-muted/40 border-border'
-    const mainBg = isDark ? 'bg-[#141517]' : 'bg-background'
-    const panelBg = isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-border'
-    const subtlePanelBg = isDark ? 'bg-[#1f2024] border-[#374151]' : 'bg-slate-50 border-slate-200/80'
+    const sidebarBg = isDark ? 'bg-card border-[#243a58]' : 'bg-muted/40 border-border'
+    const mainBg = isDark ? 'bg-card' : 'bg-background'
+    const panelBg = isDark ? 'bg-card border-[#243a58]' : 'bg-card border-border'
+    const subtlePanelBg = isDark ? 'bg-[#1f2024] border-[#243a58]' : 'bg-slate-50 border-slate-200/80'
     const listCardIdle = isDark
         ? 'border-[#374151] bg-[#1f2024] hover:border-slate-500'
         : 'border-border bg-card hover:border-muted-foreground/30'
@@ -536,9 +536,9 @@ export default function isoManagement() {
                                     <div className="flex gap-3">
                                         <div
                                             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${isActive
-                                                ? 'border-[var(--brand)]/50 bg-[#141517] text-[#C07BE0]'
+                                                ? 'border-[var(--brand)]/50 bg-card text-[#C07BE0]'
                                                 : isDark
-                                                    ? 'border-[var(--brand)]/30 bg-[#141517] text-[#C07BE0]'
+                                                    ? 'border-[var(--brand)]/30 bg-card text-[#C07BE0]'
                                                     : 'border-border bg-muted text-blue-600'
                                                 }`}
                                         >
@@ -1007,7 +1007,7 @@ function CommissionStatCard({
 }) {
     const a = commissionStatAccent[accent]
     const cardBase = isDark
-        ? 'rounded-lg border border-[#374151] bg-[#141517] shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
+        ? 'rounded-lg border border-[#243a58] bg-card shadow-[0_1px_2px_rgba(0,0,0,0.2)]'
         : 'rounded-lg border border-slate-200/70 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]'
 
     return (
@@ -1101,7 +1101,7 @@ function RecentDeal({
     return (
         <div
             className={`group flex flex-col gap-2 rounded-lg border px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 ${
-                isDark ? 'border-[#374151] bg-[#1f2024]' : 'border-slate-200/80 bg-slate-50/70'
+                isDark ? 'border-[#243a58] bg-[#1f2024]' : 'border-slate-200/80 bg-slate-50/70'
             }`}
         >
             <div className="min-w-0 flex-1">

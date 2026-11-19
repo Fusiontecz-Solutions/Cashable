@@ -470,7 +470,7 @@ const Reports = () => {
         <div className="min-h-screen bg-background p-4 md:p-6">
             {/* Header */}
             <div
-                className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517]' : 'bg-white'
+                className={`flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card' : 'bg-white'
                     }`}
             >
                 <div>
@@ -502,7 +502,7 @@ const Reports = () => {
             {/* Summary cards */}
             <section className="mt-6 mb-8 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
                 <div
-                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <p className="text-sm text-muted-foreground font-semibold">Total Funded</p>
@@ -517,7 +517,7 @@ const Reports = () => {
                 </div>
 
                 <div
-                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <p className="text-sm text-muted-foreground font-semibold">Total Approved</p>
@@ -534,7 +534,7 @@ const Reports = () => {
 
                 
                 <div
-                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <p className="text-sm text-muted-foreground font-semibold">Pending Payouts</p>
@@ -548,7 +548,7 @@ const Reports = () => {
                     </div>
                 </div>
                 <div
-                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <p className="text-sm text-muted-foreground font-semibold">Paid Deals</p>
@@ -567,7 +567,7 @@ const Reports = () => {
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Bar Chart - Deal Status Amount Trends */}
                 <div
-                    className={`rounded-lg border shadow-[0px_4px_20px_0px_#00000005] p-5 ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border shadow-[0px_4px_20px_0px_#00000005] p-5 ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <div className="mb-4 flex items-start justify-between">
@@ -679,7 +679,7 @@ const Reports = () => {
 
                 {/* Pie Chart - Status Distribution */}
                 <div
-                    className={`rounded-lg border shadow-[0px_4px_20px_0px_#00000005] p-5 ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                    className={`rounded-lg border shadow-[0px_4px_20px_0px_#00000005] p-5 ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                         }`}
                 >
                     <div className="mb-4">
@@ -767,11 +767,11 @@ const Reports = () => {
 
             {/* Table */}
             <div
-                className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                     }`}
             >
                 <div
-                    className={`px-4 md:px-5 py-2 rounded-t-[5px] flex items-center justify-between ${isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                    className={`px-4 md:px-5 py-2 rounded-t-[5px] flex items-center justify-between ${isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                         }`}
                 >
                     <div className="flex items-center gap-3">

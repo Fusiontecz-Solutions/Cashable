@@ -873,8 +873,8 @@ export default function DealReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[920px] p-0 overflow-hidden border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-[#141517] max-h-[90vh] flex flex-col gap-0">
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-100/80 bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/50 dark:to-[#141517] dark:border-slate-700">
+      <DialogContent className="sm:max-w-[920px] p-0 overflow-hidden border border-slate-200/80 bg-white shadow-2xl dark:border-slate-800 dark:bg-card max-h-[90vh] flex flex-col gap-0">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-slate-100/80 bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900/50 dark:to-[#122036] dark:border-slate-700">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-blue-600/25">
@@ -902,7 +902,7 @@ export default function DealReviewDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-          <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#1A1B1F]/60 dark:ring-white/[0.04]">
+          <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#0f1d33]/60 dark:ring-white/[0.04]">
             <FundingOfferSection
               loadingOffer={loadingOffer}
               hasOfferData={hasOfferData}
@@ -914,7 +914,7 @@ export default function DealReviewDialog({
             />
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#1A1B1F]/60 dark:ring-white/[0.04]">
+          <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#0f1d33]/60 dark:ring-white/[0.04]">
             <DisbursementCommissionSection
               variant="embedded"
               applicationRecordId={applicationRecordId ?? null}
@@ -924,7 +924,7 @@ export default function DealReviewDialog({
           </section>
 
           {!editMode ? (
-            <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#1A1B1F]/60 dark:ring-white/[0.04]">
+            <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/[0.03] dark:border-slate-800 dark:bg-[#0f1d33]/60 dark:ring-white/[0.04]">
               <DealReviewPaymentSchedule
                 paymentStartDate={paymentStartDate}
                 onPaymentStartDateChange={(value) => {

@@ -4739,7 +4739,7 @@ export default function ContractTab({
         <div className="space-y-6">
             {/* Contract Filter Section - Light blue-grey background */}
             <div
-                className={`rounded-lg border p-6 ${isDark ? "bg-[#1F2021] border-[#374151]" : "bg-[#E8F0F8] border-[#D1D5DB]"}`}
+                className={`rounded-lg border p-6 ${isDark ? "bg-[#1F2021] border-[#243a58]" : "bg-[#E8F0F8] border-[#D1D5DB]"}`}
             >
                 <div className="flex flex-wrap items-end justify-between gap-6">
                     <div className="flex flex-wrap items-end gap-6">
@@ -4806,7 +4806,7 @@ export default function ContractTab({
 
             {/* Final Calculations - White background */}
             <div
-                className={`rounded-lg border p-6 ${isDark ? "bg-[#1F2021] border-[#374151]" : "bg-white border-[#D1D5DB]"}`}
+                className={`rounded-lg border p-6 ${isDark ? "bg-[#1F2021] border-[#243a58]" : "bg-white border-[#D1D5DB]"}`}
             >
                 <div className="mb-4 flex items-center justify-between gap-3">
                     <h3
@@ -4837,7 +4837,7 @@ export default function ContractTab({
                         Loading…
                     </p>
                 ) : showSavedContractGrid ? (
-                    <div className={`border rounded-lg overflow-hidden ${isDark ? "border-[#374151]" : "border-[#D1D5DB] bg-white"}`}>
+                    <div className={`border rounded-lg overflow-hidden ${isDark ? "border-[#243a58]" : "border-[#D1D5DB] bg-white"}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                             {calculationSummaryFields.map((field) => (
                                 <div

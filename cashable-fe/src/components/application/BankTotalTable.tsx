@@ -75,10 +75,10 @@ export default function BankTotalTable({
   return (
     <div
       data-scrubbing-preview-theme
-      className="w-full overflow-hidden scrub-merged-card rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-[#141517]"
+      className="w-full overflow-hidden scrub-merged-card rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-card"
     >
       <div
-        className="scrub-merged-bar px-4 py-1.5 text-center dark:border-slate-700 dark:bg-[#2A2B2F]"
+        className="scrub-merged-bar px-4 py-1.5 text-center dark:border-slate-700 dark:bg-[#1a2c47]"
       >
         <h2 className="scrub-merged-title text-[16px] font-bold uppercase text-slate-700 dark:text-slate-100">
           Bank Total
@@ -111,7 +111,7 @@ export default function BankTotalTable({
               <tr
                 key={row.month}
                 className={
-                  rowIdx % 2 === 0 ? "bg-white dark:bg-[#141517]" : "bg-slate-50/40 dark:bg-slate-900/35"
+                  rowIdx % 2 === 0 ? "bg-white dark:bg-card" : "bg-slate-50/40 dark:bg-slate-900/35"
                 }
               >
                 <td className={monthCellClass}>{row.month}</td>

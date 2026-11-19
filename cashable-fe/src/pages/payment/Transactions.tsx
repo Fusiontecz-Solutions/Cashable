@@ -648,7 +648,7 @@ export default function Transactions() {
         <div
           className={cn(
             "overflow-hidden rounded-2xl border shadow-lg",
-            isDark ? "border-white/10 bg-[#141517]" : "border-white/20 bg-white"
+            isDark ? "border-white/10 bg-card" : "border-white/20 bg-white"
           )}
         >
           <div className="border-b border-border/60 px-5 py-5 sm:px-6">

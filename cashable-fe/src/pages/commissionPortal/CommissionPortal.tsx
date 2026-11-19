@@ -260,7 +260,7 @@ const CommissionPortal = () => {
     return (
         <div className="min-h-screen bg-background">
             <main className="max-w-[1600px] mx-auto p-6 space-y-6">
-                <nav className={`flex items-center gap-2 p-1.5 rounded-xl w-fit border shadow-lg ${isDark ? 'bg-[#1A1B1E] border-[#374151]' : 'bg-white border-[#D4DEE9]'
+                <nav className={`flex items-center gap-2 p-1.5 rounded-xl w-fit border shadow-lg ${isDark ? 'bg-[#1A1B1E] border-[#243a58]' : 'bg-white border-[#D4DEE9]'
                     }`}>
                     {[
                         { key: 'dashboard' as const, name: 'Dashboard', icon: LayoutDashboard },
@@ -367,7 +367,7 @@ const CommissionPortal = () => {
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-lg ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#FDFDFD]'
+                            <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-lg ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#FDFDFD]'
                                 }`}>
                                 <div className="flex items-center justify-between mb-8">
                                     <h3 className="font-semibold text-foreground">
@@ -505,7 +505,7 @@ const CommissionPortal = () => {
                             </div>
 
                             <div
-                                className={`rounded-2xl border p-5 sm:p-6 shadow-lg ${isDark ? 'bg-[#141517] border-[#374151]' : 'bg-white border-[#FDFDFD]'
+                                className={`rounded-2xl border p-5 sm:p-6 shadow-lg ${isDark ? 'bg-card border-[#243a58]' : 'bg-white border-[#FDFDFD]'
                                     }`}
                             >
                                 <div className="mb-4 flex items-end justify-between gap-3">
@@ -605,11 +605,11 @@ const CommissionPortal = () => {
                         </div>
 
                         <div
-                            className={`mt-5 overflow-hidden rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? 'border-[#374151] bg-[#141517]' : 'border-[#FDFDFD] bg-card'
+                            className={`mt-5 overflow-hidden rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? 'border-[#243a58] bg-card' : 'border-[#FDFDFD] bg-card'
                                 }`}
                         >
                             <div
-                                className={`rounded-t-[5px] border-b px-4 py-2 md:px-5 ${isDark ? 'border-[#374151] bg-[#2A2B2F]' : 'border-[#ECEFF5] bg-[#F9FAFD]'
+                                className={`rounded-t-[5px] border-b px-4 py-2 md:px-5 ${isDark ? 'border-[#243a58] bg-[#1a2c47]' : 'border-[#ECEFF5] bg-[#F9FAFD]'
                                     }`}
                             >
                                 <span className="font-roboto text-[1rem] font-semibold uppercase tracking-wide text-foreground">

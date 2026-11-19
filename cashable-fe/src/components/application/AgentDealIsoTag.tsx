@@ -330,7 +330,7 @@ export default function AgentDealIsoTag({
         "overflow-hidden rounded-xl border p-0 shadow-sm",
         splitLayout ? "mb-0 h-full" : isCompact ? "mb-0" : "mb-6",
         isDark
-            ? "border-[#374151] bg-[#141517]"
+            ? "border-[#243a58] bg-card"
             : "border-[#FDFDFD] bg-white",
         className,
     );
@@ -351,7 +351,7 @@ export default function AgentDealIsoTag({
             ? "px-4 py-2.5 text-xs sm:px-4"
             : "px-4 py-3 text-base sm:px-5",
         isDark
-            ? "border-[#374151] bg-[#2A2B2F] text-white"
+            ? "border-[#243a58] bg-[#1a2c47] text-white"
             : "border-slate-100 bg-[#F9FAFD] text-[#374151]",
     );
 
@@ -398,7 +398,7 @@ export default function AgentDealIsoTag({
                 <div
                     className={cn(
                         "sticky top-0 z-10 -mx-1 -mt-1 mb-1 px-2 pb-2 pt-2",
-                        isDark ? "bg-[#141517]" : "bg-white",
+                        isDark ? "bg-card" : "bg-white",
                     )}
                 >
                     <div className="relative">

@@ -679,7 +679,7 @@ export default function DealPipeline() {
 
       <motion.section
         className={`border rounded-xl shadow-[0px_4px_20px_0px_#00000005] p-4 overflow-x-auto ${
-          isDark ? "bg-[#141517] border-[#374151]" : "bg-white border-[#FDFDFD]"
+          isDark ? "bg-card border-[#243a58]" : "bg-white border-[#FDFDFD]"
         }`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -830,12 +830,12 @@ export default function DealPipeline() {
 
       <div
         className={`rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] ${
-          isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+          isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
         }`}
       >
         <div
           className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${
-            isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+            isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
           }`}
         >
           <div className="flex flex-col gap-0.5">
@@ -915,7 +915,7 @@ export default function DealPipeline() {
                     }}
                     aria-label={`Open deal ${deal.code}`}
                     className={`rounded-lg border shadow-sm flex flex-col gap-3 p-4 text-left transition hover:ring-2 hover:ring-[var(--brand)]/20 cursor-pointer ${
-                      isDark ? "bg-[#1a1b1e] border-[#374151]" : "bg-card border-[#F0F0F0]"
+                      isDark ? "bg-[#1a1b1e] border-[#243a58]" : "bg-card border-[#F0F0F0]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">

@@ -751,7 +751,7 @@ const RequiredDocument = ({
 
                             {/* Uploaded files list */}
                             <div
-                                className={`border-t ${isDark ? "border-[#374151]" : "border-border"} ${isDecisionMaking ? "mt-8 pt-6" : "mt-6 pt-4"}`}
+                                className={`border-t ${isDark ? "border-[#243a58]" : "border-border"} ${isDecisionMaking ? "mt-8 pt-6" : "mt-6 pt-4"}`}
                             >
                                 <h3 className="text-[#1E88E5] font-medium text-sm mb-3">Uploaded documents</h3>
                                 {uploadedFilesList.length === 0 ? (
@@ -762,7 +762,7 @@ const RequiredDocument = ({
                                     <div className="rounded-md border overflow-hidden">
                                         <Table>
                                             <TableHeader>
-                                                <TableRow className={isDark ? "border-[#374151] bg-[#2A2B2F]" : "bg-muted/50"}>
+                                                <TableRow className={isDark ? "border-[#243a58] bg-[#1a2c47]" : "bg-muted/50"}>
                                                     <TableHead className={isDark ? "text-gray-300" : "text-[#687182]"}>File name</TableHead>
                                                     <TableHead className={isDark ? "text-gray-300" : "text-[#687182]"}>Size</TableHead>
                                                     <TableHead className={isDark ? "text-gray-300" : "text-[#687182]"}>Uploaded</TableHead>
@@ -771,7 +771,7 @@ const RequiredDocument = ({
                                             </TableHeader>
                                             <TableBody>
                                                 {uploadedFilesList.map((file) => (
-                                                    <TableRow key={file._id ?? file.url} className={isDark ? "border-[#374151]" : ""}>
+                                                    <TableRow key={file._id ?? file.url} className={isDark ? "border-[#243a58]" : ""}>
                                                         <TableCell className={`text-sm font-medium ${isDark ? "text-white" : "text-foreground"}`}>
                                                             {file.originalName ?? "Document"}
                                                         </TableCell>
@@ -823,13 +823,13 @@ const RequiredDocument = ({
 
             {/* Bank Analysis Section */}
             {/* {!isBankAnalysis &&  <Card className={`gap-0 my-6 w-full border shadow-[0px_4px_20px_0px_#00000005] p-0 rounded-b-md ${
-                isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
             }`}>
                 <CardHeader className={`flex flex-row items-center justify-between px-4 py-2 ${
-                    isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                    isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                 }`}>
                     <CardTitle className={`font-roboto text-base font-semibold ${
-                        isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                        isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                     }`}>
                         Bank Analysis
                     </CardTitle>
@@ -838,7 +838,7 @@ const RequiredDocument = ({
                     <Table>
                         <TableHeader>
                             <TableRow className={`shadow-[0px_0px_2px_0px_#0000001A] border ${
-                                isDark ? 'border-[#374151] bg-[#2A2B2F]' : 'border-[#ECECEC]'
+                                isDark ? 'border-[#243a58] bg-[#1a2c47]' : 'border-[#ECECEC]'
                             }`}>
                                 <TableHead className={`py-3 px-6 font-roboto text-xs font-semibold uppercase tracking-wider ${
                                     isDark ? 'text-white' : 'text-[#687182]'
@@ -890,7 +890,7 @@ const RequiredDocument = ({
                                 <>
                                     {bankAnalysisData.map((row, index) => (
                                         <TableRow key={index} className={`border-b ${
-                                            isDark ? 'border-[#374151]' : 'border-border'
+                                            isDark ? 'border-[#243a58]' : 'border-border'
                                         }`}>
                                             <TableCell className={`text-[0.8rem] font-[400] py-2 px-6 font-poppins ${
                                                 isDark ? 'text-white' : 'text-[#687182]'
@@ -1000,10 +1000,10 @@ const RequiredDocument = ({
 
             {/* Positions Section */}
             {/* <Card className={`gap-0 my-6 w-full border shadow-[0px_4px_20px_0px_#00000005] p-0 rounded-b-md ${
-                isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
             }`}>
                 <CardHeader className={`flex flex-row items-center justify-between px-4 py-2 ${
-                    isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                    isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                 }`}>
                     <CardTitle className={`font-roboto text-base font-semibold ${
                         isDark ? 'text-white' : 'text-[#374151]'
@@ -1029,7 +1029,7 @@ const RequiredDocument = ({
                     <Table>
                         <TableHeader>
                             <TableRow className={`shadow-[0px_0px_2px_0px_#0000001A] border ${
-                                isDark ? 'border-[#374151]' : 'border-[#ECECEC]'
+                                isDark ? 'border-[#243a58]' : 'border-[#ECECEC]'
                             }`}>
                                 <TableHead className={`py-3 px-6 font-roboto text-xs font-semibold uppercase tracking-wider ${
                                     isDark ? 'text-white' : 'text-[#687182]'
@@ -1092,7 +1092,7 @@ const RequiredDocument = ({
                             ) : positions && positions.length > 0 ? (
                                 positions.map((row) => (
                                     <TableRow key={row._id} className={`border-b ${
-                                        isDark ? 'border-[#374151]' : 'border-border'
+                                        isDark ? 'border-[#243a58]' : 'border-border'
                                     }`}>
                                         <TableCell className={`text-[0.8rem] font-[400] py-2 px-6 font-poppins ${
                                             isDark ? 'text-white' : 'text-[#687182]'
@@ -1200,10 +1200,10 @@ const RequiredDocument = ({
             {/* Terms Offers Section */}
             {/* {(isBankAnalysis || isDecisionMaking) && (
             <Card className={`gap-0 my-6 w-full border shadow-[0px_4px_20px_0px_#00000005] p-0 rounded-b-md ${
-                isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
             }`}>
                 <CardHeader className={`flex flex-row items-center justify-between px-4 py-2 ${
-                    isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                    isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                 }`}>
                     <CardTitle className={`font-roboto text-base font-semibold ${
                         isDark ? 'text-white' : 'text-[#374151]'
@@ -1230,7 +1230,7 @@ const RequiredDocument = ({
                     <Table>
                         <TableHeader>
                             <TableRow className={`shadow-[0px_0px_2px_0px_#0000001A] border ${
-                                isDark ? 'border-[#374151]' : 'border-[#ECECEC]'
+                                isDark ? 'border-[#243a58]' : 'border-[#ECECEC]'
                             }`}>
                                <TableHead className={`py-3 px-6 font-roboto text-xs font-semibold uppercase tracking-wider ${
                                     isDark ? 'text-white' : 'text-[#687182]'
@@ -1286,7 +1286,7 @@ const RequiredDocument = ({
                             ) : termsOffers && termsOffers.length > 0 ? (
                                 termsOffers.map((row) => (
                                     <TableRow key={row._id} className={`border-b ${
-                                        isDark ? 'border-[#374151]' : 'border-border'
+                                        isDark ? 'border-[#243a58]' : 'border-border'
                                     }`}>
                                          <TableCell className={`text-[0.8rem] font-[400] py-2 px-6 font-poppins ${
                                             isDark ? 'text-white' : 'text-[#687182]'

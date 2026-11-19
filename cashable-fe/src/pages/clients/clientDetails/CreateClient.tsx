@@ -468,11 +468,11 @@ const CreateClient = () => {
 
 	const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
 		<Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${
-			isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+			isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
 		}`}>
 			<CardContent className="space-y-3 p-0">
 				<h2 className={`text-base font-[600] font-roboto px-6 py-3 ${
-					isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+					isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
 				}`}>{title}</h2>
 				<div
 					className={`px-6 grid grid-cols-1 md:grid-cols-2 gap-4 ${
@@ -539,7 +539,7 @@ const CreateClient = () => {
 			<div className="w-full mx-auto">
 				<div className="space-y-6">
 					<Card className={`flex justify-between px-2 py-3 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${
-						isDark ? 'bg-[#141517]' : 'bg-white'
+						isDark ? 'bg-card' : 'bg-white'
 					}`}>
 						<CardContent className="flex items-center gap-3 px-0">
 							<Button
@@ -590,11 +590,11 @@ const CreateClient = () => {
 							</Section>
 
 							<Card className={`rounded-sm box-border shadow-[0px_4px_20px_0px_#00000005] p-0 border pb-5 ${
-								isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+								isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
 							}`}>
 								<CardContent className="space-y-3 p-0">
 									<div className={`flex items-center justify-between px-6 py-3 ${
-										isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+										isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
 									}`}>
 										<h2 className="text-base font-[600] font-roboto">Business Owner Detail</h2>
 										{!isViewMode && (
@@ -618,7 +618,7 @@ const CreateClient = () => {
 												<div
 													key={field.id}
 													className={`rounded-md border overflow-hidden ${
-														isDark ? 'border-[#374151]' : hasErrors ? 'border-red-300' : 'border-[#E5E7EB]'
+														isDark ? 'border-[#243a58]' : hasErrors ? 'border-red-300' : 'border-[#E5E7EB]'
 													}`}
 												>
 													<button

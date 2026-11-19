@@ -642,7 +642,7 @@ export default function FinalUnderwriterApplicationsList() {
             <div className="max-w-[1600px] mx-auto">
                 {/* Header - All Submissions + Contract Template upload */}
                 <div
-                    className={`flex items-center justify-between p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-[#141517]" : "bg-white"
+                    className={`flex items-center justify-between p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-card" : "bg-white"
                         }`}
                 >
                     <h1 className="text-[1.2rem] font-semibold text-foreground font-roboto">All Submissions</h1>
@@ -694,7 +694,7 @@ export default function FinalUnderwriterApplicationsList() {
                             }}
                             className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] cursor-pointer transition duration-300 hover:ring-2 hover:ring-[var(--brand)]/25 ${isDark ? "hover:shadow-lg" : "hover:shadow-lg"
                                 } ${isDark
-                                    ? "bg-[#141517] border-[#374151]"
+                                    ? "bg-card border-[#243a58]"
                                     : "bg-card border-[#FDFDFD]"
                                 }`}
                         >

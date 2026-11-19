@@ -417,13 +417,13 @@ export default function ApplicationSheetBankDetail({
             <Card
                 className={cn(
                     "mt-6 gap-0 border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3",
-                    isDark ? "bg-[#141517] border-[#374151]" : "border-[#FDFDFD]",
+                    isDark ? "bg-card border-[#243a58]" : "border-[#FDFDFD]",
                     className,
                 )}
             >
                 <CardHeader className="pb-0 p-0">
                     <CardTitle
-                        className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 ${isDark ? "text-white bg-[#2A2B2F]" : "text-[#374151] bg-[#F9FAFD]"}`}
+                        className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 ${isDark ? "text-white bg-[#1a2c47]" : "text-[#374151] bg-[#F9FAFD]"}`}
                     >
                         Bank Details
                     </CardTitle>

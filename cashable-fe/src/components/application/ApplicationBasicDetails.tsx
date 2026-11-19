@@ -449,9 +449,9 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <Card className={`gap-0 border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3 ${isDark ? "bg-[#141517] border-[#374151]" : "border-[#FDFDFD]"}`}>
+            <Card className={`gap-0 border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3 ${isDark ? "bg-card border-[#243a58]" : "border-[#FDFDFD]"}`}>
                 <CardHeader className="pb-0 p-0">
-                    <div className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 flex items-center justify-between ${isDark ? "text-white bg-[#2A2B2F]" : "text-[#374151] bg-[#F9FAFD]"}`}>
+                    <div className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 flex items-center justify-between ${isDark ? "text-white bg-[#1a2c47]" : "text-[#374151] bg-[#F9FAFD]"}`}>
                         <CardTitle>Business Profile</CardTitle>
                         {!isEditMode ? (
                             canEditBasicDetails ? (
@@ -518,9 +518,9 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
                 </CardContent>
             </Card>
 
-            <Card className={`gap-0 border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3 ${isDark ? "bg-[#141517] border-[#374151]" : "border-[#FDFDFD]"}`}>
+            <Card className={`gap-0 border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3 ${isDark ? "bg-card border-[#243a58]" : "border-[#FDFDFD]"}`}>
                 <CardHeader className="pb-0 p-0">
-                    <div className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 flex items-center justify-between ${isDark ? "text-white bg-[#2A2B2F]" : "text-[#374151] bg-[#F9FAFD]"}`}>
+                    <div className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 flex items-center justify-between ${isDark ? "text-white bg-[#1a2c47]" : "text-[#374151] bg-[#F9FAFD]"}`}>
                         <CardTitle>
                             {owners.length > 1 ? `Business Owner Details (${owners.length})` : "Business Owner Details"}
                         </CardTitle>
@@ -546,7 +546,7 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
                             return (
                                 <div
                                     key={ownerIndex}
-                                    className={`rounded-md border overflow-hidden ${isDark ? "border-[#374151]" : "border-[#E5E7EB]"}`}
+                                    className={`rounded-md border overflow-hidden ${isDark ? "border-[#243a58]" : "border-[#E5E7EB]"}`}
                                 >
                                     <button
                                         type="button"

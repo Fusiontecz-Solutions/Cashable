@@ -1512,7 +1512,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                   className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors border ${
                     disabled || isApproveLoading
                       ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
-                      : "cursor-pointer border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-[#141517] dark:text-slate-200 dark:hover:bg-slate-800"
+                      : "cursor-pointer border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-card dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
                   Cancel
@@ -1553,7 +1553,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
   return (
     <div className="relative w-full font-sans text-slate-700 dark:text-slate-200">
       {isOfferDecisionLoading && (
-        <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-white/70 dark:bg-[#141517]/80">
+        <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-white/70 dark:bg-card/80">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700 dark:border-slate-600 dark:border-t-slate-100" />
             Loading offer...
@@ -1567,7 +1567,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
           <div className="min-w-0 space-y-3">
             {actionsAtTop && renderDecisionActions()}
             {aboveOffer}
-            <div data-scrub-type className="overflow-hidden rounded-xl border border-[#e2e2e2] bg-white shadow-md dark:border-slate-700 dark:bg-[#141517]">
+            <div data-scrub-type className="overflow-hidden rounded-xl border border-[#e2e2e2] bg-white shadow-md dark:border-slate-700 dark:bg-card">
               {/* Wd preview's OFFER bar: sage #5f9a60 under a green veil, centred 16px/700. */}
               <div
                 className="scrub-offer-bar px-4 py-1.5 text-center text-[16px] font-bold uppercase text-white"
@@ -1582,7 +1582,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                     {/*
                       3×3 layout (rows): Offer | Repayment | Term → Rate | Our Position | Frequency → Repay | Monthly payment | Fees
                     */}
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Offer
                       </span>
@@ -1600,7 +1600,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                           : "—"}
                       </span>
                     </div>
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Term
                       </span>
@@ -1624,7 +1624,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         {ourPositionDisplay}
                       </span>
                     </div>
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Frequency
                       </span>
@@ -1632,7 +1632,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         {(localData.frequency || "").trim() || "—"}
                       </span>
                     </div>
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Repay
                       </span>
@@ -1644,7 +1644,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                             : "—"}
                       </span>
                     </div>
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Monthly payment
                       </span>
@@ -1656,7 +1656,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                             : "—"}
                       </span>
                     </div>
-                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-[#141517] md:border-r md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid min-h-[56px] grid-cols-1 content-center gap-y-1 @4xl:grid-cols-[auto_minmax(0,1fr)] @4xl:items-center @4xl:gap-x-3 border-b border-[#d8dde3] bg-white px-4 py-4 dark:border-slate-700 dark:bg-card md:border-r md:[&:nth-child(3n)]:border-r-0">
                       <span className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Fees
                       </span>
@@ -1669,7 +1669,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
               ) : (
                 <div className="border border-t-0 border-[rgb(100_100_100)] dark:border-slate-700">
                   <div className="grid grid-cols-1 md:grid-cols-3">
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Offer
                       </label>
@@ -1694,7 +1694,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Repayment
                       </label>
@@ -1710,7 +1710,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Term
                       </label>
@@ -1724,7 +1724,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         disabled={inputsDisabled}
                       />
                     </div>
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Rate
                       </label>
@@ -1738,7 +1738,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         disabled={inputsDisabled}
                       />
                     </div>
-                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Our Position
                       </label>
@@ -1750,7 +1750,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         disabled={inputsDisabled}
                       />
                     </div>
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Frequency
                       </label>
@@ -1769,7 +1769,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         <option value="Monthly">Monthly</option>
                       </select>
                     </div>
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Repay
                       </label>
@@ -1794,7 +1794,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[12rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Monthly payment
                       </label>
@@ -1822,7 +1822,7 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-[#141517] md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
+                    <div className="grid grid-cols-[7.5rem_1fr] items-center gap-x-3 border-b border-[#94a3b8] bg-white px-2 py-1 dark:border-slate-700 dark:bg-card md:border-r md:border-r-[#94a3b8] md:[&:nth-child(3n)]:border-r-0">
                       <label className="text-[16px] font-medium text-slate-800 dark:text-slate-300">
                         Fees
                       </label>

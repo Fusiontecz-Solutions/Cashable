@@ -70,7 +70,7 @@ const CreateDeal = () => {
   return (
     <div
       className={`min-h-screen flex flex-col ${
-        isDark ? 'bg-[#141517] text-white' : 'bg-background text-[#111827]'
+        isDark ? 'bg-card text-white' : 'bg-background text-[#111827]'
       }`}
     >
       {/* Page header */}

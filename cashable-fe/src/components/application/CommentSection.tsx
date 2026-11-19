@@ -716,7 +716,7 @@ const CommentSection = ({
                                             onChange={(e) => setReplyDraft(e.target.value)}
                                             placeholder="Write a reply..."
                                             className={`font-roboto min-h-[70px] resize-none rounded-[5px] bg-background border shadow-sm focus:border-blue-500 ${
-                                                isDark ? "border-[#374151]" : "border-[#E5E7EB]"
+                                                isDark ? "border-[#243a58]" : "border-[#E5E7EB]"
                                             }`}
                                             disabled={createLoading}
                                         />
@@ -761,11 +761,11 @@ const CommentSection = ({
         <div className={`flex gap-6 w-full ${compactLayout ? "h-full" : ""}`}>
             {/* <Card className="border-border shadow-sm my-6 gap-2 w-full"> */}
             <Card className={`@container gap-2 ${commentsCardMarginClass} w-full border shadow-md dark:shadow-lg p-0 rounded-2xl pb-3 ${commentsCardHeightClass} flex flex-col ${
-                isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
             }`}>
                 <CardHeader className="p-0">
                     <CardTitle className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 uppercase tracking-wide ${
-                        isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                        isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                     }`}>
                         Comments
                     </CardTitle>
@@ -789,7 +789,7 @@ const CommentSection = ({
                                             {...field}
                                             placeholder={publicMode ? "Write an external comment" : "Write an internal comment"}
                                             className={`font-roboto ${composeTextareaMinHClass} resize-none rounded-[5px] bg-background border shadow-sm focus:border-blue-500 ${
-                                                isDark ? 'border-[#374151]' : 'border-[#E5E7EB]'
+                                                isDark ? 'border-[#243a58]' : 'border-[#E5E7EB]'
                                             } ${errors.comment ? "border-red-500" : ""}`}
                                             disabled={createLoading}
                                         />
@@ -1156,11 +1156,11 @@ const CommentSection = ({
             </Card >
             {isUnderwriter === true && (
                  <Card className={`gap-2 my-6 mt-0 w-[60%] border shadow-md dark:shadow-lg p-0 rounded-b-md pb-3 h-[620px] flex flex-col ${
-                    isDark ? 'bg-[#141517] border-[#374151]' : 'border-[#FDFDFD]'
+                    isDark ? 'bg-card border-[#243a58]' : 'border-[#FDFDFD]'
                 }`}>
                 <CardHeader className="p-0">
                     <CardTitle className={`rounded-t-sm text-base font-[600] font-roboto px-6 py-3 ${
-                        isDark ? 'text-white bg-[#2A2B2F]' : 'text-[#374151] bg-[#F9FAFD]'
+                        isDark ? 'text-white bg-[#1a2c47]' : 'text-[#374151] bg-[#F9FAFD]'
                     }`}>
                             Required Document Status
                         </CardTitle>

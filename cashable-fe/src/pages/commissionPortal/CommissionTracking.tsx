@@ -253,7 +253,7 @@ const CommissionTracking = () => {
                         <div
                             key={idx}
                             className={`rounded-lg border py-3 px-5 shadow-[0px_4px_20px_0px_#00000005] ${
-                                isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                                isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                             }`}
                         >
                             <div className="flex flex-col gap-1">
@@ -276,7 +276,7 @@ const CommissionTracking = () => {
                 {/* Filters */}
                 <section
                     className={`mt-6 rounded-lg border shadow-[0px_4px_20px_0px_#00000005] p-4 ${
-                        isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                        isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                     }`}
                 >
                     <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
@@ -354,12 +354,12 @@ const CommissionTracking = () => {
                 {/* Table */}
                 <section
                     className={`mt-5 rounded-sm border shadow-[0px_4px_20px_0px_#00000005] ${
-                        isDark ? 'bg-[#141517] border-[#374151]' : 'bg-card border-[#FDFDFD]'
+                        isDark ? 'bg-card border-[#243a58]' : 'bg-card border-[#FDFDFD]'
                     }`}
                 >
                     <div
                         className={`px-6 py-2 border-none rounded-t-sm flex items-center justify-between ${
-                            isDark ? 'bg-[#2A2B2F]' : 'bg-[#F9FAFD]'
+                            isDark ? 'bg-[#1a2c47]' : 'bg-[#F9FAFD]'
                         }`}
                     >
                         <span className="font-semibold text-foreground text-base font-roboto">

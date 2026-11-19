@@ -2719,7 +2719,7 @@ const Applications = ({ mode = "default" }: ApplicationsProps) => {
     >
       {!isOperationsDashboardView && (
         <div
-          className={`flex items-center justify-between p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-[#141517]" : "bg-white"
+          className={`flex items-center justify-between p-6 rounded-lg shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-card" : "bg-white"
             }`}
         >
           <div>
@@ -2903,7 +2903,7 @@ const Applications = ({ mode = "default" }: ApplicationsProps) => {
 
       {isOperationsDashboardView && (
         <section
-          className={`rounded-lg border p-4 md:p-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-[#141517] border-[#374151]" : "bg-white border-[#F0F4F8]"
+          className={`rounded-lg border p-4 md:p-5 shadow-[0px_4px_20px_0px_#00000005] ${isDark ? "bg-card border-[#243a58]" : "bg-white border-[#F0F4F8]"
             }`}
         >
           <h1 className="text-[1.2rem] font-semibold text-foreground font-roboto uppercase tracking-wide">
@@ -3152,11 +3152,11 @@ const Applications = ({ mode = "default" }: ApplicationsProps) => {
 
       {/* Table Card */}
       <div
-        className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? "bg-[#141517] border-[#374151]" : "bg-card border-[#FDFDFD]"
+        className={`mt-5 rounded-[5px] border shadow-[0px_4px_20px_0px_#00000005] transition-all duration-300 ${isDark ? "bg-card border-[#243a58]" : "bg-card border-[#FDFDFD]"
           }`}
       >
         <div
-          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${isDark ? "bg-[#2A2B2F]" : "bg-[#F9FAFD]"
+          className={`px-4 md:px-5 py-2 rounded-t-[5px] flex flex-wrap items-center justify-between gap-3 ${isDark ? "bg-[#1a2c47]" : "bg-[#F9FAFD]"
             }`}
         >
           <span className="font-semibold text-[1rem] text-foreground font-roboto inline-flex items-center gap-2 uppercase tracking-wide">

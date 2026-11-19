@@ -50,7 +50,7 @@ export default function ApprovedLoanDetailsReadOnly() {
     const achFrequency = latestTermsOffer?.frequency || "—";
 
     return (
-        <div className={`rounded-lg border p-6 ${isDark ? "bg-[#141517] border-[#374151]" : "bg-white border-[#FDFDFD]"}`}>
+        <div className={`rounded-lg border p-6 ${isDark ? "bg-card border-[#243a58]" : "bg-white border-[#FDFDFD]"}`}>
             <h3 className={`text-base font-semibold mb-4 ${isDark ? "text-gray-200" : "text-[#374151]"}`}>
                 Approved Loan Details
             </h3>

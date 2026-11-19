@@ -1569,12 +1569,12 @@ const BankAnalysisTable = ({
         <div
           key={bank.id}
           data-scrubbing-preview-theme
-          className="w-full overflow-hidden scrub-merged-card rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-[#141517]"
+          className="w-full overflow-hidden scrub-merged-card rounded-[14px] border border-[#e2e2e2] bg-white shadow-sm dark:border-slate-700 dark:bg-card"
         >
           {/* Header Section — single horizontal toolbar */}
           {/* Three-column grid so the title stays centred in read-only and edit
               alike: an empty left cell balances the controls on the right. */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 overflow-x-auto scrub-merged-bar px-4 py-1.5 dark:bg-[#2A2B2F] [scrollbar-width:thin]">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 overflow-x-auto scrub-merged-bar px-4 py-1.5 dark:bg-[#1a2c47] [scrollbar-width:thin]">
             <span aria-hidden />
             {/* Wd preview: "BANK ANALYSIS[ N] - ACCOUNT ENDING: 1234", centred,
                 16px/700. The number only appears when there is more than one bank. */}
@@ -2195,7 +2195,7 @@ const BankAnalysisTable = ({
                     return (
                       <tr
                         key={row.month + rowIndex}
-                        className={`${displayIndex % 2 === 0 ? "bg-white dark:bg-[#141517]" : "bg-slate-50/40 dark:bg-slate-900/35"} ${rowLocked ? "" : "hover:bg-sky-50/50 dark:hover:bg-slate-800/70"} transition-colors`}
+                        className={`${displayIndex % 2 === 0 ? "bg-white dark:bg-card" : "bg-slate-50/40 dark:bg-slate-900/35"} ${rowLocked ? "" : "hover:bg-sky-50/50 dark:hover:bg-slate-800/70"} transition-colors`}
                       >
                         {isPageEditing ? (
                           <>
@@ -2458,7 +2458,7 @@ const BankAnalysisTable = ({
           }}
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-[#141517]"
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">

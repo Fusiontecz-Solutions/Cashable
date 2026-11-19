@@ -346,7 +346,7 @@ export const Disbursement = ({
         ) : null}
 
         {/* Main white card */}
-        <div className="bg-white px-4 py-5 md:px-6 md:py-6 rounded-lg shadow-md border border-slate-100 dark:border-slate-700 dark:bg-[#141517] dark:shadow-lg dark:shadow-black/20">
+        <div className="bg-white px-4 py-5 md:px-6 md:py-6 rounded-lg shadow-md border border-slate-100 dark:border-slate-700 dark:bg-card dark:shadow-lg dark:shadow-black/20">
           {/* Section Sub-header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-6 pb-3 border-b border-slate-100 dark:border-slate-700">
             <div className="flex items-center gap-2">
