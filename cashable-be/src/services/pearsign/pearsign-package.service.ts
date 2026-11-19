@@ -31,6 +31,15 @@ import {
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
 import { buildPearSignPreviewPdf, primeBasePdfCache } from './pearsign-preview.service';
+import {
+  cleanStyles,
+  isPearSignIndependentKey,
+  mergeStyles,
+  pearSignHeightForFont,
+  pearSignIndependentKey,
+  pearSignIndependentLabel,
+  type PearSignFieldStyle,
+} from './pearsign-template-spec';
 
 /**
  * ONE PearSign envelope for the whole package: main contract + addendums + state disclosure
@@ -97,6 +106,8 @@ export type PearSignStagedPackage = {
   crmValues: Record<string, string>;
   /** Review edits per key. */
   overrides: Record<string, string>;
+  /** Review font sizes per key (unset = PearSign auto-fit). */
+  styles?: Record<string, PearSignFieldStyle>;
 };
 
 type Tab = Record<string, string | undefined>;
@@ -299,12 +310,14 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
           width = Math.min(Math.max(width, needed), maxW);
         }
 
-        const key = `d${loc.index + 1}__${variable}`;
+        // Independent fields (page-1 EIN) get their own key so edits don't reach the other pages.
+        const ownKey = signerFilled ? null : pearSignIndependentKey(variable, page);
+        const key = `d${loc.index + 1}__${ownKey ?? variable}`;
         if (!signerFilled && value && crmValues[key] === undefined) crmValues[key] = value;
         fields.push({
           name: uniqueName(`d${loc.index + 1}_${slug(variable)}_p${mergedPage}`),
           key,
-          label: getPrefillDisplayLabel(variable),
+          label: ownKey ? pearSignIndependentLabel(getPrefillDisplayLabel(variable), page) : getPrefillDisplayLabel(variable),
           docIndex: loc.index,
           type,
           roleId,
@@ -385,6 +398,9 @@ export async function stagePearSignPackage(input: {
     overrides: Object.fromEntries(
       Object.entries(prevPackage?.overrides ?? {}).filter(([k]) => fields.some((f) => f.key === k)),
     ),
+    styles: Object.fromEntries(
+      Object.entries(cleanStyles(prevPackage?.styles)).filter(([k]) => fields.some((f) => f.key === k)),
+    ),
   };
   await writePackage(contractId, staged);
   console.info('[PearSign] package staged', {
@@ -439,7 +455,7 @@ async function requirePackage(contractId: number) {
 function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string>): Record<string, string> {
   const out = { ...pkg.crmValues, ...pkg.overrides };
   for (const [k, v] of Object.entries(extra ?? {})) {
-    if (String(v).trim()) out[k] = String(v);
+    if (String(v).trim() || isPearSignIndependentKey(k)) out[k] = String(v);
     else out[k] = pkg.crmValues[k] ?? '';
   }
   return out;
@@ -450,6 +466,7 @@ type DrawablePackage = {
   mergedPdfUrl: string;
   fields: Array<Pick<PearSignPackageField, 'name' | 'key' | 'roleId' | 'signerFilled' | 'required' | 'page' | 'x' | 'y' | 'width' | 'height'> & { type: string }>;
   recipients: Array<{ roleId: string; roleName: string }>;
+  styles?: Record<string, PearSignFieldStyle>;
 };
 
 /** The package as a PearSign-template-shaped object (for the shared preview renderer). */
@@ -482,6 +499,7 @@ export async function drawPearSignPackage(
     values,
     signerFilledNames: new Set(pkg.fields.filter((f) => f.signerFilled).map((f) => f.name)),
     valueKeyFor: (name) => keyByName.get(name) ?? name,
+    styles: cleanStyles(pkg.styles),
     title,
   });
 }
@@ -541,6 +559,8 @@ export async function getPearSignPackageReview(contractId: number) {
     overrides: pkg.overrides,
     values,
     blankKeys: fields.filter((f) => !String(values[f.key] ?? '').trim()).map((f) => f.key),
+    keepBlankKeys: fields.filter((f) => isPearSignIndependentKey(f.key)).map((f) => f.key),
+    styles: cleanStyles(pkg.styles),
     recipients: pkg.recipients,
     blockers,
     warnings: [] as string[],
@@ -549,7 +569,7 @@ export async function getPearSignPackageReview(contractId: number) {
   };
 }
 
-export async function savePearSignPackageOverrides(contractId: number, body: { overrides?: unknown }) {
+export async function savePearSignPackageOverrides(contractId: number, body: { overrides?: unknown; styles?: unknown }) {
   const { pkg, state } = await requirePackage(contractId);
   if (state?.envelopeId && isActivePearSignStatus(state.status)) {
     throw new PearSignContractError('This contract is out for signature in PearSign; void it before editing values.', 409);
@@ -559,11 +579,13 @@ export async function savePearSignPackageOverrides(contractId: number, body: { o
   for (const [k, v] of Object.entries((body.overrides && typeof body.overrides === 'object' ? body.overrides : {}) as Record<string, unknown>)) {
     if (!keys.has(k)) continue;
     const value = v === null || v === undefined ? '' : String(v).slice(0, 2000);
-    if (value.trim()) next[k] = value;
+    if (value.trim() || isPearSignIndependentKey(k)) next[k] = value;
     else delete next[k];
   }
-  await writePackage(contractId, { ...pkg, overrides: next });
-  return { overrides: next };
+  const textKeys = new Set(pkg.fields.filter((f) => !f.signerFilled).map((f) => f.key));
+  const styles = mergeStyles(cleanStyles(pkg.styles), body.styles, (k) => textKeys.has(k));
+  await writePackage(contractId, { ...pkg, overrides: next, styles });
+  return { overrides: next, styles };
 }
 
 export async function buildPearSignPackagePreview(contractId: number, body: { values?: unknown; drawValues?: boolean }) {
@@ -609,13 +631,18 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
   } catch (err) {
     throw new PearSignContractError(`Could not load the package PDF: ${(err as Error)?.message}`, 502);
   }
-  const createFields: PearSignTemplateCreateInput['fields'] = pkg.fields.map((f) => ({
-    fieldName: sendName.get(f.name)!,
-    type: f.type as PearSignFieldType,
-    required: f.required,
-    roleId: f.roleId,
-    position: { page: f.page, x: f.x, y: f.y, width: f.width, height: f.height },
-  }));
+  const styles = cleanStyles(pkg.styles);
+  const createFields: PearSignTemplateCreateInput['fields'] = pkg.fields.map((f) => {
+    const fontSize = f.signerFilled ? undefined : styles[f.key]?.fontSize;
+    return {
+      fieldName: sendName.get(f.name)!,
+      type: f.type as PearSignFieldType,
+      required: f.required,
+      roleId: f.roleId,
+      position: { page: f.page, x: f.x, y: f.y, width: f.width, height: pearSignHeightForFont(f.height, fontSize) },
+      ...(fontSize ? { fontSize } : {}),
+    };
+  });
   let template: PearSignTemplate;
   try {
     template = await createPearSignTemplate({
@@ -686,7 +713,7 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     ccEmails: pkg.ccEmails,
     crmCcMail: true,
     title: pkg.title,
-    package: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents },
+    package: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles },
     history: [
       ...(state?.history ?? []),
       ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt }] : []),

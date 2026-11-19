@@ -7,6 +7,13 @@ import {
   PEARSIGN_OWNER1_ROLE_ID,
   PEARSIGN_OWNER2_ROLE_ID,
   buildPearSignTemplateSpec,
+  cleanFontSize,
+  cleanStyles,
+  mergeStyles,
+  pearSignHeightForFont,
+  isPearSignIndependentKey,
+  pearSignIndependentKey,
+  pearSignValueKey,
   pearSignBaseKey,
   toPearSignCreateFields,
 } from './pearsign-template-spec';
@@ -90,4 +97,63 @@ describe('pearSignBaseKey', () => {
     ['exhibit_a_value_10_p17', 'exhibit_a_value_10'],
     ['signature_o2_p14c', 'signature_o2'],
   ])('%s → %s', (name, base) => expect(pearSignBaseKey(name)).toBe(base));
+});
+
+describe('independent fields (page-1 EIN)', () => {
+  const contractEin = buildPearSignTemplateSpec({
+    layout: getDocumentLayout('contract'),
+    owners: 1,
+    funderName: 'F',
+    documentLabel: 'Agreement',
+  }).fields.filter((f) => pearSignBaseKey(f.fieldName) === 'security_tax_ein');
+
+  it('gives the page-1 EIN its own value key and keeps the other pages on the shared one', () => {
+    const keys = contractEin.map((f) => [f.page, pearSignValueKey(f.fieldName)]);
+    expect(keys).toContainEqual([1, 'security_tax_ein_p1']);
+    expect(keys.filter(([page]) => page !== 1).every(([, k]) => k === 'security_tax_ein')).toBe(true);
+    expect(keys.length).toBeGreaterThan(1);
+  });
+
+  it.each([
+    ['security_tax_ein_p1', true],
+    ['d1__security_tax_ein_p1', true],
+    ['d1__security_tax_ein', false],
+    ['security_tax_ein', false],
+    ['security_tax_ein_p10', false],
+    ['client_legal_name_p1', false],
+  ])('isPearSignIndependentKey(%s) = %s', (key, expected) => expect(isPearSignIndependentKey(key)).toBe(expected));
+
+  it('leaves non-independent fields on their layout variable', () => {
+    expect(pearSignValueKey('security_tax_ein_p10')).toBe('security_tax_ein');
+    expect(pearSignValueKey('client_legal_name_p1')).toBe('client_legal_name');
+    expect(pearSignIndependentKey('security_tax_ein', 1)).toBe('security_tax_ein_p1');
+    expect(pearSignIndependentKey('security_tax_ein', 10)).toBeNull();
+  });
+});
+
+describe('font sizes', () => {
+  it('accepts 6–36pt (half points) and rejects the rest', () => {
+    expect(cleanFontSize(9)).toBe(9);
+    expect(cleanFontSize('10.5')).toBe(10.5);
+    expect(cleanFontSize(6)).toBe(6);
+    expect(cleanFontSize(36)).toBe(36);
+    expect(cleanFontSize(5)).toBeNull();
+    expect(cleanFontSize(40)).toBeNull();
+    expect(cleanFontSize(null)).toBeNull();
+    expect(cleanFontSize('big')).toBeNull();
+  });
+
+  it('merges edits: a valid size sets, null clears, unknown keys are ignored', () => {
+    const prev = { a: { fontSize: 9 }, b: { fontSize: 12 } };
+    const next = mergeStyles(prev, { a: { fontSize: null }, c: { fontSize: 14 }, zz: { fontSize: 8 } }, (k) => k !== 'zz');
+    expect(next).toEqual({ b: { fontSize: 12 }, c: { fontSize: 14 } });
+    expect(cleanStyles({ ok: { fontSize: 10 }, bad: { fontSize: 2 }, 'no space': { fontSize: 10 } })).toEqual({ ok: { fontSize: 10 } });
+  });
+
+  it('grows a box only when it is too short for the size', () => {
+    expect(pearSignHeightForFont(14, undefined)).toBe(14);
+    expect(pearSignHeightForFont(14, 8)).toBe(14);
+    expect(pearSignHeightForFont(14, 12)).toBe(18);
+    expect(pearSignHeightForFont(30, 12)).toBe(30);
+  });
 });

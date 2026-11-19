@@ -34,6 +34,8 @@
     "ach_days_mon_fri_check",
     "ach_days_mon_fri_holidays_check",
     "ach_days_seven_check",
+    "ach_following_days",
+    "ach_following_days_day",
     "addendum_daily_default_amount",
     "agreement_date",
     "appendix_underwriting_fees",
@@ -2372,6 +2374,34 @@
       "height": "13",
       "variable": "purchase_percent",
       "sourceTabLabel": "purchase_percent"
+    },
+    {
+      "id": "p161",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "12",
+      "x": "138",
+      "y": "490",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "58",
+      "height": "11",
+      "variable": "ach_following_days_day",
+      "sourceTabLabel": "ach_following_days_day"
+    },
+    {
+      "id": "p162",
+      "type": "text",
+      "documentId": "1",
+      "pageNumber": "12",
+      "x": "200",
+      "y": "490",
+      "signerRole": "Signer",
+      "optional": true,
+      "width": "352",
+      "height": "11",
+      "variable": "ach_following_days",
+      "sourceTabLabel": "ach_following_days"
     }
   ]
 }

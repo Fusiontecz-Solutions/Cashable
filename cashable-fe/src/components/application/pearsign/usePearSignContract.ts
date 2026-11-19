@@ -19,6 +19,15 @@ import { axiosGet, axiosPost, axiosPut } from "@/redux/axios";
  */
 
 export type PearSignFieldBox = { key: string; page: number; x: number; y: number; width: number; height: number };
+export type PearSignFieldStyle = { fontSize?: number };
+
+/** Font sizes offered in Review (PearSign accepts 6–36pt). */
+export const PEARSIGN_FONT_SIZES = [6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24] as const;
+
+/** Same rule as the server (pearSignHeightForFont): a box grows downward to fit its font size. */
+export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
+    return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;
+}
 export type PearSignSignerBox = PearSignFieldBox & { kind: string; roleName: string };
 
 export type PearSignRecipient = { roleId: string; roleName: string; name: string; email: string };
@@ -54,6 +63,10 @@ export type PearSignReview = {
     overrides: Record<string, string>;
     values: Record<string, string>;
     blankKeys: string[];
+    /** Fields with their own value (page-1 EIN): clearing them keeps them blank instead of restoring the CRM value. */
+    keepBlankKeys?: string[];
+    /** Chosen font sizes per field key (unset = auto-fit). Sent to PearSign as the field's fontSize. */
+    styles?: Record<string, PearSignFieldStyle>;
     recipients: PearSignRecipient[];
     blockers: string[];
     warnings: string[];
@@ -279,6 +292,18 @@ export function usePearSignContract(opts: {
         [contractId, prefix],
     );
 
+    /** Save font sizes (key → size; null = back to auto-fit). */
+    const saveStyles = useCallback(
+        async (changes: Record<string, number | null>) => {
+            if (!contractId) throw new Error("No contract.");
+            const body = Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, { fontSize: v }]));
+            const res = await axiosPut(`${prefix}/overrides`, { styles: body });
+            const styles = (res?.data?.data?.styles as Record<string, PearSignFieldStyle>) ?? {};
+            setReview((cur) => (cur ? { ...cur, styles } : cur));
+        },
+        [contractId, prefix],
+    );
+
     const send = useCallback(
         async (extra: { ccEmails?: string[]; message?: string }) => {
             if (!contractId) throw new Error("No contract.");
@@ -369,6 +394,7 @@ export function usePearSignContract(opts: {
         fetchPreviewBlob,
         takePrefetchedPreview,
         saveOverrides,
+        saveStyles,
         send,
         sync,
         voidEnvelope,

@@ -5,7 +5,14 @@ import { Document, Page } from "react-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { PearSignController, PearSignFieldBox, PearSignReview } from "./usePearSignContract";
+import {
+    PEARSIGN_FONT_SIZES,
+    pearSignHeightForFont,
+    type PearSignController,
+    type PearSignFieldBox,
+    type PearSignFieldStyle,
+    type PearSignReview,
+} from "./usePearSignContract";
 
 /**
  * PearSign Review — the filled main contract, inside the CRM, before anything is sent
@@ -40,8 +47,9 @@ function textWidthPt(text: string, sizePt: number): number {
     return measureCtx.measureText(text).width;
 }
 
-function fitText(text: string, box: PearSignFieldBox): { size: number; wrap: boolean } {
+function fitText(text: string, box: PearSignFieldBox, fontSize?: number): { size: number; wrap: boolean } {
     const width = Math.max(4, box.width - PAD_PT * 2);
+    if (fontSize) return { size: fontSize, wrap: textWidthPt(text, fontSize) > width };
     const start = Math.min(MAX_PT, Math.max(MIN_PT, box.height * 0.7));
     for (let s = start; s >= MIN_PT; s -= 0.5) if (textWidthPt(text, s) <= width) return { size: s, wrap: false };
     return { size: MIN_PT, wrap: true };
@@ -51,6 +59,7 @@ function PdfPages({
     url,
     boxes,
     values,
+    styles,
     activeKey,
     activeFromPdf,
     editable,
@@ -61,6 +70,8 @@ function PdfPages({
     url: string | null;
     boxes: PearSignFieldBox[];
     values: Record<string, string>;
+    /** Chosen font sizes per key; the box grows to fit, as PearSign requires. */
+    styles: Record<string, PearSignFieldStyle>;
     activeKey: string | null;
     /** Selection came from a click on the document — it is already in view, don't scroll. */
     activeFromPdf: boolean;
@@ -184,12 +195,14 @@ function PdfPages({
                                                   const active = b.key === activeKey;
                                                   const boxId = `${b.key}|${n}|${j}`;
                                                   const editing = editable && editingBox === boxId;
-                                                  const fit = text ? fitText(text, b) : { size: MAX_PT, wrap: false };
+                                                  const fontSize = styles[b.key]?.fontSize;
+                                                  const height = pearSignHeightForFont(b.height, fontSize);
+                                                  const fit = text ? fitText(text, { ...b, height }, fontSize) : { size: fontSize ?? MAX_PT, wrap: false };
                                                   const style = {
                                                       left: b.x * scale,
                                                       top: b.y * scale,
                                                       width: b.width * scale,
-                                                      minHeight: b.height * scale,
+                                                      minHeight: height * scale,
                                                       paddingLeft: PAD_PT * scale,
                                                       fontFamily: VALUE_FONT,
                                                       fontSize: fit.size * scale,
@@ -213,7 +226,7 @@ function PdfPages({
                                                               className="absolute z-20 rounded-sm bg-white outline-none ring-2 ring-[var(--brand)] shadow-md"
                                                               style={{
                                                                   ...style,
-                                                                  height: Math.max(b.height * scale, (MAX_PT + 4) * scale),
+                                                                  height: Math.max(height * scale, (Math.max(MAX_PT, fit.size) + 4) * scale),
                                                                   minWidth: 120,
                                                                   fontSize: Math.max(fit.size, 8) * scale,
                                                               }}
@@ -349,12 +362,47 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
     const live = useMemo(() => {
         if (!review) return {} as Record<string, string>;
         const out: Record<string, string> = { ...review.crmValues, ...review.overrides };
+        const keepBlank = new Set(review.keepBlankKeys ?? []);
         for (const [k, v] of Object.entries(draft)) {
-            if (String(v).trim()) out[k] = v;
+            if (String(v).trim() || keepBlank.has(k)) out[k] = v;
             else out[k] = review.crmValues[k] ?? "";
         }
         return out;
     }, [review, draft]);
+
+    // ---------- Font sizes ----------
+    /** Sizes picked but not yet confirmed by the server (null = back to auto). */
+    const [sizeDraft, setSizeDraft] = useState<Record<string, number | null>>({});
+    const styles = useMemo(() => {
+        const out: Record<string, PearSignFieldStyle> = { ...(review?.styles ?? {}) };
+        for (const [k, v] of Object.entries(sizeDraft)) {
+            if (v) out[k] = { fontSize: v };
+            else delete out[k];
+        }
+        return out;
+    }, [review?.styles, sizeDraft]);
+
+    /** Font size changes save straight away (no typing to debounce). */
+    const changeSize = useCallback((key: string, size: number | null) => {
+        setSizeDraft((prev) => ({ ...prev, [key]: size }));
+        setSaveState("saving");
+        chainRef.current = chainRef.current.then(async () => {
+            try {
+                await ctlRef.current.saveStyles({ [key]: size });
+                setSaveState(dirtyRef.current.size ? "saving" : "saved");
+            } catch (e) {
+                setSaveState("error");
+                const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+                toast.error(msg || (e instanceof Error ? e.message : "Could not save the font size."));
+            } finally {
+                setSizeDraft((prev) => {
+                    const next = { ...prev };
+                    delete next[key];
+                    return next;
+                });
+            }
+        });
+    }, []);
 
     // ---------- PDF ----------
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -564,6 +612,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                             url={pdfUrl}
                             boxes={review.fieldLayout}
                             values={live}
+                            styles={styles}
                             activeKey={activeKey}
                             activeFromPdf={activeFromPdf}
                             editable={!ctl.isActive}
@@ -617,7 +666,9 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                         </h4>
                                         <div className="grid grid-cols-1 gap-2">
                                             {list.map((f) => {
-                                                const edited = f.key in draft ? String(draft[f.key]).trim() !== "" : f.key in review.overrides;
+                                                const keepBlank = review.keepBlankKeys?.includes(f.key) ?? false;
+                                                const edited =
+                                                    f.key in draft ? keepBlank || String(draft[f.key]).trim() !== "" : f.key in review.overrides;
                                                 const value = f.key in draft ? draft[f.key] : live[f.key] ?? "";
                                                 const crm = review.crmValues[f.key] ?? "";
                                                 const isActive = f.key === activeKey;
@@ -645,19 +696,40 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 </span>
                                                             ) : null}
                                                         </span>
-                                                        <Input
-                                                            type="text"
-                                                            value={value}
-                                                            placeholder={crm || "Not set in CRM"}
-                                                            autoComplete="off"
-                                                            onFocus={() => {
-                                                                setActiveFromPdf(false);
-                                                                setActiveKey(f.key);
-                                                            }}
-                                                            disabled={ctl.isActive}
-                                                            onChange={(e) => change(f.key, e.target.value)}
-                                                            className="h-8 text-xs"
-                                                        />
+                                                        <div className="flex min-w-0 items-center gap-1.5">
+                                                            <Input
+                                                                type="text"
+                                                                value={value}
+                                                                placeholder={crm || "Not set in CRM"}
+                                                                autoComplete="off"
+                                                                onFocus={() => {
+                                                                    setActiveFromPdf(false);
+                                                                    setActiveKey(f.key);
+                                                                }}
+                                                                disabled={ctl.isActive}
+                                                                onChange={(e) => change(f.key, e.target.value)}
+                                                                className="h-8 min-w-0 flex-1 text-xs"
+                                                            />
+                                                            <select
+                                                                aria-label={`Font size for ${f.label}`}
+                                                                title="Font size (Auto fits the box)"
+                                                                value={styles[f.key]?.fontSize ?? ""}
+                                                                disabled={ctl.isActive}
+                                                                onFocus={() => {
+                                                                    setActiveFromPdf(false);
+                                                                    setActiveKey(f.key);
+                                                                }}
+                                                                onChange={(e) => changeSize(f.key, e.target.value ? Number(e.target.value) : null)}
+                                                                className="h-8 w-[4.25rem] shrink-0 rounded-md border border-slate-300 bg-white px-1 text-xs tabular-nums text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                                                            >
+                                                                <option value="">Auto</option>
+                                                                {PEARSIGN_FONT_SIZES.map((s) => (
+                                                                    <option key={s} value={s}>
+                                                                        {s} pt
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
                                                         {edited ? (
                                                             <span className="flex items-center gap-1 text-[10px] text-sky-700 dark:text-sky-300">
                                                                 CRM value: {crm || "(blank)"}
@@ -666,7 +738,8 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                     className="inline-flex items-center gap-0.5 font-medium text-[var(--brand)] hover:underline"
                                                                     onClick={(e) => {
                                                                         e.preventDefault();
-                                                                        change(f.key, "");
+                                                                        // Independent fields keep a blank, so restore the CRM value itself.
+                                                                        change(f.key, keepBlank ? crm : "");
                                                                     }}
                                                                 >
                                                                     <RotateCcw className="h-2.5 w-2.5" /> Use CRM value

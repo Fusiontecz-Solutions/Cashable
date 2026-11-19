@@ -22,6 +22,8 @@
   "ach_days_mon_fri_check",
   "ach_days_mon_fri_holidays_check",
   "ach_days_seven_check",
+  "ach_following_days",
+  "ach_following_days_day",
   "authorization_client_bank_account",
   "authorization_client_bank_name",
   "authorization_client_bank_routing",
@@ -289,6 +291,34 @@
    "sourceTabLabel": "signature_date",
    "when": "owners >= 2",
    "signerParty": "secondary"
+  },
+  {
+   "id": "p19",
+   "type": "text",
+   "documentId": "1",
+   "pageNumber": "1",
+   "x": "140",
+   "y": "540",
+   "signerRole": "Signer",
+   "optional": true,
+   "width": "56",
+   "height": "10",
+   "variable": "ach_following_days_day",
+   "sourceTabLabel": "ach_following_days_day"
+  },
+  {
+   "id": "p20",
+   "type": "text",
+   "documentId": "1",
+   "pageNumber": "1",
+   "x": "200",
+   "y": "540",
+   "signerRole": "Signer",
+   "optional": true,
+   "width": "358",
+   "height": "10",
+   "variable": "ach_following_days",
+   "sourceTabLabel": "ach_following_days"
   }
  ]
 }

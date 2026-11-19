@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
 import type { PearSignTemplate, PearSignTemplateField } from './pearsign-client';
-import { pearSignBaseKey } from './pearsign-template-spec';
+import { pearSignHeightForFont, pearSignValueKey, type PearSignFieldStyle } from './pearsign-template-spec';
 
 /**
  * Filled-contract preview (the "Review" step), built before anything is sent.
@@ -108,9 +108,12 @@ function wrap(font: PDFFont, text: string, size: number, width: number): string[
   return lines;
 }
 
-/** Largest layout (font size + lines) that fits the box; shrinks, then wraps. */
-function layout(font: PDFFont, text: string, box: FieldPos): { size: number; lines: string[] } {
+/** Largest layout (font size + lines) that fits the box; shrinks, then wraps. A chosen size is kept as is. */
+function layout(font: PDFFont, text: string, box: FieldPos, fontSize?: number): { size: number; lines: string[] } {
   const width = Math.max(4, box.width - PAD_X * 2);
+  if (fontSize) {
+    return { size: fontSize, lines: font.widthOfTextAtSize(text, fontSize) <= width ? [text] : wrap(font, text, fontSize, width) };
+  }
   const start = Math.min(MAX_FONT, Math.max(MIN_FONT, box.height * 0.7));
   for (let size = start; size >= MIN_FONT; size -= 0.5) {
     if (font.widthOfTextAtSize(text, size) <= width) return { size, lines: [text] };
@@ -122,11 +125,11 @@ function layout(font: PDFFont, text: string, box: FieldPos): { size: number; lin
   return { size: MIN_FONT, lines: wrap(font, text, MIN_FONT, width) };
 }
 
-function drawValue(page: PDFPage, font: PDFFont, raw: string, box: FieldPos) {
+function drawValue(page: PDFPage, font: PDFFont, raw: string, box: FieldPos, fontSize?: number) {
   const text = encodable(font, raw.trim());
   if (!text) return;
   const pageHeight = page.getHeight();
-  const { size, lines } = layout(font, text, box);
+  const { size, lines } = layout(font, text, box, fontSize);
   const lineHeight = size * 1.1;
   const blockHeight = lines.length * lineHeight;
   const boxBottom = pageHeight - box.y - box.height;
@@ -192,8 +195,10 @@ export async function buildPearSignPreviewPdf(input: {
   sourcePdfUrl: string | null;
   values: Record<string, string>;
   signerFilledNames: Set<string>;
-  /** Value key for a field (default: layout variable via pearSignBaseKey). Packages key per document. */
+  /** Value key for a field (default: pearSignValueKey — layout variable, or own key for independent fields). Packages key per document. */
   valueKeyFor?: (fieldName: string) => string;
+  /** Review font sizes, keyed like `values`; the box grows to fit, as PearSign requires. */
+  styles?: Record<string, PearSignFieldStyle>;
   title: string;
 }): Promise<{ pdf: Buffer; filledFieldCount: number }> {
   const base = await loadBasePdf(input.sourcePdfUrl);
@@ -225,10 +230,11 @@ export async function buildPearSignPreviewPdf(input: {
       drawBox(page, font, `${who || 'Signer'} completes`, box, { fill: SIGNER_TEXT_FILL, border: SIGNER_TEXT_BORDER });
       continue;
     }
-    const key = input.valueKeyFor ? input.valueKeyFor(f.fieldName) : pearSignBaseKey(f.fieldName);
+    const key = input.valueKeyFor ? input.valueKeyFor(f.fieldName) : pearSignValueKey(f.fieldName);
     const v = String(input.values[key] ?? '').trim();
     if (!v) continue;
-    drawValue(page, font, v, box);
+    const fontSize = input.styles?.[key]?.fontSize;
+    drawValue(page, font, v, { ...box, height: pearSignHeightForFont(box.height, fontSize) }, fontSize);
     filled++;
   }
 

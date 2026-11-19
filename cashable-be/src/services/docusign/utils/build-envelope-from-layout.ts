@@ -1155,20 +1155,15 @@ export function expandPrefillValues(
     }
   }
 
-  // ACH "On The Following days" note — weekly deals state the daily fallback
-  // (daily = weekly remittance / 5). Admin-provided text wins when present.
+  // ACH "On The Following days" note — weekly deals state the daily fallback.
+  // The daily amount is left blank after the "$": the team adds it in Review.
+  // Admin-provided text wins when present. Printed after a separate day-name box
+  // (`ach_following_days_day`, left blank), so the line reads "<DAY> - If a Weekly ACH bounces …".
   if (!String(out.ach_following_days || '').trim()) {
     const freq = String(out.frequency || '').trim().toLowerCase();
-    const remitN = Number.parseFloat(
-      String(remittanceAmount ?? '').replace(/[$,%\s]/g, ''),
-    );
-    if (freq.startsWith('week') && Number.isFinite(remitN) && remitN > 0) {
-      const daily = new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(Math.round((remitN / 5) * 100) / 100);
+    if (freq.startsWith('week')) {
       out.ach_following_days =
-        `If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to a Daily ACH of $${daily}`;
+        '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $';
     }
   }
 

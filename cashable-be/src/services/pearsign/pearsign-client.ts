@@ -118,7 +118,18 @@ export type PearSignFieldType =
 
 export type PearSignFieldPosition = { page: number; x: number; y: number; width: number; height: number };
 
-export type PearSignTemplateField = {
+/**
+ * Text formatting on fields that show text (not signature / initials). All optional;
+ * a field without them uses PearSign's auto-fit. fontSize is 6–36pt, fontColor `#rrggbb`.
+ * PearSign rejects a box too short for its font size (see pearSignHeightForFont).
+ */
+export type PearSignFieldFormatting = {
+  fontFamily?: 'helvetica' | 'times' | 'courier';
+  fontSize?: number;
+  fontColor?: string;
+};
+
+export type PearSignTemplateField = PearSignFieldFormatting & {
   fieldId: string;
   fieldName: string;
   type: string;
@@ -153,14 +164,16 @@ export type PearSignTemplateCreateInput = {
    * page/x/y/width/height keys but silently ignores them (fields get stacked at
    * default spots on page 1). PDF points, top-left origin.
    */
-  fields: Array<{
-    fieldName: string;
-    type: PearSignFieldType;
-    required: boolean;
-    roleId: string;
-    position: PearSignFieldPosition;
-    placeholder?: string;
-  }>;
+  fields: Array<
+    PearSignFieldFormatting & {
+      fieldName: string;
+      type: PearSignFieldType;
+      required: boolean;
+      roleId: string;
+      position: PearSignFieldPosition;
+      placeholder?: string;
+    }
+  >;
   documentBase64: string;
 };
 

@@ -39,6 +39,92 @@ export function pearSignBaseKey(fieldName: string): string {
     .replace(/_p\d+[a-z]?$/i, '');
 }
 
+/**
+ * Fields that keep their own value instead of sharing their layout variable's value
+ * (layout variable → pages within its document). The page-1 EIN can be edited or
+ * cleared in Review without touching the EIN printed on the other pages.
+ */
+const PEARSIGN_INDEPENDENT_FIELDS: Record<string, readonly number[]> = {
+  security_tax_ein: [1],
+};
+
+/** `security_tax_ein` on page 1 → `security_tax_ein_p1`; null when the field shares its variable's value. */
+export function pearSignIndependentKey(variable: string, page: number): string | null {
+  return PEARSIGN_INDEPENDENT_FIELDS[variable]?.includes(page) ? `${variable}_p${page}` : null;
+}
+
+/** Value key of a contract template field: its own key when independent, else the layout variable. */
+export function pearSignValueKey(fieldName: string): string {
+  const base = pearSignBaseKey(fieldName);
+  const page = Number(/_p(\d+)[a-z]?$/i.exec(String(fieldName || '').trim())?.[1]);
+  return pearSignIndependentKey(base, page) ?? base;
+}
+
+/** Independent keys (also package `d<n>__` keys) keep a cleared value blank instead of falling back to the CRM. */
+export function isPearSignIndependentKey(key: string): boolean {
+  const m = /^(?:d\d+__)?([a-z0-9_]+)_p(\d+)$/i.exec(String(key || ''));
+  return !!m && pearSignIndependentKey(m[1], Number(m[2])) !== null;
+}
+
+/** Per-field formatting chosen in Review, keyed by value key. Unset = PearSign's auto-fit. */
+export type PearSignFieldStyle = { fontSize?: number };
+
+/** PearSign accepts 6–36pt on text fields. */
+export const PEARSIGN_FONT_SIZE_MIN = 6;
+export const PEARSIGN_FONT_SIZE_MAX = 36;
+
+/** A valid font size in points (half points allowed), or null. */
+export function cleanFontSize(v: unknown): number | null {
+  const n = Math.round(Number(v) * 2) / 2;
+  return Number.isFinite(n) && n >= PEARSIGN_FONT_SIZE_MIN && n <= PEARSIGN_FONT_SIZE_MAX ? n : null;
+}
+
+/** Stored styles → only valid keys and sizes. */
+export function cleanStyles(raw: unknown): Record<string, PearSignFieldStyle> {
+  const out: Record<string, PearSignFieldStyle> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z0-9_]{1,80}$/i.test(k)) continue;
+    const fontSize = cleanFontSize((v as { fontSize?: unknown } | null)?.fontSize);
+    if (fontSize !== null) out[k] = { fontSize };
+  }
+  return out;
+}
+
+/**
+ * Apply Review style edits (`{ key: { fontSize } }`; a null/invalid size clears it).
+ * `allowed` limits the keys to the ones that exist in this review.
+ */
+export function mergeStyles(
+  prev: Record<string, PearSignFieldStyle>,
+  incoming: unknown,
+  allowed?: (key: string) => boolean,
+): Record<string, PearSignFieldStyle> {
+  const next = { ...prev };
+  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return next;
+  for (const [k, v] of Object.entries(incoming as Record<string, unknown>)) {
+    const key = String(k || '').trim();
+    if (!/^[a-z0-9_]{1,80}$/i.test(key) || (allowed && !allowed(key))) continue;
+    const fontSize = cleanFontSize((v as { fontSize?: unknown } | null)?.fontSize);
+    if (fontSize !== null) next[key] = { fontSize };
+    else delete next[key];
+  }
+  return next;
+}
+
+/**
+ * PearSign rejects a text box shorter than its font size needs. Grow it downward
+ * (top edge stays put) so the chosen size always fits. Mirrored in the Review modal.
+ */
+export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
+  return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;
+}
+
+/** Sidebar label for an independent field, e.g. "Federal Tax ID (page 1)". */
+export function pearSignIndependentLabel(baseLabel: string, page: number): string {
+  return `${baseLabel} (page ${page})`;
+}
+
 export type PearSignFieldSpec = Omit<PearSignTemplateCreateInput['fields'][number], 'position'> & {
   page: number;
   x: number;

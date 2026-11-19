@@ -7,8 +7,10 @@ import { formatContractOfferAmountForSubject } from '../../utils/contractEnvelop
 import { getDocumentLayout, type DocumentLayoutKey } from '../docusign/layouts/document-layout.registry';
 import { getPrefillDisplayLabel } from '../docusign/utils/prefill-layout-bridge';
 import type { PrefillFieldInput } from '../docusign/utils/docusign-prefill';
+import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
 import {
   PearSignApiError,
+  createPearSignTemplate,
   deletePearSignTemplate,
   downloadPearSignEnvelopePdf,
   getPearSignEnvelope,
@@ -17,7 +19,9 @@ import {
   sendPearSignEnvelope,
   voidPearSignEnvelope,
   type PearSignEnvelopeDetails,
+  type PearSignFieldType,
   type PearSignTemplate,
+  type PearSignTemplateCreateInput,
 } from './pearsign-client';
 import { buildPearSignPreviewPdf, pearSignFieldPos } from './pearsign-preview.service';
 import {
@@ -28,7 +32,14 @@ import {
 import {
   PEARSIGN_SIGNER_FILLED_TYPES,
   buildPearSignTemplateSpec,
+  cleanStyles,
+  isPearSignIndependentKey,
+  mergeStyles,
   pearSignBaseKey,
+  pearSignHeightForFont,
+  pearSignIndependentLabel,
+  pearSignValueKey,
+  type PearSignFieldStyle,
   type PearSignOwnerVariant,
 } from './pearsign-template-spec';
 import { computePearSignCrmValues, type PearSignSignerRoleInput } from './pearsign-values.service';
@@ -111,7 +122,13 @@ export type PearSignContractState = {
     }>;
     recipients: Array<{ roleId: string; roleName: string; name: string; email: string }>;
     documents: Array<{ index: number; name: string; startPage: number; pageCount: number }>;
+    /** Font sizes sent with the package (field key → style). */
+    styles?: Record<string, PearSignFieldStyle>;
   };
+  /** Review font sizes, keyed like `overrides`. Any set → the send uses a per-send copy of the template. */
+  styles?: Record<string, PearSignFieldStyle>;
+  /** Registered template a per-send copy was made from (redraws the sent contract). */
+  baseTemplateId?: string;
 };
 
 const TERMINAL_STATUSES = new Set(['completed', 'voided', 'declined', 'expired', 'cancelled']);
@@ -310,6 +327,7 @@ type ResolvedReview = {
   crm: Awaited<ReturnType<typeof computePearSignCrmValues>>;
   overrides: Record<string, string>;
   values: Record<string, string>;
+  styles: Record<string, PearSignFieldStyle>;
   state: PearSignContractState | null;
 };
 
@@ -337,10 +355,17 @@ async function resolveReview(contractId: number, body: PearSignReviewBody, fresh
     );
   }
   const template = await loadTemplate(row.pearsignTemplateId, freshTemplate);
+  // Independent fields (page-1 EIN) start from their layout variable's CRM value.
+  for (const f of template.fields ?? []) {
+    const key = pearSignValueKey(f.fieldName);
+    const base = pearSignBaseKey(f.fieldName);
+    if (key !== base && crm.values[key] === undefined) crm.values[key] = crm.values[base] ?? '';
+  }
   const state = readState(contract.contractPrefillOverrides);
   const overrides = cleanValues(state?.overrides);
   const values = { ...crm.values, ...overrides };
-  return { contract, row, template, signerFilled: signerFilledFieldNames(row, template), crm, overrides, values, state };
+  const styles = cleanStyles(state?.styles);
+  return { contract, row, template, signerFilled: signerFilledFieldNames(row, template), crm, overrides, values, styles, state };
 }
 
 /** Everything the Review modal needs: template layout, CRM values, saved edits, recipients, blockers. */
@@ -363,9 +388,11 @@ export async function getPearSignReview(contractId: number, body: PearSignReview
       });
       continue;
     }
-    const key = pearSignBaseKey(f.fieldName);
+    const key = pearSignValueKey(f.fieldName);
+    const base = pearSignBaseKey(f.fieldName);
     fieldLayout.push({ key, ...box });
-    const cur = keys.get(key) ?? { key, label: getPrefillDisplayLabel(key), pages: [] };
+    const label = key === base ? getPrefillDisplayLabel(key) : pearSignIndependentLabel(getPrefillDisplayLabel(base), box.page);
+    const cur = keys.get(key) ?? { key, label, pages: [] };
     if (!cur.pages.includes(box.page)) cur.pages.push(box.page);
     keys.set(key, cur);
   }
@@ -406,6 +433,8 @@ export async function getPearSignReview(contractId: number, body: PearSignReview
     overrides: r.overrides,
     values: r.values,
     blankKeys: fields.filter((f) => !String(r.values[f.key] ?? '').trim()).map((f) => f.key),
+    keepBlankKeys: fields.filter((f) => isPearSignIndependentKey(f.key)).map((f) => f.key),
+    styles: r.styles,
     recipients: r.crm.recipients,
     blockers,
     warnings: r.crm.divergent.length
@@ -415,8 +444,11 @@ export async function getPearSignReview(contractId: number, body: PearSignReview
   };
 }
 
-/** Save Review edits (layout variable → value). An empty string or null clears the edit (back to the CRM value). */
-export async function savePearSignOverrides(contractId: number, body: { overrides?: unknown }) {
+/**
+ * Save Review edits (layout variable → value). An empty string or null clears the edit (back to the CRM value).
+ * `styles` (`{ key: { fontSize } }`, null size = auto) saves font sizes the same way.
+ */
+export async function savePearSignOverrides(contractId: number, body: { overrides?: unknown; styles?: unknown }) {
   const contract = await loadContract(contractId);
   const prev = readState(contract.contractPrefillOverrides) ?? {};
   if (prev.envelopeId && isActivePearSignStatus(prev.status)) {
@@ -428,12 +460,13 @@ export async function savePearSignOverrides(contractId: number, body: { override
     const key = String(k || '').trim();
     if (!/^[a-z0-9_]{1,80}$/i.test(key)) continue;
     const value = v === null || v === undefined ? '' : String(v).slice(0, 2000);
-    if (value.trim()) next[key] = value;
+    if (value.trim() || isPearSignIndependentKey(key)) next[key] = value;
     else delete next[key];
   }
-  const state: PearSignContractState = { ...prev, overrides: next };
+  const styles = mergeStyles(cleanStyles(prev.styles), body.styles);
+  const state: PearSignContractState = { ...prev, overrides: next, styles };
   await writeState(contractId, state);
-  return { overrides: next };
+  return { overrides: next, styles };
 }
 
 /**
@@ -458,6 +491,7 @@ export async function buildPearSignReviewPreview(
     sourcePdfUrl: r.row.sourcePdfUrl,
     values,
     signerFilledNames: r.signerFilled,
+    styles: r.styles,
     title: `${r.contract.funderName || 'Cashable'} Agreement${business ? ` - ${business}` : ''} (preview)`,
   });
   const safe = `${r.contract.funderName || 'Agreement'}_${business || 'contract'}`
@@ -468,6 +502,67 @@ export async function buildPearSignReviewPreview(
 }
 
 // ---------- send ----------
+
+/**
+ * Per-send copy of the registered contract template carrying the Review font sizes
+ * (PearSign formatting is per template field). Deleted with the other per-send
+ * templates once the envelope is finished. Returns the new template id.
+ */
+async function createStyledContractTemplate(contractId: number, r: ResolvedReview): Promise<string> {
+  if (!r.row.sourcePdfUrl) throw new PearSignContractError('The funder contract PDF is missing; cannot apply font sizes.', 500);
+  let pdf: Buffer;
+  try {
+    pdf = await fetchRemoteAssetBuffer(r.row.sourcePdfUrl);
+  } catch (err) {
+    throw new PearSignContractError(`Could not load the contract PDF: ${(err as Error)?.message}`, 502);
+  }
+  const fields: PearSignTemplateCreateInput['fields'] = [];
+  for (const f of r.template.fields ?? []) {
+    const p = f.position;
+    if (![p?.page, p?.x, p?.y, p?.width, p?.height].every((n) => Number.isFinite(Number(n)))) {
+      throw new PearSignContractError(`PearSign template field ${f.fieldName} has no position; cannot copy it.`, 502);
+    }
+    const fontSize = r.signerFilled.has(f.fieldName) ? undefined : r.styles[pearSignValueKey(f.fieldName)]?.fontSize;
+    fields.push({
+      fieldName: f.fieldName,
+      type: f.type as PearSignFieldType,
+      required: f.required,
+      roleId: f.roleId,
+      position: {
+        page: Number(p!.page),
+        x: Number(p!.x),
+        y: Number(p!.y),
+        width: Number(p!.width),
+        height: pearSignHeightForFont(Number(p!.height), fontSize),
+      },
+      ...(fontSize ? { fontSize } : {}),
+    });
+  }
+  let created: PearSignTemplate;
+  try {
+    created = await createPearSignTemplate({
+      name: `CRM contract — ${r.template.name} — contract ${contractId} — ${new Date().toISOString().slice(0, 16)}`.slice(0, 200),
+      description: 'Per-send copy of the contract template with Review font sizes (Cashable CRM). Deleted after signing.',
+      category: 'crm-contract',
+      status: 'active',
+      signerRoles: r.template.signerRoles.map((x) => ({ roleId: x.roleId, name: x.name, order: x.order })),
+      fields,
+      documentBase64: pdf.toString('base64'),
+    });
+  } catch (e) {
+    if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+    throw e;
+  }
+  const live = await getPearSignTemplate(created.id);
+  if ((live.fields?.length ?? 0) !== fields.length) {
+    await deletePearSignTemplate(created.id).catch(() => undefined);
+    throw new PearSignContractError(
+      `PearSign stored ${live.fields?.length ?? 0} of ${fields.length} fields for the contract copy; not sending.`,
+      502,
+    );
+  }
+  return created.id;
+}
 
 export async function sendPearSignContract(
   contractId: number,
@@ -512,16 +607,21 @@ export async function sendPearSignContract(
   // CRM values (+ Review edits) onto every template field that shares the layout variable.
   const fieldValues: Record<string, string> = {};
   let blank = 0;
+  // Font sizes live on the template, so a styled send uses a per-send copy (keyed by field name).
+  const styled = Object.keys(r.styles).length > 0;
   for (const f of template.fields ?? []) {
     if (r.signerFilled.has(f.fieldName)) continue;
-    const v = String(r.values[pearSignBaseKey(f.fieldName)] ?? '').trim();
-    if (v) fieldValues[f.fieldId] = v;
+    const v = String(r.values[pearSignValueKey(f.fieldName)] ?? '').trim();
+    if (v) fieldValues[styled ? f.fieldName : f.fieldId] = v;
     else blank++;
   }
+  const sendTemplateId = styled ? await createStyledContractTemplate(contractId, r) : row.pearsignTemplateId;
   console.info('[PearSign] send', {
     contractId,
     applicationId: contract.applicationId,
-    templateId: row.pearsignTemplateId,
+    templateId: sendTemplateId,
+    baseTemplateId: styled ? row.pearsignTemplateId : undefined,
+    styledFields: Object.keys(r.styles).length,
     ownerCount: crm.ownerCount,
     prefilled: Object.keys(fieldValues).length,
     blank,
@@ -543,13 +643,14 @@ export async function sendPearSignContract(
   let result;
   try {
     result = await sendPearSignEnvelope({
-      templateId: row.pearsignTemplateId,
+      templateId: sendTemplateId,
       recipients: recipients.map((x) => ({ roleId: x.roleId, name: x.name, email: x.email })),
       fieldValues,
       sender: body.senderName ? { name: String(body.senderName).slice(0, 120) } : undefined,
       options: { title, message, expirationDays: 30, sendEmail },
     });
   } catch (e) {
+    if (styled) await deletePearSignTemplate(sendTemplateId).catch(() => undefined);
     if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
     throw e;
   }
@@ -557,7 +658,10 @@ export async function sendPearSignContract(
   const sentAt = new Date();
   const prev = r.state;
   const next: PearSignContractState = {
-    templateId: row.pearsignTemplateId,
+    templateId: sendTemplateId,
+    ...(styled
+      ? { ephemeralTemplate: true, templateDeletedAt: null, baseTemplateId: row.pearsignTemplateId, styles: r.styles }
+      : {}),
     funderProfileId: row.funderProfileId,
     ownerCount: crm.ownerCount,
     overrides: r.overrides,
@@ -846,7 +950,8 @@ export async function downloadPearSignContractPdf(
   if (version === 'latest' && isCurrent && !completed && state.values && state.templateId && !state.package) {
     try {
       const rows = await listPearSignContractTemplates(String(state.funderProfileId || ''));
-      const row = rows.find((x) => x.pearsignTemplateId === state.templateId);
+      const registeredId = state.baseTemplateId || state.templateId;
+      const row = rows.find((x) => x.pearsignTemplateId === registeredId);
       if (row) {
         const template = await loadTemplate(row.pearsignTemplateId);
         const { pdf } = await buildPearSignPreviewPdf({
@@ -854,6 +959,7 @@ export async function downloadPearSignContractPdf(
           sourcePdfUrl: row.sourcePdfUrl,
           values: state.values,
           signerFilledNames: signerFilledFieldNames(row, template),
+          styles: cleanStyles(state.styles),
           title: state.title || 'Contract',
         });
         return { pdf, envelopeId, filledByCrm: true };
