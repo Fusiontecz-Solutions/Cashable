@@ -156,10 +156,10 @@ export function applicationDecisionToneClass(
   tone: ApplicationDecisionTone,
 ): string {
   if (tone === "approved") {
-    return "border border-green-200 bg-gradient-to-b from-green-100 to-white text-green-700 dark:bg-green-900/40 dark:text-green-300";
+    return "border border-green-200 bg-gradient-to-b dark:bg-none from-green-100 to-white text-green-700 dark:bg-green-900/40 dark:text-green-300";
   }
   if (tone === "declined") {
-    return "border border-red-200 bg-gradient-to-b from-red-100 to-white text-red-700 dark:bg-red-900/40 dark:text-red-300";
+    return "border border-red-200 bg-gradient-to-b dark:bg-none from-red-100 to-white text-red-700 dark:bg-red-900/40 dark:text-red-300";
   }
   return "bg-muted/60 text-foreground";
 }

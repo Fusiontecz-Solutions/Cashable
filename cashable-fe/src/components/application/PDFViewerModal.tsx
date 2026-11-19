@@ -9403,7 +9403,7 @@ const PDFViewerModal = ({
                                                 return (
                                                     <div key={section.title} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                                                 
-                                                        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-transparent px-4 py-2.5">
+                                                        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r dark:bg-none from-slate-50 to-transparent px-4 py-2.5">
                                                             <div className="flex items-center gap-2">
                                                                 <span className={cn("h-2 w-2 rounded-full", section.dot)} />
                                                                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-700">

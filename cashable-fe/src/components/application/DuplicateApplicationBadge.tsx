@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 export const DUPLICATE_APPLICATION_BADGE_CLASS =
-  "inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-gradient-to-b from-amber-100 to-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-950/50 dark:text-amber-200";
+  "inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-gradient-to-b dark:bg-none from-amber-100 to-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:bg-amber-950/50 dark:text-amber-200";
 
 type DuplicateApplicationBadgeProps = {
   isDuplicate?: boolean | null;
