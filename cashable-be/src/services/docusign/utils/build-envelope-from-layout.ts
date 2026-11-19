@@ -1167,18 +1167,9 @@ export function expandPrefillValues(
     }
   }
 
-  // ACH "On the following days" checkboxes (Nov 2026 forms print the boxes;
-  // the layout drops an "X" text tab inside the ticked one). Default: Mon-Fri,
-  // unless another day-set checkbox variable was already set.
-  {
-    const dayChecks = [
-      'ach_days_mon_fri_check',
-      'ach_days_mon_fri_holidays_check',
-      'ach_days_seven_check',
-    ] as const;
-    const anyTicked = dayChecks.some((k) => String(out[k] || '').trim());
-    if (!anyTicked) out.ach_days_mon_fri_check = 'X';
-  }
+  // ACH "On the following days" checkboxes (ach_days_*_check): the forms print the
+  // boxes and the layout drops an "X" text tab inside the ticked one. None is ticked
+  // by default — the team ticks one in the PearSign review before sending.
 
   // Finance charge = payback − offer when both parse as money.
   {

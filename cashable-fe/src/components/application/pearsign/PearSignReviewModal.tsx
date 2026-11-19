@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
     PEARSIGN_FONT_SIZES,
+    isPearSignTickBoxKey,
     pearSignHeightForFont,
     type PearSignController,
     type PearSignFieldBox,
@@ -239,10 +240,13 @@ function PdfPages({
                                                           data-box={b.key}
                                                           role="button"
                                                           tabIndex={-1}
-                                                          title={editable ? "Click to edit" : undefined}
+                                                          title={editable ? (isPearSignTickBoxKey(b.key) ? "Click to tick or untick" : "Click to edit") : undefined}
                                                           onClick={() => {
                                                               onSelect(b.key);
-                                                              if (editable) setEditingBox(boxId);
+                                                              if (!editable) return;
+                                                              // Tick boxes toggle an "X" in place instead of opening a text editor.
+                                                              if (isPearSignTickBoxKey(b.key)) onEdit(b.key, text ? "" : "X");
+                                                              else setEditingBox(boxId);
                                                           }}
                                                           className={`absolute flex cursor-pointer items-center rounded-sm transition-colors ${
                                                               active
@@ -686,7 +690,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 · {f.key}
                                                                 {f.pages.length > 1 ? ` · pages ${f.pages.join(", ")}` : ""}
                                                             </span>
-                                                            {!String(live[f.key] ?? "").trim() ? (
+                                                            {!String(live[f.key] ?? "").trim() && !isPearSignTickBoxKey(f.key) ? (
                                                                 <span className="rounded bg-amber-100 px-1 text-[9px] font-semibold uppercase text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                                                                     blank
                                                                 </span>
@@ -696,6 +700,22 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 </span>
                                                             ) : null}
                                                         </span>
+                                                        {isPearSignTickBoxKey(f.key) ? (
+                                                            <span className="flex h-8 items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={Boolean(String(value).trim())}
+                                                                    disabled={ctl.isActive}
+                                                                    onFocus={() => {
+                                                                        setActiveFromPdf(false);
+                                                                        setActiveKey(f.key);
+                                                                    }}
+                                                                    onChange={(e) => change(f.key, e.target.checked ? "X" : "")}
+                                                                    className="h-4 w-4 accent-[var(--brand)]"
+                                                                />
+                                                                {String(value).trim() ? "Ticked (prints an X)" : "Not ticked"}
+                                                            </span>
+                                                        ) : (
                                                         <div className="flex min-w-0 items-center gap-1.5">
                                                             <Input
                                                                 type="text"
@@ -730,7 +750,8 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 ))}
                                                             </select>
                                                         </div>
-                                                        {edited ? (
+                                                        )}
+                                                        {edited && !isPearSignTickBoxKey(f.key) ? (
                                                             <span className="flex items-center gap-1 text-[10px] text-sky-700 dark:text-sky-300">
                                                                 CRM value: {crm || "(blank)"}
                                                                 <button

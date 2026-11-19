@@ -24,6 +24,14 @@ export type PearSignFieldStyle = { fontSize?: number };
 /** Font sizes offered in Review (PearSign accepts 6–36pt). */
 export const PEARSIGN_FONT_SIZES = [6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20, 24] as const;
 
+/**
+ * ACH "On the following days" tick boxes (Mon–Fri / incl. holidays / seven days): an "X" in a
+ * text field. Also matches package keys (`d2__ach_days_seven_check`).
+ */
+export function isPearSignTickBoxKey(key: string): boolean {
+    return /(^|__)ach_days_[a-z_]+_check$/i.test(key);
+}
+
 /** Same rule as the server (pearSignHeightForFont): a box grows downward to fit its font size. */
 export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
     return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;

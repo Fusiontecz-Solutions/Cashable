@@ -174,7 +174,8 @@
    "width": "9",
    "height": "10",
    "variable": "ach_days_mon_fri_check",
-   "sourceTabLabel": "ach_days_mon_fri_check"
+   "sourceTabLabel": "ach_days_mon_fri_check",
+   "lockedForSigner": true
   },
   {
    "id": "p11",
@@ -188,7 +189,8 @@
    "width": "9",
    "height": "10",
    "variable": "ach_days_mon_fri_holidays_check",
-   "sourceTabLabel": "ach_days_mon_fri_holidays_check"
+   "sourceTabLabel": "ach_days_mon_fri_holidays_check",
+   "lockedForSigner": true
   },
   {
    "id": "p12",
@@ -202,7 +204,8 @@
    "width": "9",
    "height": "10",
    "variable": "ach_days_seven_check",
-   "sourceTabLabel": "ach_days_seven_check"
+   "sourceTabLabel": "ach_days_seven_check",
+   "lockedForSigner": true
   },
   {
    "id": "p13",
@@ -304,7 +307,8 @@
    "width": "56",
    "height": "10",
    "variable": "ach_following_days_day",
-   "sourceTabLabel": "ach_following_days_day"
+   "sourceTabLabel": "ach_following_days_day",
+   "lockedForSigner": true
   },
   {
    "id": "p20",
