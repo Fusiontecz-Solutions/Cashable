@@ -120,6 +120,32 @@ export function pearSignHeightForFont(height: number, fontSize?: number | null):
   return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;
 }
 
+/** Largest value size a box gets (pt); body text on the forms is 10–11pt. */
+export const PEARSIGN_VALUE_FONT_MAX = 10;
+/** Smallest size a long value may shrink to (pt). */
+export const PEARSIGN_VALUE_FONT_MIN = 6;
+
+/**
+ * One consistent value size per box: 75% of its height, capped at PEARSIGN_VALUE_FONT_MAX,
+ * shrunk in half points only when the value is too wide.
+ * `measure(text, size)` returns the text width in points (Helvetica). Mirrored in the Review modal.
+ */
+export function pearSignFitFontSize(
+  text: string,
+  box: { width: number; height: number },
+  measure: (text: string, size: number) => number,
+): number {
+  // 75% of the box height reads well on these forms; the send still grows a box that PearSign
+  // finds too short (pearSignHeightForFont), so the size never blocks a send.
+  const byHeight = Math.round(box.height * 0.75 * 2) / 2;
+  let size = Math.max(PEARSIGN_VALUE_FONT_MIN, Math.min(PEARSIGN_VALUE_FONT_MAX, byHeight));
+  const room = Math.max(4, box.width - 4);
+  const t = String(text ?? '').trim();
+  if (!t) return size;
+  while (size > PEARSIGN_VALUE_FONT_MIN && measure(t, size) > room) size -= 0.5;
+  return size;
+}
+
 /** Sidebar label for an independent field, e.g. "Federal Tax ID (page 1)". */
 export function pearSignIndependentLabel(baseLabel: string, page: number): string {
   return `${baseLabel} (page ${page})`;

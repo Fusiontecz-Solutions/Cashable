@@ -307,7 +307,45 @@ function loadBundledTexasAchPdfBase64(): string | null {
  * Priority: uploaded BoldSignTemplate.pdfUrl → sibling layout upload → default DocuSign template PDF.
  * Texas ACH prefers the uploaded funder PDF, then the bundled blank ACH form (page-11 coordinates).
  */
+/**
+ * The form's PDF (uploaded copy or bundled fallback) with the layout's `masks` applied:
+ * white patches over printed text the layout replaces (e.g. a "$" printed at the end of a
+ * line when the amount field prints its own "$" on the next line).
+ */
 export async function loadPlatformDocumentPdfBase64(
+  layoutKey: DocumentLayoutKey,
+): Promise<string> {
+  const base64 = await loadPlatformDocumentPdfBase64Unmasked(layoutKey);
+  return applyLayoutMasks(layoutKey, base64);
+}
+
+async function applyLayoutMasks(layoutKey: DocumentLayoutKey, base64: string): Promise<string> {
+  let masks: NonNullable<ReturnType<typeof getDocumentLayout>['masks']> = [];
+  try {
+    masks = getDocumentLayout(layoutKey).masks ?? [];
+  } catch {
+    return base64;
+  }
+  if (!masks.length) return base64;
+  try {
+    const { PDFDocument, rgb } = await import('pdf-lib');
+    const doc = await PDFDocument.load(Buffer.from(base64, 'base64'), { ignoreEncryption: true });
+    const pages = doc.getPages();
+    for (const m of masks) {
+      const page = pages[Math.max(0, parseInt(String(m.pageNumber || '1'), 10) - 1)];
+      if (!page) continue;
+      const x = Number(m.x), y = Number(m.y), w = Number(m.width), h = Number(m.height);
+      if (![x, y, w, h].every(Number.isFinite)) continue;
+      page.drawRectangle({ x, y: page.getHeight() - y - h, width: w, height: h, color: rgb(1, 1, 1) });
+    }
+    return Buffer.from(await doc.save()).toString('base64');
+  } catch (err) {
+    console.warn(`[platform-documents] could not apply masks for ${layoutKey}:`, err instanceof Error ? err.message : err);
+    return base64;
+  }
+}
+
+async function loadPlatformDocumentPdfBase64Unmasked(
   layoutKey: DocumentLayoutKey,
 ): Promise<string> {
   const def = PLATFORM_DOCUMENTS[layoutKey];

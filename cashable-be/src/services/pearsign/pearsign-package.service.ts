@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts, type PDFFont } from 'pdf-lib';
 import prisma from '../../config/prismaClient';
 import uploadService from '../uploadService';
 import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
@@ -36,6 +36,7 @@ import {
   cleanStyles,
   isPearSignIndependentKey,
   mergeStyles,
+  pearSignFitFontSize,
   pearSignHeightForFont,
   pearSignIndependentKey,
   pearSignIndependentLabel,
@@ -304,8 +305,10 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
         const size = DEFAULT_SIZE[type];
         let width = num(tab.width) > 0 ? num(tab.width) : size.width;
         const height = num(tab.height) > 0 ? num(tab.height) : size.height;
-        if (!signerFilled && value) {
-          // Auto-width tabs (state disclosures) size to the value; never past the page edge.
+        if (!signerFilled && value && !(num(tab.width) > 0)) {
+          // Auto-width tabs (state disclosures, no width of their own) size to the value; never
+          // past the page edge. Tabs with a width (layout blanks) keep it, so a long value never
+          // spreads over the printed words after the blank.
           const needed = value.length * 5.4 + 8;
           const maxW = Math.max(40, (pageWidth.get(mergedPage) ?? 612) - 12 - x);
           width = Math.min(Math.max(width, needed), maxW);
@@ -453,6 +456,37 @@ async function requirePackage(contractId: number) {
   return { contract, pkg, state: readState(contract.contractPrefillOverrides) };
 }
 
+let helveticaForMeasure: Promise<PDFFont> | null = null;
+function measureHelvetica(): Promise<PDFFont> {
+  helveticaForMeasure ??= PDFDocument.create().then((d) => d.embedFont(StandardFonts.Helvetica));
+  return helveticaForMeasure;
+}
+
+/**
+ * Value size per field key for this package: a size chosen in Review wins; otherwise the
+ * consistent fit-to-box size (pearSignFitFontSize). A key used by several boxes takes the
+ * smallest so the value fits in every one.
+ */
+async function effectiveFieldStyles(
+  pkg: Pick<DrawablePackage, 'fields' | 'styles'>,
+  values: Record<string, string>,
+): Promise<Record<string, PearSignFieldStyle>> {
+  const font = await measureHelvetica();
+  const measure = (t: string, s: number) => font.widthOfTextAtSize(t, s);
+  const chosen = cleanStyles(pkg.styles);
+  const out: Record<string, PearSignFieldStyle> = {};
+  for (const f of pkg.fields) {
+    if (f.signerFilled || f.type === 'signature' || f.type === 'initials') continue;
+    if (chosen[f.key]?.fontSize) {
+      out[f.key] = chosen[f.key];
+      continue;
+    }
+    const fit = pearSignFitFontSize(String(values[f.key] ?? ''), f, measure);
+    out[f.key] = { fontSize: Math.min(out[f.key]?.fontSize ?? fit, fit) };
+  }
+  return out;
+}
+
 function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string>): Record<string, string> {
   const out = { ...pkg.crmValues, ...pkg.overrides };
   for (const [k, v] of Object.entries(extra ?? {})) {
@@ -500,7 +534,7 @@ export async function drawPearSignPackage(
     values,
     signerFilledNames: new Set(pkg.fields.filter((f) => f.signerFilled).map((f) => f.name)),
     valueKeyFor: (name) => keyByName.get(name) ?? name,
-    styles: cleanStyles(pkg.styles),
+    styles: await effectiveFieldStyles(pkg, values),
     title,
   });
 }
@@ -632,7 +666,10 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
   } catch (err) {
     throw new PearSignContractError(`Could not load the package PDF: ${(err as Error)?.message}`, 502);
   }
-  const styles = cleanStyles(pkg.styles);
+  // Every CRM-filled box gets an explicit size + Helvetica (consistent across the package),
+  // instead of PearSign's per-box auto-fit; a size chosen in Review wins.
+  const styles = await effectiveFieldStyles(pkg, values);
+  const sentStyles = cleanStyles(pkg.styles);
   const createFields: PearSignTemplateCreateInput['fields'] = pkg.fields.map((f) => {
     const fontSize = f.signerFilled ? undefined : styles[f.key]?.fontSize;
     return {
@@ -641,7 +678,7 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
       required: f.required,
       roleId: f.roleId,
       position: { page: f.page, x: f.x, y: f.y, width: f.width, height: pearSignHeightForFont(f.height, fontSize) },
-      ...(fontSize ? { fontSize } : {}),
+      ...(fontSize ? { fontSize, fontFamily: 'helvetica' as const } : {}),
     };
   });
   let template: PearSignTemplate;
@@ -714,7 +751,7 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     ccEmails: pkg.ccEmails,
     crmCcMail: true,
     title: pkg.title,
-    package: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles },
+    package: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles: sentStyles },
     history: [
       ...(state?.history ?? []),
       ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt }] : []),

@@ -10,6 +10,7 @@ import {
   cleanFontSize,
   cleanStyles,
   mergeStyles,
+  pearSignFitFontSize,
   pearSignHeightForFont,
   isPearSignIndependentKey,
   pearSignIndependentKey,
@@ -155,5 +156,21 @@ describe('font sizes', () => {
     expect(pearSignHeightForFont(14, 8)).toBe(14);
     expect(pearSignHeightForFont(14, 12)).toBe(18);
     expect(pearSignHeightForFont(30, 12)).toBe(30);
+  });
+});
+
+describe('value font size (one consistent size per box)', () => {
+  // Rough Helvetica: 0.5em per character.
+  const measure = (t: string, s: number) => t.length * s * 0.5;
+
+  it('uses 75% of the box height, capped at 10pt', () => {
+    expect(pearSignFitFontSize('MA', { width: 160, height: 15 }, measure)).toBe(10);
+    expect(pearSignFitFontSize('MA', { width: 160, height: 12 }, measure)).toBe(9);
+    expect(pearSignFitFontSize('MA', { width: 160, height: 11 }, measure)).toBe(8.5);
+  });
+
+  it('shrinks only when the value is too wide, never below 6pt', () => {
+    expect(pearSignFitFontSize('X'.repeat(40), { width: 160, height: 15 }, measure)).toBe(7.5);
+    expect(pearSignFitFontSize('X'.repeat(200), { width: 60, height: 15 }, measure)).toBe(6);
   });
 });

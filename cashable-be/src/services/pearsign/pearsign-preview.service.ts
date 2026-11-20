@@ -17,7 +17,7 @@ import { pearSignHeightForFont, pearSignValueKey, type PearSignFieldStyle } from
 
 const SIGN_TYPES = new Set(['signature', 'initials']);
 const MAX_FONT = 10;
-const MIN_FONT = 5.5;
+const MIN_FONT = 6;
 const PAD_X = 2;
 
 type FieldPos = { page: number; x: number; y: number; width: number; height: number };
@@ -114,7 +114,8 @@ function layout(font: PDFFont, text: string, box: FieldPos, fontSize?: number): 
   if (fontSize) {
     return { size: fontSize, lines: font.widthOfTextAtSize(text, fontSize) <= width ? [text] : wrap(font, text, fontSize, width) };
   }
-  const start = Math.min(MAX_FONT, Math.max(MIN_FONT, box.height * 0.7));
+  // Same rule as pearSignFitFontSize / the Review modal: 75% of the box height, capped at 10pt.
+  const start = Math.max(MIN_FONT, Math.min(MAX_FONT, Math.round(box.height * 0.75 * 2) / 2));
   for (let size = start; size >= MIN_FONT; size -= 0.5) {
     if (font.widthOfTextAtSize(text, size) <= width) return { size, lines: [text] };
   }

@@ -37,7 +37,7 @@ const ZOOM_STEPS = [0.6, 0.75, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2];
 const VALUE_COLOR = "#0d1f73";
 const VALUE_FONT = "Helvetica, Arial, sans-serif";
 const MAX_PT = 10;
-const MIN_PT = 5.5;
+const MIN_PT = 6;
 const PAD_PT = 2;
 
 let measureCtx: CanvasRenderingContext2D | null = null;
@@ -51,7 +51,9 @@ function textWidthPt(text: string, sizePt: number): number {
 function fitText(text: string, box: PearSignFieldBox, fontSize?: number): { size: number; wrap: boolean } {
     const width = Math.max(4, box.width - PAD_PT * 2);
     if (fontSize) return { size: fontSize, wrap: textWidthPt(text, fontSize) > width };
-    const start = Math.min(MAX_PT, Math.max(MIN_PT, box.height * 0.7));
+    // Same rule as the server (pearSignFitFontSize): largest size the box height allows
+    // (75% of the box height), capped at 10pt, shrunk in half points only when the value is too wide.
+    const start = Math.max(MIN_PT, Math.min(MAX_PT, Math.round(box.height * 0.75 * 2) / 2));
     for (let s = start; s >= MIN_PT; s -= 0.5) if (textWidthPt(text, s) <= width) return { size: s, wrap: false };
     return { size: MIN_PT, wrap: true };
 }

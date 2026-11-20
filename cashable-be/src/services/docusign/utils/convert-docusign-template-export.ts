@@ -63,6 +63,23 @@ export type DocumentLayoutPlacement = {
     /** Max width of continuation lines (defaults to the first line's width). */
     width2?: number;
   };
+  /**
+   * Text printed in front of the value (e.g. "$" when the form prints its "$" at the end of
+   * the previous line — that printed "$" is covered by a layout `mask`). Only added when the
+   * value is non-empty and does not already start with it.
+   */
+  valuePrefix?: string;
+};
+
+/** White patch painted over printed template text when the PDF is loaded (PDF points, top-left origin). */
+export type DocumentLayoutMask = {
+  pageNumber: string;
+  x: string;
+  y: string;
+  width: string;
+  height: string;
+  /** Why this text is hidden (documentation only). */
+  reason?: string;
 };
 
 export type DocumentLayoutBrandingLogo = {
@@ -85,6 +102,8 @@ export type DocumentLayout = {
   branding?: {
     logo?: DocumentLayoutBrandingLogo;
   };
+  /** Printed template text to cover (see DocumentLayoutMask), applied when the PDF is loaded. */
+  masks?: DocumentLayoutMask[];
   pdf?: {
     source: 'contractTemplate' | 'boldSignTemplate';
     fileName?: string;

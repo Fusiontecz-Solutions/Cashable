@@ -2094,6 +2094,14 @@ function uniquifyEnvelopeTextTabLabel(
   return `${base}__${suffix}`;
 }
 
+/** Layout `valuePrefix` (e.g. "$") in front of a non-empty value that does not already have it. */
+export function withValuePrefix(placement: Pick<DocumentLayoutPlacement, 'valuePrefix'>, value: string): string {
+  const prefix = String(placement.valuePrefix ?? '');
+  const v = String(value ?? '');
+  if (!prefix || !v.trim() || v.trimStart().startsWith(prefix)) return v;
+  return `${prefix}${v.trimStart()}`;
+}
+
 function toTextTab(
   placement: DocumentLayoutPlacement,
   value: string,
@@ -2103,7 +2111,9 @@ function toTextTab(
   tabLabelSuffix?: string,
 ): DocuSignTab {
   const signerEditable = isSignerEditableTextPlacement(layoutKey, placement);
-  const tabValue = clearsValueAtSend(layoutKey, placement) ? '' : toPrefillUppercase(value, placement.variable || placement.sourceTabLabel);
+  const tabValue = clearsValueAtSend(layoutKey, placement)
+    ? ''
+    : withValuePrefix(placement, toPrefillUppercase(value, placement.variable || placement.sourceTabLabel));
   const variable = String(placement.variable || '').trim();
   const displayLabel =
     getPrefillDisplayLabel(variable) ||
@@ -2232,7 +2242,7 @@ export async function renderFlattenedLayoutPdf(
     );
     // CRM values can carry embedded newlines (e.g. "CRAIG\nLINDER"); drawText
     // always honors \n, which pushes the overflow onto the next form line.
-    const text = String(rawText || '').replace(/\s+/g, ' ').trim();
+    const text = withValuePrefix(placement, String(rawText || '').replace(/\s+/g, ' ').trim());
     if (!text) continue;
     // Signing dates auto-fill when the signer signs (date_signed field) — never
     // pre-burn today's date onto the signature rows.
