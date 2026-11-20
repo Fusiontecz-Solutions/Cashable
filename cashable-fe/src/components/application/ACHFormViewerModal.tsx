@@ -3473,6 +3473,10 @@ export default function ACHFormViewerModal({
                 ccEmails={pearSignCcEmails}
                 onCancel={() => setPearSignSendOpen(false)}
                 onConfirm={() => void handlePearSignSendConfirm()}
+                onEditorSent={() => {
+                    setPearSignSendOpen(false);
+                    onContractDocumentsChanged?.();
+                }}
                 onBackToReview={() => {
                     setPearSignSendOpen(false);
                     void pearSign.openPackageReview().catch((e: unknown) =>

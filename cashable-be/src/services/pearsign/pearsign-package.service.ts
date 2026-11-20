@@ -11,11 +11,15 @@ import {
 import { getPrefillDisplayLabel } from '../docusign/utils/prefill-layout-bridge';
 import {
   PearSignApiError,
+  createPearSignEditorSession,
   createPearSignTemplate,
+  getPearSignEditorSession,
   getPearSignTemplate,
   isPearSignConfigured,
   sendPearSignEnvelope,
+  type PearSignEditorField,
   type PearSignFieldType,
+  type PearSignSendResult,
   type PearSignTemplate,
   type PearSignTemplateCreateInput,
 } from './pearsign-client';
@@ -645,7 +649,10 @@ export async function buildPearSignPackagePreview(contractId: number, body: { va
 
 // ---------- send ----------
 
-export async function sendPearSignPackage(contractId: number, actorUserId: string | null, body: { message?: string } = {}) {
+type PreparedPackageSend = Awaited<ReturnType<typeof preparePackageSend>>;
+
+/** Everything a send needs, checked: values, the merged PDF and the PearSign fields. */
+async function preparePackageSend(contractId: number, body: { message?: string }) {
   const { contract, pkg, state } = await requirePackage(contractId);
   if (!contract.applicationId) throw new PearSignContractError('Contract has no application.');
   if (state?.envelopeId && isActivePearSignStatus(state.status)) {
@@ -667,7 +674,6 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     else blank++;
   }
 
-  // Per-send template from the merged package.
   let pdf: Buffer;
   try {
     pdf = await fetchRemoteAssetBuffer(pkg.mergedPdfUrl);
@@ -692,6 +698,95 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
       ...(fontSize ? { fontSize, fontFamily: 'helvetica' as const } : {}),
     };
   });
+  const signerRoles = pkg.recipients.map((r, i) => ({ roleId: r.roleId, name: r.roleName, order: i + 1 }));
+  const message =
+    String(body.message || '').trim().slice(0, 2000) ||
+    pkg.message ||
+    `Please review and sign your ${pkg.funderName || 'funding'} agreement.`;
+  return { contract, pkg, state, values, sendName, fieldValues, blank, pdf, sentStyles, createFields, signerRoles, message };
+}
+
+/** After PearSign has the envelope: save the state, link the Document, notify, move the deal. */
+async function recordPackageSent(
+  contractId: number,
+  actorUserId: string | null,
+  prep: Pick<PreparedPackageSend, 'contract' | 'pkg' | 'state' | 'message'>,
+  sent: {
+    envelopeId: string;
+    templateId: string | null;
+    status?: string | null;
+    values: Record<string, string>;
+    /** The package as sent (fields where they ended up), for the CRM-drawn PDF; null = PearSign's PDF. */
+    sentPackage: PearSignContractState['package'] | null;
+    pearSignEmailedSigners: boolean;
+    signingUrls: NonNullable<PearSignSendResult['signingUrls']>;
+    source: string;
+  },
+) {
+  const { contract, pkg, state, message } = prep;
+  const applicationId = contract.applicationId!;
+  const sentAt = new Date();
+  const next: PearSignContractState = {
+    templateId: sent.templateId ?? undefined,
+    ephemeralTemplate: Boolean(sent.templateId),
+    templateDeletedAt: null,
+    funderProfileId: pkg.funderProfileId ?? undefined,
+    ownerCount: pkg.recipients.length,
+    values: sent.values,
+    recipients: pkg.recipients,
+    envelopeId: sent.envelopeId,
+    status: sent.status || 'sent',
+    sentAt: sentAt.toISOString(),
+    completedAt: null,
+    customerSignedAt: null,
+    signedPdfUrl: null,
+    lastSyncedAt: sentAt.toISOString(),
+    sentByUserId: actorUserId,
+    ccEmails: pkg.ccEmails,
+    crmCcMail: true,
+    title: pkg.title,
+    ...(sent.sentPackage ? { package: sent.sentPackage } : {}),
+    history: [
+      ...(state?.history ?? []),
+      ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt }] : []),
+    ].slice(-20),
+  };
+  await writeState(contractId, next, { status: 'SENT' });
+  // Notifications inbox: "Contract Sent" (in-app only; the team is emailed from Viewed on).
+  await sendStatusNoticeOnce(contractId, applicationId, contract.funderName ?? null, next, null).catch((err) =>
+    console.error('[PearSign] sent notification failed', err),
+  );
+  await linkDocument(applicationId, actorUserId, sent.envelopeId, sentAt);
+  await syncApplicationWorkflowFromContractEnvelopeStatus(prisma, applicationId, 'SENT', {
+    source: sent.source,
+    contractId,
+    contractStatusPrevious: String(contract.status),
+    contractStatusNew: 'SENT',
+  }).catch((err) => console.warn('[PearSign] workflow sync after package send failed', err?.message));
+
+  // "Contract Sent" copy (filled package PDF) to every CC; logs PearSign's invites too.
+  const ccMail = await notifyPearSignContractSent({
+    contractId,
+    applicationId,
+    envelopeId: sent.envelopeId,
+    title: pkg.title,
+    funderName: pkg.funderName ?? contract.funderName,
+    values: sent.values,
+    signers: pkg.recipients.map((r) => ({ email: r.email, name: r.name, roleName: r.roleName })),
+    ccEmails: pkg.ccEmails ?? [],
+    pearSignEmailedSigners: sent.pearSignEmailedSigners,
+    signingUrls: sent.signingUrls,
+    message,
+    loadPdf: async () => (await downloadPearSignContractPdf(contractId, 'latest')).pdf,
+  });
+  return { next, ccMail };
+}
+
+export async function sendPearSignPackage(contractId: number, actorUserId: string | null, body: { message?: string } = {}) {
+  const prep = await preparePackageSend(contractId, body);
+  const { pkg, values, fieldValues, blank, pdf, sentStyles, createFields, signerRoles, message } = prep;
+
+  // Per-send template from the merged package.
   let template: PearSignTemplate;
   try {
     template = await createPearSignTemplate({
@@ -699,7 +794,7 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
       description: 'Per-send template generated by the Cashable CRM (contract + addendums + disclosure). Deleted after signing.',
       category: 'crm-package',
       status: 'active',
-      signerRoles: pkg.recipients.map((r, i) => ({ roleId: r.roleId, name: r.roleName, order: i + 1 })),
+      signerRoles,
       fields: createFields,
       documentBase64: pdf.toString('base64'),
     });
@@ -715,10 +810,6 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     );
   }
 
-  const message =
-    String(body.message || '').trim().slice(0, 2000) ||
-    pkg.message ||
-    `Please review and sign your ${pkg.funderName || 'funding'} agreement.`;
   // The CRM emails the signing invites from Gmail; PearSign only does when PEARSIGN_SIGNER_INVITES=pearsign.
   const sendEmail = pearSignShouldEmailSigners();
   let result;
@@ -742,61 +833,15 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     blank,
   });
 
-  const sentAt = new Date();
-  const next: PearSignContractState = {
+  const { next, ccMail } = await recordPackageSent(contractId, actorUserId, prep, {
+    envelopeId: result.envelopeId,
     templateId: template.id,
-    ephemeralTemplate: true,
-    templateDeletedAt: null,
-    funderProfileId: pkg.funderProfileId ?? undefined,
-    ownerCount: pkg.recipients.length,
+    status: result.status,
     values,
-    recipients: pkg.recipients,
-    envelopeId: result.envelopeId,
-    status: result.status || 'sent',
-    sentAt: sentAt.toISOString(),
-    completedAt: null,
-    customerSignedAt: null,
-    signedPdfUrl: null,
-    lastSyncedAt: sentAt.toISOString(),
-    sentByUserId: actorUserId,
-    ccEmails: pkg.ccEmails,
-    crmCcMail: true,
-    title: pkg.title,
-    package: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles: sentStyles },
-    history: [
-      ...(state?.history ?? []),
-      ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt }] : []),
-    ].slice(-20),
-  };
-  await writeState(contractId, next, { status: 'SENT' });
-  // Notifications inbox: "Contract Sent" (in-app only; the team is emailed from Viewed on).
-  if (contract.applicationId) {
-    await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName ?? null, next, null).catch((err) =>
-      console.error('[PearSign] sent notification failed', err),
-    );
-  }
-  await linkDocument(contract.applicationId, actorUserId, result.envelopeId, sentAt);
-  await syncApplicationWorkflowFromContractEnvelopeStatus(prisma, contract.applicationId, 'SENT', {
-    source: 'pearsign_package_send',
-    contractId,
-    contractStatusPrevious: String(contract.status),
-    contractStatusNew: 'SENT',
-  }).catch((err) => console.warn('[PearSign] workflow sync after package send failed', err?.message));
-
-  // "Contract Sent" copy (filled package PDF) to every CC; logs PearSign's invites too.
-  const ccMail = await notifyPearSignContractSent({
-    contractId,
-    applicationId: contract.applicationId,
-    envelopeId: result.envelopeId,
-    title: pkg.title,
-    funderName: pkg.funderName ?? contract.funderName,
-    values,
-    signers: pkg.recipients.map((r) => ({ email: r.email, name: r.name, roleName: r.roleName })),
-    ccEmails: pkg.ccEmails ?? [],
+    sentPackage: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles: sentStyles },
     pearSignEmailedSigners: sendEmail && result.emailSent !== false,
     signingUrls: result.signingUrls ?? [],
-    message,
-    loadPdf: async () => (await downloadPearSignContractPdf(contractId, 'latest')).pdf,
+    source: 'pearsign_package_send',
   });
 
   return {
@@ -808,4 +853,210 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
     documents: pkg.documents.map((d) => d.name),
     ccMail,
   };
+}
+
+// ---------- embedded PearSign editor ----------
+
+/** Open editor session per contract (outside the package, so a package write never clears it). */
+const EDITOR_SESSION_KEY = 'pearsignEditorSession';
+
+type EditorSessionRecord = { sessionId: string; createdAt: string; createdByUserId: string | null; message: string };
+
+/** An origin PearSign will let frame the editor: https, or http on localhost. */
+export function editorOrigin(raw: unknown): string {
+  const value = String(raw ?? '').trim();
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new PearSignContractError('Could not tell which CRM address is opening the editor. Reload the page and try again.');
+  }
+  const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
+    throw new PearSignContractError('The PearSign editor only opens on an https CRM address.');
+  }
+  return url.origin;
+}
+
+async function writeEditorSession(contractId: number, record: EditorSessionRecord | null) {
+  const value = JSON.stringify(record);
+  await prisma.$executeRaw`
+    UPDATE "Contract"
+    SET "contractPrefillOverrides" = jsonb_set(coalesce("contractPrefillOverrides", '{}'::jsonb), ARRAY[${EDITOR_SESSION_KEY}]::text[], ${value}::jsonb, true)
+    WHERE id = ${contractId}
+  `;
+}
+
+function readEditorSession(overrides: unknown): EditorSessionRecord | null {
+  const raw = (overrides as Record<string, unknown> | null | undefined)?.[EDITOR_SESSION_KEY] as
+    | EditorSessionRecord
+    | null
+    | undefined;
+  return raw && typeof raw.sessionId === 'string' ? raw : null;
+}
+
+/**
+ * Open the staged package in PearSign's embedded editor (send mode): the same PDF, fields and
+ * values the normal Send would use. Nothing is sent until the user clicks Send in the editor;
+ * then `finishPearSignPackageEditor` records the envelope like a normal send.
+ */
+export async function openPearSignPackageEditor(
+  contractId: number,
+  actorUserId: string | null,
+  body: { origin?: unknown; message?: string },
+) {
+  const origin = editorOrigin(body.origin);
+  const prep = await preparePackageSend(contractId, body);
+  const { pkg, fieldValues, pdf, createFields, signerRoles, message } = prep;
+  let session;
+  try {
+    session = await createPearSignEditorSession({
+      mode: 'send',
+      allowedOrigins: [origin],
+      documentBase64: pdf.toString('base64'),
+      fields: createFields,
+      signerRoles,
+      fieldValues,
+      recipients: pkg.recipients.map((r) => ({ roleId: r.roleId, name: r.name, email: r.email })),
+      options: { title: pkg.title, message, expirationDays: 30 },
+      metadata: { contractId, source: 'cashable-crm' },
+      expiresInSeconds: 3600,
+    });
+  } catch (e) {
+    if (e instanceof PearSignApiError) {
+      const hint =
+        e.status === 401 || e.status === 403
+          ? ' The PearSign API key on the server is not allowed to open the editor; it needs an owner/admin key with envelopes:create, envelopes:write and envelopes:send.'
+          : '';
+      throw new PearSignContractError(`${e.message}${hint}`, e.status >= 500 ? 502 : 400);
+    }
+    throw e;
+  }
+  if (!session.sessionId || !session.editorUrl) {
+    throw new PearSignContractError('PearSign did not return an editor link. Try again.', 502);
+  }
+  await writeEditorSession(contractId, {
+    sessionId: session.sessionId,
+    createdAt: new Date().toISOString(),
+    createdByUserId: actorUserId,
+    message,
+  });
+  console.info('[PearSign] editor session opened', { contractId, sessionId: session.sessionId, fields: createFields.length });
+  return { sessionId: session.sessionId, editorUrl: session.editorUrl, expiresAt: session.expiresAt ?? null };
+}
+
+/**
+ * The package as it went out of the editor: CRM fields matched back by name (moved/resized boxes
+ * keep their Review key), fields added in the editor get their own key, and values typed in the
+ * editor win. Used for the CRM-drawn PDF until the envelope is completed.
+ */
+export function packageFromEditorFields(
+  pkg: Pick<PearSignStagedPackage, 'fields' | 'recipients' | 'documents' | 'mergedPdfUrl'>,
+  sendName: Map<string, string>,
+  values: Record<string, string>,
+  sentStyles: Record<string, PearSignFieldStyle> | undefined,
+  finalFields: PearSignEditorField[],
+): { sentPackage: NonNullable<PearSignContractState['package']>; values: Record<string, string> } | null {
+  const byName = new Map<string, PearSignPackageField>();
+  for (const f of pkg.fields) byName.set(sendName.get(f.name) ?? f.name, f);
+  const outValues = { ...values };
+  const styles: Record<string, PearSignFieldStyle> = { ...(sentStyles ?? {}) };
+  const fields: PearSignPackageField[] = [];
+  for (const ef of finalFields) {
+    const p = ef.position ?? {};
+    const page = Number(p.page);
+    const x = Number(p.x);
+    const y = Number(p.y);
+    const width = Number(p.width);
+    const height = Number(p.height);
+    if (![page, x, y, width, height].every(Number.isFinite)) return null;
+    const orig = byName.get(ef.fieldName);
+    const kind: PackageFieldKind =
+      ef.type === 'signature' || ef.type === 'initials' || ef.type === 'date' ? ef.type : 'text';
+    const prefill = ef.prefillValue == null ? '' : String(ef.prefillValue);
+    const key = orig?.key ?? `editor__${ef.fieldName}`;
+    const signerFilled = orig ? orig.signerFilled : kind === 'signature' || kind === 'initials' || !prefill.trim();
+    if (!signerFilled && (prefill.trim() || !orig)) outValues[key] = prefill;
+    if (!signerFilled && Number(ef.fontSize) > 0) styles[key] = { ...(styles[key] ?? {}), fontSize: Number(ef.fontSize) };
+    fields.push({
+      name: ef.fieldName,
+      key,
+      label: orig?.label ?? ef.fieldName,
+      docIndex: orig?.docIndex ?? 0,
+      type: kind,
+      roleId: ef.roleId || orig?.roleId || pkg.recipients[0]?.roleId || '',
+      signerFilled,
+      required: ef.required ?? orig?.required ?? false,
+      page,
+      x,
+      y,
+      width,
+      height,
+    });
+  }
+  if (!fields.length) return null;
+  return {
+    sentPackage: { mergedPdfUrl: pkg.mergedPdfUrl, fields, recipients: pkg.recipients, documents: pkg.documents, styles },
+    values: outValues,
+  };
+}
+
+/**
+ * Called when the editor reports it finished (and safe to call again): reads the session from
+ * PearSign and, once it has an envelope, records it exactly like a normal send.
+ */
+export async function finishPearSignPackageEditor(
+  contractId: number,
+  actorUserId: string | null,
+  body: { sessionId?: unknown },
+) {
+  const contract = await loadContract(contractId);
+  const record = readEditorSession(contract.contractPrefillOverrides);
+  const sessionId = String(body.sessionId ?? '').trim();
+  if (!record || !sessionId || record.sessionId !== sessionId) {
+    throw new PearSignContractError('That PearSign editor session does not belong to this contract.', 404);
+  }
+  const session = await getPearSignEditorSession(sessionId);
+  const status = String(session.status || '').toLowerCase();
+  const current = readState(contract.contractPrefillOverrides);
+  if (session.envelopeId && current?.envelopeId === session.envelopeId) {
+    return { status: 'sent', state: current, alreadyRecorded: true };
+  }
+  if (status === 'cancelled' || status === 'expired') {
+    await writeEditorSession(contractId, null);
+    return { status, state: current };
+  }
+  if (status !== 'completed' || !session.envelopeId) {
+    if (status === 'completed' && session.delivery) {
+      throw new PearSignContractError(
+        `PearSign finished the editor but the envelope was not confirmed (delivery: ${session.delivery}). Check PearSign before sending again.`,
+        502,
+      );
+    }
+    return { status: status || 'open', state: current };
+  }
+
+  const prep = await preparePackageSend(contractId, { message: record.message });
+  const { pkg, values, sendName, sentStyles } = prep;
+  const edited = session.fields?.length ? packageFromEditorFields(pkg, sendName, values, sentStyles, session.fields) : null;
+  // PearSign's editor sends the signing invites itself.
+  const { next } = await recordPackageSent(contractId, actorUserId ?? record.createdByUserId, prep, {
+    envelopeId: session.envelopeId,
+    templateId: session.templateId ?? null,
+    status: 'sent',
+    values: edited?.values ?? values,
+    sentPackage: edited?.sentPackage ?? null,
+    pearSignEmailedSigners: true,
+    signingUrls: [],
+    source: 'pearsign_editor_send',
+  });
+  await writeEditorSession(contractId, null);
+  console.info('[PearSign] editor send recorded', {
+    contractId,
+    sessionId,
+    envelopeId: session.envelopeId,
+    fields: session.fields?.length ?? 0,
+    redrawable: Boolean(edited),
+  });
+  return { status: 'sent', state: next, documents: pkg.documents.map((d) => d.name) };
 }

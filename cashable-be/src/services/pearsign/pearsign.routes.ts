@@ -18,6 +18,8 @@ import {
   buildPearSignPackagePreview,
   getPearSignPackageReview,
   savePearSignPackageOverrides,
+  finishPearSignPackageEditor,
+  openPearSignPackageEditor,
   sendPearSignPackage,
 } from './pearsign-package.service';
 import { listPearSignTemplatesForFunder } from './pearsign-template-registry';
@@ -138,6 +140,22 @@ router.post(
 router.post(
   '/contracts/:contractId/package/send',
   handle((req) => sendPearSignPackage(contractIdParam(req), actorId(req), req.body ?? {})),
+);
+
+// Embedded PearSign editor: open a session (body: { origin, message }) and record the envelope
+// once the user clicks Send inside it (body: { sessionId }; safe to call again).
+router.post(
+  '/contracts/:contractId/package/editor',
+  handle((req) =>
+    openPearSignPackageEditor(contractIdParam(req), actorId(req), {
+      origin: req.get('origin') ?? req.body?.origin,
+      message: req.body?.message,
+    }),
+  ),
+);
+router.post(
+  '/contracts/:contractId/package/editor/finish',
+  handle((req) => finishPearSignPackageEditor(contractIdParam(req), actorId(req), req.body ?? {})),
 );
 
 router.post('/contracts/:contractId/sync', handle((req) => syncPearSignContract(contractIdParam(req))));

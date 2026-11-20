@@ -342,6 +342,45 @@ export function usePearSignContract(opts: {
         [contractId, payload, prefix, mode],
     );
 
+    /** Package only: open PearSign's embedded editor with the reviewed values (nothing is sent yet). */
+    const openEditor = useCallback(
+        async (extra: { message?: string }) => {
+            if (!contractId) throw new Error("No contract.");
+            setBusy("send");
+            try {
+                const res = await axiosPost(`${base}/package/editor`, {
+                    origin: window.location.origin,
+                    message: extra.message,
+                });
+                return res?.data?.data as { sessionId: string; editorUrl: string; expiresAt: string | null };
+            } catch (e) {
+                throw new Error(apiErrorMessage(e, "Could not open the PearSign editor."));
+            } finally {
+                setBusy(null);
+            }
+        },
+        [base, contractId],
+    );
+
+    /**
+     * Ask the CRM to record what the editor did. Returns status "sent" once the envelope is saved,
+     * "cancelled"/"expired" when the editor closed without sending, or "open" while it is still going.
+     */
+    const finishEditor = useCallback(
+        async (sessionId: string) => {
+            if (!contractId) throw new Error("No contract.");
+            try {
+                const res = await axiosPost(`${base}/package/editor/finish`, { sessionId });
+                const data = res?.data?.data as { status: string; state?: PearSignState | null };
+                if (data?.status === "sent" && data.state) setState(data.state);
+                return data;
+            } catch (e) {
+                throw new Error(apiErrorMessage(e, "Could not check the PearSign editor."));
+            }
+        },
+        [base, contractId],
+    );
+
     const sync = useCallback(async () => {
         if (!contractId) return null;
         setBusy("sync");
@@ -422,6 +461,8 @@ export function usePearSignContract(opts: {
         saveOverrides,
         saveStyles,
         send,
+        openEditor,
+        finishEditor,
         sync,
         voidEnvelope,
         openSentPdf,

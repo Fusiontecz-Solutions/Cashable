@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, RefreshCw, RotateCcw, Search, Send, Users, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -831,6 +831,7 @@ export function PearSignSendDialog({
     onCancel,
     onConfirm,
     onBackToReview,
+    onEditorSent,
 }: {
     ctl: PearSignController;
     open: boolean;
@@ -838,13 +839,29 @@ export function PearSignSendDialog({
     onCancel: () => void;
     onConfirm: () => void;
     onBackToReview: () => void;
+    /** Package only: called after the team sent the envelope from PearSign's editor. */
+    onEditorSent?: () => void;
 }) {
     const review = ctl.review;
     const sending = ctl.busy === "send";
+    const [editorOpen, setEditorOpen] = useState(false);
+    const canEdit = ctl.mode === "package" && Boolean(onEditorSent);
     const filled = review ? review.fields.filter((f) => String(review.values[f.key] ?? "").trim()).length : 0;
     const blank = review ? review.fields.length - filled : 0;
     return (
-        <Dialog open={open && !!review} onOpenChange={(o: boolean) => (!o && !sending ? onCancel() : undefined)}>
+        <>
+        {canEdit ? (
+            <PearSignEditorDialog
+                ctl={ctl}
+                open={editorOpen}
+                onClose={() => setEditorOpen(false)}
+                onSent={() => {
+                    setEditorOpen(false);
+                    onEditorSent?.();
+                }}
+            />
+        ) : null}
+        <Dialog open={open && !!review && !editorOpen} onOpenChange={(o: boolean) => (!o && !sending ? onCancel() : undefined)}>
             <DialogContent
                 className="sm:max-w-lg dark:bg-slate-900 dark:text-slate-100"
                 onPointerDownOutside={(e: { preventDefault: () => void }) => sending && e.preventDefault()}
@@ -914,16 +931,233 @@ export function PearSignSendDialog({
                         <Button type="button" variant="ghost" size="sm" className="text-xs" disabled={sending} onClick={onBackToReview}>
                             <Eye className="mr-1 h-3.5 w-3.5" /> Back to review
                         </Button>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button type="button" variant="outline" disabled={sending} onClick={onCancel}>
                                 Cancel
                             </Button>
+                            {canEdit ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={sending}
+                                    onClick={() => setEditorOpen(true)}
+                                    title="Open the package in PearSign's editor to move, resize or add fields, then send from there"
+                                >
+                                    <PencilRuler className="mr-1.5 h-4 w-4" />
+                                    Edit in PearSign
+                                </Button>
+                            ) : null}
                             <Button type="button" className="bg-[var(--brand)] text-white hover:opacity-90" disabled={sending} onClick={onConfirm}>
                                 {sending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
                                 {sending ? "Sending…" : "Send via PearSign"}
                             </Button>
                         </div>
                     </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+        </>
+    );
+}
+
+
+// ---------- Embedded PearSign editor ----------
+
+/** How often the CRM asks PearSign whether the editor has sent (postMessage usually beats it). */
+const EDITOR_POLL_MS = 5000;
+
+/**
+ * PearSign's own editor, framed full screen: the reviewed package with every CRM value in place.
+ * The team can move, resize, add or delete fields and clicks Send inside PearSign; the CRM then
+ * records the envelope exactly like a normal send.
+ */
+export function PearSignEditorDialog({
+    ctl,
+    open,
+    onClose,
+    onSent,
+}: {
+    ctl: PearSignController;
+    open: boolean;
+    onClose: () => void;
+    onSent: () => void;
+}) {
+    const [session, setSession] = useState<{ sessionId: string; editorUrl: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const doneRef = useRef(false);
+    const checkingRef = useRef(false);
+    const ctlRef = useRef(ctl);
+    ctlRef.current = ctl;
+    const cbRef = useRef({ onClose, onSent });
+    cbRef.current = { onClose, onSent };
+
+    // A fresh session each time the editor opens (an editor link works once).
+    useEffect(() => {
+        if (!open) {
+            setSession(null);
+            setError(null);
+            doneRef.current = false;
+            return;
+        }
+        let cancelled = false;
+        setLoading(true);
+        ctlRef.current
+            .openEditor({})
+            .then((s) => {
+                if (!cancelled) setSession({ sessionId: s.sessionId, editorUrl: s.editorUrl });
+            })
+            .catch((e: unknown) => {
+                if (!cancelled) setError(e instanceof Error ? e.message : "Could not open the PearSign editor.");
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
+
+    /** Ask the CRM what the editor did; returns true once the editor is finished either way. */
+    const check = useCallback(
+        async (quiet: boolean): Promise<boolean> => {
+            if (!session || doneRef.current || checkingRef.current) return doneRef.current;
+            checkingRef.current = true;
+            try {
+                const out = await ctlRef.current.finishEditor(session.sessionId);
+                if (out?.status === "sent") {
+                    doneRef.current = true;
+                    toast.success("Contract sent from the PearSign editor. PearSign emailed the signing links.", {
+                        autoClose: 9000,
+                    });
+                    cbRef.current.onSent();
+                    return true;
+                }
+                if (out?.status === "cancelled" || out?.status === "expired") {
+                    doneRef.current = true;
+                    toast.info(
+                        out.status === "expired"
+                            ? "The PearSign editor expired. Nothing was sent."
+                            : "PearSign editor closed. Nothing was sent.",
+                    );
+                    cbRef.current.onClose();
+                    return true;
+                }
+                if (!quiet) toast.info("PearSign has not sent it yet. Click Send inside the editor first.");
+                return false;
+            } catch (e) {
+                if (!quiet) toast.error(e instanceof Error ? e.message : "Could not check the PearSign editor.");
+                return false;
+            } finally {
+                checkingRef.current = false;
+            }
+        },
+        [session],
+    );
+
+    // PearSign posts events to this page; poll as well in case a message is missed.
+    useEffect(() => {
+        if (!session) return;
+        let editorOrigin = "";
+        try {
+            editorOrigin = new URL(session.editorUrl).origin;
+        } catch {
+            /* poll only */
+        }
+        const onMessage = (event: MessageEvent) => {
+            if (!editorOrigin || event.origin !== editorOrigin) return;
+            const data = event.data as { type?: unknown; event?: unknown; message?: unknown } | string | null;
+            const type = String((typeof data === "string" ? data : (data?.type ?? data?.event)) ?? "").toLowerCase();
+            if (/completed|sent|cancel|closed/.test(type)) void check(true);
+            else if (/error/.test(type)) {
+                const msg = typeof data === "object" && data && typeof data.message === "string" ? data.message : "";
+                toast.error(msg ? `PearSign editor: ${msg}` : "The PearSign editor reported an error.");
+            }
+        };
+        window.addEventListener("message", onMessage);
+        const timer = window.setInterval(() => void check(true), EDITOR_POLL_MS);
+        return () => {
+            window.removeEventListener("message", onMessage);
+            window.clearInterval(timer);
+        };
+    }, [session, check]);
+
+    const requestClose = useCallback(async () => {
+        if (session && !doneRef.current) {
+            // It may have just been sent: record it rather than lose it.
+            if (await check(true)) return;
+            if (!window.confirm("Close the PearSign editor? Nothing is sent unless you clicked Send inside PearSign.")) return;
+        }
+        cbRef.current.onClose();
+    }, [session, check]);
+
+    return (
+        <Dialog open={open} onOpenChange={(o: boolean) => (!o ? void requestClose() : undefined)}>
+            <DialogContent
+                showCloseButton={false}
+                onEscapeKeyDown={(e: { preventDefault: () => void }) => {
+                    e.preventDefault();
+                    void requestClose();
+                }}
+                onPointerDownOutside={(e: { preventDefault: () => void }) => e.preventDefault()}
+                onInteractOutside={(e: { preventDefault: () => void }) => e.preventDefault()}
+                className="flex h-[min(96vh,calc(100dvh-1rem))] w-[min(1700px,97vw)] max-w-[97vw] flex-col gap-0 overflow-hidden bg-white p-0 dark:bg-slate-900 dark:text-slate-100 sm:max-w-[97vw]"
+            >
+                <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5 dark:border-slate-700">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--brand)]/12 text-[var(--brand)]">
+                            <PencilRuler className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <DialogTitle className="truncate text-sm font-semibold">
+                                Edit in PearSign — {ctl.review?.funderName || "Contract"}
+                            </DialogTitle>
+                            <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                                Move, resize or add fields, then click Send in the editor. The CRM records the envelope automatically.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {session ? (
+                            <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => void check(false)}>
+                                <RefreshCw className="mr-1 h-3.5 w-3.5" /> I sent it — check now
+                            </Button>
+                        ) : null}
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => void requestClose()}
+                            title="Close the editor"
+                        >
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+                <div className="relative min-h-0 flex-1 bg-slate-50 dark:bg-slate-950">
+                    {loading ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            Preparing the package in PearSign…
+                        </div>
+                    ) : error ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                            <AlertTriangle className="h-7 w-7 text-amber-500" />
+                            <p className="max-w-xl text-sm text-slate-700 dark:text-slate-200">{error}</p>
+                            <Button type="button" variant="outline" size="sm" onClick={() => cbRef.current.onClose()}>
+                                Back
+                            </Button>
+                        </div>
+                    ) : session ? (
+                        <iframe
+                            key={session.sessionId}
+                            src={session.editorUrl}
+                            title="PearSign editor"
+                            className="h-full w-full border-0 bg-white"
+                            allow="clipboard-read; clipboard-write"
+                        />
+                    ) : null}
                 </div>
             </DialogContent>
         </Dialog>

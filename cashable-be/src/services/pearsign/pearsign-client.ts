@@ -295,3 +295,72 @@ export async function downloadPearSignEnvelopePdf(
   });
   return Buffer.from(data);
 }
+
+// ---------- Embedded editor ----------
+
+export type PearSignEditorField = PearSignFieldFormatting & {
+  fieldId?: string;
+  fieldName: string;
+  type: string;
+  required?: boolean;
+  roleId?: string;
+  position?: Partial<PearSignFieldPosition>;
+  prefillValue?: string | number | boolean | null;
+  readOnly?: boolean;
+  textAlign?: string;
+};
+
+/** POST /editor-sessions (embedded): an editor the CRM frames in its own page. */
+export type PearSignEditorSessionInput = {
+  documentBase64: string;
+  fields: PearSignTemplateCreateInput['fields'];
+  signerRoles: Array<{ roleId: string; name: string; order: number }>;
+  fieldValues?: Record<string, string | number | boolean>;
+  recipients: PearSignRecipientInput[];
+  /** send: the editor's Send creates the envelope. */
+  mode: 'send' | 'return';
+  /** Origins only (https; http only for localhost). */
+  allowedOrigins: string[];
+  sender?: { name?: string; email?: string };
+  options?: {
+    title?: string;
+    message?: string;
+    expirationDays?: number;
+    allowAddFields?: boolean;
+    allowDeleteFields?: boolean;
+    defaultFontSize?: number;
+  };
+  metadata?: Record<string, string | number | boolean>;
+  expiresInSeconds?: number;
+};
+
+export type PearSignEditorSession = {
+  sessionId: string;
+  /** open | completing | completed | cancelled | expired */
+  status?: string;
+  mode?: string;
+  editorUrl?: string;
+  expiresAt?: string;
+  templateId?: string | null;
+  envelopeId?: string | null;
+  /** 'incomplete' / 'unknown' when PearSign's send step did not finish cleanly. */
+  delivery?: string | null;
+  metadata?: Record<string, unknown> | null;
+  fields?: PearSignEditorField[];
+};
+
+export async function createPearSignEditorSession(input: PearSignEditorSessionInput): Promise<PearSignEditorSession> {
+  const res = await request<{ data?: PearSignEditorSession } & Partial<PearSignEditorSession>>('POST', '/editor-sessions', {
+    data: input,
+    timeoutMs: 180_000,
+  });
+  return (res.data ?? res) as PearSignEditorSession;
+}
+
+export async function getPearSignEditorSession(sessionId: string): Promise<PearSignEditorSession> {
+  const res = await request<{ data?: PearSignEditorSession } & Partial<PearSignEditorSession>>(
+    'GET',
+    `/editor-sessions/${encodeURIComponent(sessionId)}`,
+  );
+  return (res.data ?? res) as PearSignEditorSession;
+}

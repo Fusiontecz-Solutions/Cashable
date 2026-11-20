@@ -11349,6 +11349,10 @@ const PDFViewerModal = ({
                 ccEmails={pearSignCcEmails}
                 onCancel={() => setPearSignSendOpen(false)}
                 onConfirm={() => void handlePearSignSendConfirm()}
+                onEditorSent={() => {
+                    setPearSignSendOpen(false);
+                    void refreshContractSigningStateRef.current?.(true);
+                }}
                 onBackToReview={() => {
                     setPearSignSendOpen(false);
                     if (pearSign.mode === "package") void openPearSignPackageReviewRef.current();
