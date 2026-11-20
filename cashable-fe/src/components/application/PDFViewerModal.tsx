@@ -5541,9 +5541,7 @@ const PDFViewerModal = ({
             } catch (e) {
                 if ((e as { code?: string })?.code !== "PEARSIGN_ALREADY_COMPLETED") throw e;
                 const again = window.confirm(
-                    "A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.
-
-" +
+                    "A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.\n\n" +
                         "Send it again anyway? It goes out as a new envelope and PearSign records it as a repeat. Nothing earlier is voided.",
                 );
                 if (!again) return;
