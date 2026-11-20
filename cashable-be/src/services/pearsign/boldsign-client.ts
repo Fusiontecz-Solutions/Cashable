@@ -81,6 +81,14 @@ async function request<T>(
       /* not JSON */
     }
   }
+  if (res.status === 429) {
+    console.warn(`[BoldSign] ${method} ${path} → 429 (hourly API limit reached)`);
+    throw new PearSignApiError(
+      "BoldSign's hourly API limit for this account is used up. Wait a few minutes and try again (BoldSign resets it within the hour).",
+      429,
+      body,
+    );
+  }
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, any>;
   const errors = b.errors && typeof b.errors === 'object' ? Object.values(b.errors).flat().join('; ') : '';
   const msg = String(b.error || b.message || b.title || errors || `HTTP ${res.status}`);
@@ -194,10 +202,19 @@ export async function boldSignDocumentProperties(documentId: string): Promise<Bo
   return request<BoldSignDocumentProperties>('GET', '/v1/document/properties', { params: { documentId } });
 }
 
+/** Recent downloads: the archive, the Signed email and a download often want the same PDF at once. */
+const downloadCache = new Map<string, { at: number; buf: Buffer }>();
+const DOWNLOAD_CACHE_MS = 10 * 60_000;
+
 /** The document PDF (the signed copy once completed). */
 export async function boldSignDownload(documentId: string): Promise<Buffer> {
+  const hit = downloadCache.get(documentId);
+  if (hit && Date.now() - hit.at < DOWNLOAD_CACHE_MS) return hit.buf;
   const data = await request<ArrayBuffer>('GET', '/v1/document/download', { params: { documentId }, binary: true, timeoutMs: 120_000 });
-  return Buffer.from(data);
+  const buf = Buffer.from(data);
+  for (const [k, v] of downloadCache) if (Date.now() - v.at >= DOWNLOAD_CACHE_MS) downloadCache.delete(k);
+  downloadCache.set(documentId, { at: Date.now(), buf });
+  return buf;
 }
 
 /** Void ("revoke") a document out for signature. */
@@ -226,7 +243,20 @@ export function boldSignStatus(p: BoldSignDocumentProperties): string {
 
 /** BoldSign properties in the PearSign envelope shape the CRM's sync already understands. */
 export async function boldSignEnvelopeDetails(envelopeId: string): Promise<PearSignEnvelopeDetails> {
-  const p = await boldSignDocumentProperties(boldSignDocumentId(envelopeId));
+  return boldSignDetailsFrom(envelopeId, await boldSignDocumentProperties(boldSignDocumentId(envelopeId)));
+}
+
+/**
+ * Same mapping from a document object BoldSign already gave us (a verified webhook payload carries
+ * one), so a status update costs no API call. Null when the object has no status.
+ */
+export function boldSignDetailsFromPayload(envelopeId: string, data: unknown): PearSignEnvelopeDetails | null {
+  const p = data as BoldSignDocumentProperties | null;
+  if (!p || typeof p !== 'object' || !p.status) return null;
+  return boldSignDetailsFrom(envelopeId, p);
+}
+
+function boldSignDetailsFrom(envelopeId: string, p: BoldSignDocumentProperties): PearSignEnvelopeDetails {
   const status = boldSignStatus(p);
   return {
     envelopeId,
@@ -244,4 +274,9 @@ export async function boldSignEnvelopeDetails(envelopeId: string): Promise<PearS
       };
     }),
   };
+}
+
+/** Drop a cached download (a document just completed: the next download must be the signed copy). */
+export function forgetBoldSignDownload(envelopeId: string): void {
+  downloadCache.delete(boldSignDocumentId(envelopeId));
 }

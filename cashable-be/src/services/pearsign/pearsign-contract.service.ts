@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { forgetBoldSignDownload, isBoldSignEnvelopeId } from './boldsign-client';
 import type { PackageTypedCoj } from '../docusign/utils/coj-typed-document';
 import prisma from '../../config/prismaClient';
 import uploadService from '../uploadService';
@@ -960,13 +961,39 @@ export function pearSignCustomerSignedAt(
   return signed ? rcp.signedAt ?? new Date().toISOString() : null;
 }
 
-export async function syncPearSignContract(contractId: number) {
+/** A BoldSign document is re-read at most this often by Refresh / page loads (its API allows few calls an hour). */
+const BOLDSIGN_MIN_SYNC_MS = 60_000;
+
+/**
+ * Refresh the contract's envelope status. `details`: the status already known (a verified BoldSign
+ * webhook carries it), so no API call is made. BoldSign documents are otherwise re-read at most
+ * once a minute; a finished one is never re-read.
+ */
+export async function syncPearSignContract(contractId: number, opts: { details?: PearSignEnvelopeDetails } = {}) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
   if (!state?.envelopeId) return { state, changed: false };
 
-  const env = await getPearSignEnvelope(state.envelopeId);
+  const boldSign = isBoldSignEnvelopeId(state.envelopeId);
+  if (boldSign && !opts.details) {
+    const current = String(state.status || '').toLowerCase();
+    const finished = ['completed', 'voided', 'declined', 'expired'].includes(current);
+    const needsArchive = current === 'completed' && !state.signedPdfUrl; // still to fetch the signed copy
+    const recent = Date.now() - (Date.parse(String(state.lastSyncedAt || '')) || 0) < BOLDSIGN_MIN_SYNC_MS;
+    if (!needsArchive && (finished || recent)) return { state, changed: false };
+  }
+  // Webhook events can arrive out of order: a status from a payload never moves the contract back
+  // (a late "Viewed" after "Completed" is ignored).
+  if (opts.details) {
+    const rank = (s: string) =>
+      ({ draft: 0, sent: 1, viewed: 2, partially_signed: 3, signed: 3, completed: 4, voided: 4, declined: 4, expired: 4 })[s] ?? 1;
+    const from = String(state.status || 'sent').toLowerCase();
+    const to = String(opts.details.status || '').toLowerCase();
+    if (rank(to) < rank(from) || (rank(from) === 4 && to !== from)) return { state, changed: false };
+  }
+  const env = opts.details ?? (await getPearSignEnvelope(state.envelopeId));
   const status = String(env.status || state.status || 'sent').toLowerCase();
+  if (boldSign && status === 'completed' && !state.signedPdfUrl) forgetBoldSignDownload(state.envelopeId);
   const customerSignedAt = state.customerSignedAt ?? pearSignCustomerSignedAt(state, env);
   const changed = status !== String(state.status || '').toLowerCase() || !!customerSignedAt !== !!state.customerSignedAt;
   const next: PearSignContractState = {
@@ -1071,7 +1098,7 @@ export async function voidPearSignContract(contractId: number, opts: { releaseIf
       const remote = await getPearSignEnvelope(state.envelopeId).catch(() => null);
       const remoteStatus = String(remote?.status || '').toLowerCase();
       if (remote && !isActivePearSignStatus(remoteStatus)) {
-        const synced = await syncPearSignContract(contractId);
+        const synced = await syncPearSignContract(contractId, { details: remote });
         return { state: synced.state, alreadyEnded: remoteStatus };
       }
       throw new PearSignContractError(
@@ -1090,7 +1117,7 @@ export async function voidPearSignContract(contractId: number, opts: { releaseIf
     const remoteStatus = String(remote?.status || '').toLowerCase();
     if (remote && !isActivePearSignStatus(remoteStatus)) {
       // Already finished in PearSign: just catch the CRM up (no error).
-      const synced = await syncPearSignContract(contractId);
+      const synced = await syncPearSignContract(contractId, { details: remote });
       return { state: synced.state, alreadyEnded: remoteStatus };
     }
     if (remote) {
@@ -1155,6 +1182,14 @@ export async function downloadPearSignContractPdf(
 
   const isCurrent = envelopeId === state.envelopeId;
   const completed = String(state.status || '').toLowerCase() === 'completed';
+  // The signed copy archived at completion: no call to the signing service.
+  if (version === 'latest' && isCurrent && completed && state.signedPdfUrl) {
+    try {
+      return { pdf: await fetchRemoteAssetBuffer(state.signedPdfUrl), envelopeId, filledByCrm: false };
+    } catch (err) {
+      console.warn('[PearSign] archived signed PDF unavailable, downloading from the provider:', (err as Error)?.message);
+    }
+  }
   if (version === 'latest' && isCurrent && !completed && state.values && state.package) {
     try {
       const { drawPearSignPackage } = await import('./pearsign-package.service');
@@ -1190,11 +1225,23 @@ export async function downloadPearSignContractPdf(
 
 /** Contracts with a PearSign envelope still out for signature (for the status job). */
 export async function listActivePearSignContractIds(): Promise<number[]> {
+  // BoldSign allows few API calls per hour and pushes changes by webhook, so a BoldSign document
+  // is only re-checked here when it has not been synced for BOLDSIGN_STATUS_POLL_MINUTES.
+  // With the signed webhook in place, this is only a safety net: every 6 hours (else 30 minutes).
+  const boldSignMinutes = Math.max(
+    5,
+    Number(process.env.BOLDSIGN_STATUS_POLL_MINUTES) || (process.env.BOLDSIGN_WEBHOOK_SECRET?.trim() ? 360 : 30),
+  );
   const rows = await prisma.$queryRaw<Array<{ id: number }>>`
     SELECT id FROM "Contract"
     WHERE "contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'envelopeId' IS NOT NULL
       AND lower(coalesce("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'status', 'sent'))
           IN ('sent', 'in_signing', 'viewed', 'signed', 'partially_signed')
+      AND NOT (
+        ("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'envelopeId') LIKE 'bs-%'
+        AND coalesce(("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'lastSyncedAt')::timestamptz, 'epoch'::timestamptz)
+            > now() - make_interval(mins => ${boldSignMinutes}::int)
+      )
   `;
   return rows.map((x) => Number(x.id));
 }

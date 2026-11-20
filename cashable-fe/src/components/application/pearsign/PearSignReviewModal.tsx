@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { signingProviderName } from "@/lib/signingProvider";
+import { isBoldSignActive, signingProviderName } from "@/lib/signingProvider";
 import { toast } from "react-toastify";
 import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
@@ -981,6 +981,11 @@ export function PearSignSendDialog({
 
 /** How often the CRM asks PearSign whether the editor has sent (postMessage usually beats it). */
 const EDITOR_POLL_MS = 5000;
+/*
+ * While the editor runs in its own tab there is no repeated check (BoldSign allows few API calls an
+ * hour): after Send it redirects that tab to /esign-done.html, which messages this tab; closing the
+ * tab triggers one check, and "I sent it — check now" checks on demand.
+ */
 
 /**
  * PearSign's own editor, framed full screen: the reviewed package with every CRM value in place.
@@ -1139,6 +1144,11 @@ export function PearSignEditorDialog({
             /* poll only */
         }
         const onMessage = (event: MessageEvent) => {
+            // The CRM's own done page (opened by the editor after Send).
+            if (event.origin === window.location.origin && (event.data as { type?: unknown } | null)?.type === "esign:sent") {
+                void check(true);
+                return;
+            }
             if (!editorOrigin || event.origin !== editorOrigin) return;
             const data = event.data as { type?: unknown; event?: unknown; message?: unknown } | string | null;
             const type = String((typeof data === "string" ? data : (data?.type ?? data?.event)) ?? "").toLowerCase();
@@ -1149,12 +1159,21 @@ export function PearSignEditorDialog({
             }
         };
         window.addEventListener("message", onMessage);
-        const timer = window.setInterval(() => void check(true), EDITOR_POLL_MS);
+        // BoldSign (tab or frame) reports Send through /esign-done.html, so it is never polled.
+        const timer = popup || isBoldSignActive() ? null : window.setInterval(() => void check(true), EDITOR_POLL_MS);
+        // Editor tab closed: check once (it may have been sent just before closing).
+        let tabWasOpen = Boolean(popupRef.current && !popupRef.current.closed);
+        const tabWatch = window.setInterval(() => {
+            const open = Boolean(popupRef.current && !popupRef.current.closed);
+            if (tabWasOpen && !open) void check(true);
+            tabWasOpen = open;
+        }, 2000);
         return () => {
             window.removeEventListener("message", onMessage);
-            window.clearInterval(timer);
+            if (timer) window.clearInterval(timer);
+            window.clearInterval(tabWatch);
         };
-    }, [session, check]);
+    }, [session, check, popup]);
 
     const requestClose = useCallback(async () => {
         if (session && !doneRef.current) {

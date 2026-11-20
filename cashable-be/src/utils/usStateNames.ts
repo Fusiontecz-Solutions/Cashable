@@ -81,10 +81,20 @@ export function usStateCode(value: unknown): string {
  * ("Washington") is left alone because it sits before the state position.
  */
 export function normalizeUsAddress(value: unknown): string {
-  const parts = String(value ?? '')
+  let parts = String(value ?? '')
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean);
+  // "3950 ASHBURNHAM DR. HOUSTON, TX 77082-5940, HOUSTON, TX, 77082-5940": the street line already
+  // held the whole address and city/state/ZIP were appended again — drop the repeated tail.
+  if (parts.length >= 4) {
+    const zip = /^\d{5}(?:-\d{4})?$/.test(parts[parts.length - 1]) ? parts[parts.length - 1] : '';
+    const zip5 = zip.slice(0, 5);
+    const tailStart = parts.length - 3;
+    const head = parts.slice(0, tailStart).join(', ').toUpperCase();
+    const city = parts[tailStart].toUpperCase();
+    if (zip5 && head.includes(zip5) && city && head.includes(city)) parts = parts.slice(0, tailStart);
+  }
   return parts
     .map((p, i) => {
       if (i < 2) return p;

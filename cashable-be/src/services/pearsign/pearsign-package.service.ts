@@ -1175,7 +1175,7 @@ export async function openPearSignPackageEditor(
 ) {
   const origins = editorOrigins(body.pageOrigin, body.origin);
   const prep = await preparePackageSend(contractId, body);
-  if (signingProvider() === 'boldsign') return openBoldSignPackageEditor(contractId, actorUserId, prep);
+  if (signingProvider() === 'boldsign') return openBoldSignPackageEditor(contractId, actorUserId, prep, origins[0]);
   const { pkg, fieldValues, pdf, createFields, signerRoles, message } = prep;
   let session;
   try {
@@ -1278,10 +1278,17 @@ export function packageFromEditorFields(
  * BoldSign's editor: the reviewed package as a BoldSign draft opened on its prepare page, where
  * fields can be moved, resized or added before clicking Send. The draft id is the session id.
  */
-async function openBoldSignPackageEditor(contractId: number, actorUserId: string | null, prep: PreparedPackageSend) {
+async function openBoldSignPackageEditor(
+  contractId: number,
+  actorUserId: string | null,
+  prep: PreparedPackageSend,
+  crmOrigin: string,
+) {
   let created: { documentId: string; sendUrl: string };
   try {
     created = await boldSignCreateEmbeddedSend({
+      // After Send, BoldSign opens this CRM page, which tells the CRM tab at once (no polling).
+      redirectUrl: `${crmOrigin}/esign-done.html`,
       title: prep.pkg.title,
       message: prep.message,
       pdfBase64: [prep.pdf.toString('base64')],

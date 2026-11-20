@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Contract sent</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #0f172a; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      .box { max-width: 26rem; padding: 2rem; text-align: center; }
+      .ok { width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+      h1 { margin: 0 0 .4rem; font-size: 1.15rem; }
+      p { margin: 0; color: #475569; }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="ok">&#10003;</div>
+      <h1>Contract sent</h1>
+      <p>The signer will get an email to sign. You can close this tab — the CRM is updating the contract now.</p>
+    </div>
+    <script>
+      // The e-signature editor redirects here after Send; tell the CRM tab that opened it.
+      // In a tab: the CRM tab that opened it. Inside the CRM (framed editor): the CRM page itself.
+      for (const target of [window.opener, window.parent !== window ? window.parent : null]) {
+        try {
+          if (target) target.postMessage({ type: "esign:sent" }, window.location.origin);
+        } catch (e) {
+          /* gone */
+        }
+      }
+    </script>
+  </body>
+</html>

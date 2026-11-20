@@ -22,3 +22,15 @@ describe('normalizeUsAddress (address lines use state codes)', () => {
     ['', ''],
   ])('%s', (input, out) => expect(normalizeUsAddress(input)).toBe(out));
 });
+
+describe('normalizeUsAddress — repeated city/state/ZIP', () => {
+  it('drops a city, state and ZIP that the street line already contains', () => {
+    expect(normalizeUsAddress('3950 ASHBURNHAM DR. HOUSTON, TX 77082-5940, HOUSTON, TX, 77082-5940')).toBe(
+      '3950 ASHBURNHAM DR. HOUSTON, TX 77082-5940',
+    );
+  });
+  it('keeps a normal address as it is', () => {
+    expect(normalizeUsAddress('535 NORTH BRAND BOULEVARD, GLENDALE, CA, 91203')).toBe('535 NORTH BRAND BOULEVARD, GLENDALE, CA, 91203');
+    expect(normalizeUsAddress('12 MAIN ST, SUITE 4, HOUSTON, TX, 77082')).toBe('12 MAIN ST, SUITE 4, HOUSTON, TX, 77082');
+  });
+});

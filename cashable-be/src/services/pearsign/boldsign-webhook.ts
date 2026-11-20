@@ -1,20 +1,22 @@
 import crypto from 'crypto';
 import express, { type Request, type Response } from 'express';
-import { toBoldSignEnvelopeId } from './boldsign-client';
+import { boldSignDetailsFromPayload, toBoldSignEnvelopeId } from './boldsign-client';
 import { findContractIdByPearSignEnvelopeId, syncPearSignContract } from './pearsign-contract.service';
 
 /**
  * BoldSign webhook receiver — PUBLIC (no JWT), mounted at /api/v1/boldsign/webhook.
  * Register this URL in BoldSign → API → Webhooks (document events).
  *
- * The payload only says *which* document changed; the CRM then re-reads the document from
- * BoldSign (syncPearSignContract, same path as the 5-minute status job), so a forged call can
- * never set a status. When BOLDSIGN_WEBHOOK_SECRET is set, the signature is also checked:
+ * With BOLDSIGN_WEBHOOK_SECRET set, a correctly signed payload's document status is used directly
+ * (no BoldSign API call — the account allows few calls an hour). Without a secret (or if the payload
+ * has no status) the CRM re-reads the document from BoldSign instead, so a forged call can never
+ * set a status. Signature:
  *   X-BoldSign-Signature: t=<unix seconds>, s0=<hex HMAC-SHA256(secret, `${t}.${rawBody}`)>
  */
-function verifySignature(req: Request): { ok: boolean; reason?: string } {
+/** `verified`: the signature matched, so the payload's document status can be used as-is. */
+function verifySignature(req: Request): { ok: boolean; verified?: boolean; reason?: string } {
   const secret = process.env.BOLDSIGN_WEBHOOK_SECRET?.trim();
-  if (!secret) return { ok: true }; // payload is never trusted; see above
+  if (!secret) return { ok: true, verified: false }; // payload not trusted: the CRM re-reads BoldSign
   const header = String(req.header('x-boldsign-signature') || '').trim();
   const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
   if (!header) return { ok: false, reason: 'missing X-BoldSign-Signature header' };
@@ -31,7 +33,7 @@ function verifySignature(req: Request): { ok: boolean; reason?: string } {
   for (const msg of messages) {
     const expected = crypto.createHmac('sha256', secret).update(msg).digest('hex');
     for (const g of given) {
-      if (g.length === expected.length && crypto.timingSafeEqual(Buffer.from(g), Buffer.from(expected))) return { ok: true };
+      if (g.length === expected.length && crypto.timingSafeEqual(Buffer.from(g), Buffer.from(expected))) return { ok: true, verified: true };
     }
   }
   return { ok: false, reason: 'signature mismatch (check BOLDSIGN_WEBHOOK_SECRET matches this webhook in BoldSign)' };
@@ -69,7 +71,9 @@ async function handleBoldSignWebhook(req: Request, res: Response): Promise<void>
       console.warn(`[BoldSign webhook] ${event}: no contract for document ${documentId}`);
       return;
     }
-    const { changed, state } = await syncPearSignContract(contractId);
+    // A verified payload carries the document's status: use it (no BoldSign API call).
+    const details = check.verified ? boldSignDetailsFromPayload(envelopeId, req.body?.data) : null;
+    const { changed, state } = await syncPearSignContract(contractId, details ? { details } : {});
     console.log(`[BoldSign webhook] ${event} ${documentId} → contract ${contractId}${changed ? ` now ${state?.status}` : ' (no change)'}`);
   } catch (err) {
     console.error(`[BoldSign webhook] ${event} ${documentId} sync failed:`, (err as Error)?.message);
