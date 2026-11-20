@@ -95,7 +95,7 @@ function OpenCorporatesClientSummary({
 }) {
   if (!client.businessName) {
     return (
-      <p className={cn("text-[11px] text-[#6B7280]", className)}>
+      <p className={cn("text-[11px] text-[#6B7280] dark:text-slate-400", className)}>
         Add a business name on this deal to search OpenCorporates.
       </p>
     );
@@ -107,12 +107,12 @@ function OpenCorporatesClientSummary({
   ].filter(Boolean);
 
   return (
-    <p className={cn("min-w-0 text-[11px] leading-snug text-[#6B7280]", className)}>
-      <span className="font-semibold text-[#111827]">{client.businessName}</span>
+    <p className={cn("min-w-0 text-[11px] leading-snug text-[#6B7280] dark:text-slate-400", className)}>
+      <span className="font-semibold text-[#111827] dark:text-slate-100">{client.businessName}</span>
       {detailParts.length > 0 ? (
         <>
           {" "}
-          <span className="text-[#D1D5DB]" aria-hidden>
+          <span className="text-[#D1D5DB] dark:text-slate-500" aria-hidden>
             ·
           </span>{" "}
           {detailParts.join(" · ")}
@@ -141,7 +141,7 @@ function ComparisonStatusIcon({ status }: { status: ComparisonRow["status"] }) {
   }
   return (
     <MinusCircle
-      className="h-4 w-4 shrink-0 text-[#9CA3AF]"
+      className="h-4 w-4 shrink-0 text-[#9CA3AF] dark:text-slate-500"
       aria-label="Not enough data to compare"
     />
   );
@@ -176,11 +176,11 @@ function OpenCorporatesCompanyCard({
     syncingKey === companyKey || syncingKey?.startsWith(`${companyKey}::`) === true;
 
   return (
-    <div className="rounded-md border border-[#E5E7EB] bg-white px-3 py-3 space-y-2">
+    <div className="rounded-md border border-[#E5E7EB] dark:border-[#243a58] bg-white dark:bg-card px-3 py-3 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#111827]">{company.name}</p>
-          <p className="mt-0.5 text-xs text-[#6B7280]">
+          <p className="text-sm font-semibold text-[#111827] dark:text-slate-100">{company.name}</p>
+          <p className="mt-0.5 text-xs text-[#6B7280] dark:text-slate-400">
             {location}
             {company.currentStatus ? ` · ${company.currentStatus}` : ""}
           </p>
@@ -201,8 +201,8 @@ function OpenCorporatesCompanyCard({
           Sync all
         </Button>
       </div>
-      <div className="rounded-md border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-2 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
+      <div className="rounded-md border border-[#E5E7EB] dark:border-[#243a58] bg-[#F9FAFB] dark:bg-[#16263f] px-2.5 py-2 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6B7280] dark:text-slate-400">
           Application match
         </p>
         {comparisonRows.map((row) => {
@@ -215,13 +215,13 @@ function OpenCorporatesCompanyCard({
             >
               <ComparisonStatusIcon status={row.status} />
               <div className="min-w-0">
-                <p className="font-medium text-[#111827]">{row.label}</p>
-                <p className="text-[#6B7280]">
-                  <span className="font-medium text-[#374151]">App:</span>{" "}
+                <p className="font-medium text-[#111827] dark:text-slate-100">{row.label}</p>
+                <p className="text-[#6B7280] dark:text-slate-400">
+                  <span className="font-medium text-[#374151] dark:text-slate-300">App:</span>{" "}
                   {row.applicationValue}
                 </p>
-                <p className="text-[#6B7280]">
-                  <span className="font-medium text-[#374151]">OC:</span>{" "}
+                <p className="text-[#6B7280] dark:text-slate-400">
+                  <span className="font-medium text-[#374151] dark:text-slate-300">OC:</span>{" "}
                   {row.openCorporatesValue}
                 </p>
               </div>
@@ -246,23 +246,23 @@ function OpenCorporatesCompanyCard({
           );
         })}
         {syncFields.length === 0 ? (
-          <p className="text-[11px] text-[#6B7280]">
+          <p className="text-[11px] text-[#6B7280] dark:text-slate-400">
             No syncable fields. Officers/owners are comparison-only.
           </p>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#6B7280]">
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#6B7280] dark:text-slate-400">
         {company.incorporationDate ? <span>Incorporated {company.incorporationDate}</span> : null}
         {company.companyType ? <span>Type: {company.companyType}</span> : null}
       </div>
       {company.agentName ? (
-        <p className="text-xs text-[#374151]">
+        <p className="text-xs text-[#374151] dark:text-slate-300">
           <span className="font-medium">Agent:</span> {company.agentName}
           {company.agentAddress ? ` — ${company.agentAddress}` : ""}
         </p>
       ) : null}
       {company.addresses && company.addresses.length > 0 ? (
-        <div className="space-y-1 text-xs text-[#374151]">
+        <div className="space-y-1 text-xs text-[#374151] dark:text-slate-300">
           {company.addresses.map((entry, index) => (
             <p key={`${entry.label}-${index}`} className="whitespace-pre-wrap">
               <span className="font-medium">{entry.label}:</span> {entry.address}
@@ -270,11 +270,11 @@ function OpenCorporatesCompanyCard({
           ))}
         </div>
       ) : company.registeredAddress ? (
-        <p className="text-xs text-[#374151] whitespace-pre-wrap">{company.registeredAddress}</p>
+        <p className="text-xs text-[#374151] dark:text-slate-300 whitespace-pre-wrap">{company.registeredAddress}</p>
       ) : null}
       {company.identifiers && company.identifiers.length > 0 ? (
-        <div className="text-[11px] text-[#6B7280]">
-          <p className="font-medium text-[#374151]">Identifiers</p>
+        <div className="text-[11px] text-[#6B7280] dark:text-slate-400">
+          <p className="font-medium text-[#374151] dark:text-slate-300">Identifiers</p>
           <ul className="mt-1 list-disc pl-4 space-y-0.5">
             {company.identifiers.map((identifier, index) => (
               <li key={`${identifier.system}-${index}`}>
@@ -292,8 +292,8 @@ function OpenCorporatesCompanyCard({
             : company.officers;
         if (!directorsAndOfficers || directorsAndOfficers.length === 0) return null;
         return (
-          <div className="text-[11px] text-[#6B7280]">
-            <p className="font-medium text-[#374151]">Directors / officers</p>
+          <div className="text-[11px] text-[#6B7280] dark:text-slate-400">
+            <p className="font-medium text-[#374151] dark:text-slate-300">Directors / officers</p>
             <ul className="mt-1 list-disc pl-4 space-y-0.5">
               {directorsAndOfficers.map((officer, index) => (
                 <li key={`director-officer-${officer.name}-${index}`}>
@@ -306,8 +306,8 @@ function OpenCorporatesCompanyCard({
         );
       })()}
       {company.inactiveOfficers && company.inactiveOfficers.length > 0 ? (
-        <div className="text-[11px] text-[#6B7280]">
-          <p className="font-medium text-[#374151]">Inactive officers</p>
+        <div className="text-[11px] text-[#6B7280] dark:text-slate-400">
+          <p className="font-medium text-[#374151] dark:text-slate-300">Inactive officers</p>
           <ul className="mt-1 list-disc pl-4 space-y-0.5">
             {company.inactiveOfficers.map((officer, index) => (
               <li key={`inactive-${officer.name}-${index}`}>
@@ -321,7 +321,7 @@ function OpenCorporatesCompanyCard({
       {[company.dataSource, company.lastUpdateFromSource, company.lastChangeRecorded]
         .filter(Boolean)
         .length > 0 ? (
-        <div className="text-[11px] text-[#6B7280] space-y-0.5">
+        <div className="text-[11px] text-[#6B7280] dark:text-slate-400 space-y-0.5">
           {company.dataSource ? <p>Source: {company.dataSource}</p> : null}
           {company.lastUpdateFromSource ? (
             <p>Last update: {company.lastUpdateFromSource}</p>
@@ -739,13 +739,13 @@ export default function OpenCorporatesPanel({
   );
 
   return (
-    <div className={embedded ? "space-y-3" : "rounded-md border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-[0px_4px_20px_0px_#00000005]"}>
+    <div className={embedded ? "space-y-3" : "rounded-md border border-[#E5E7EB] dark:border-[#243a58] bg-white dark:bg-card p-4 space-y-3 shadow-[0px_4px_20px_0px_#00000005]"}>
       {embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <OpenCorporatesClientSummary client={dealClient} className="flex-1" />
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {searchedAt ? (
-              <p className="text-[11px] text-[#6B7280]">
+              <p className="text-[11px] text-[#6B7280] dark:text-slate-400">
                 Last searched {formatOpenCorporatesSearchedAt(searchedAt)}
               </p>
             ) : null}
@@ -757,12 +757,12 @@ export default function OpenCorporatesPanel({
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-sm font-semibold text-[#111827]">OpenCorporates</h3>
-              <p className="mt-0.5 text-xs text-[#6B7280]">Entity registration &amp; status</p>
+              <h3 className="text-sm font-semibold text-[#111827] dark:text-slate-100">OpenCorporates</h3>
+              <p className="mt-0.5 text-xs text-[#6B7280] dark:text-slate-400">Entity registration &amp; status</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {searchedAt ? (
-                <p className="text-[11px] text-[#6B7280]">
+                <p className="text-[11px] text-[#6B7280] dark:text-slate-400">
                   Last searched {formatOpenCorporatesSearchedAt(searchedAt)}
                 </p>
               ) : null}
@@ -788,14 +788,14 @@ export default function OpenCorporatesPanel({
       ) : null}
 
       {!hasSearched && !waitingForImport ? (
-        <p className="rounded-md border border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-3 py-3 text-xs text-[#6B7280]">
+        <p className="rounded-md border border-dashed border-[#D1D5DB] dark:border-[#243a58] bg-[#F9FAFB] dark:bg-[#16263f] px-3 py-3 text-xs text-[#6B7280] dark:text-slate-400">
           Click <strong>Search OpenCorporates</strong> to open the registry, then use{" "}
           <strong>Send to CRM</strong> on the company page.
         </p>
       ) : null}
 
       {savingImport ? (
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
+        <div className="flex items-center gap-2 text-xs text-[#6B7280] dark:text-slate-400">
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           Saving import…
         </div>

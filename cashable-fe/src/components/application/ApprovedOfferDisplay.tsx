@@ -7,6 +7,7 @@ import {
   type BankTotalRow,
 } from "@/lib/positionMetrics";
 import "@/styles/scrubbingPreviewTheme.css";
+import { useTheme } from "@/context/ThemeContext";
 
 /** Wd preview's WHITE_VEIL (sectionBarStyles.js), laid over the #aed6ef section bar. */
 const SCRUB_WHITE_VEIL =
@@ -65,6 +66,7 @@ export const ApprovedOfferDisplay: React.FC<ApprovedOfferDisplayProps> = ({
   totalDailyFromPositions: totalDailyProp,
   showLeverageTable = true,
 }) => {
+  const isDark = useTheme().resolvedTheme === "dark";
   const avgNetCredit = useMemo(() => {
     const direct = parseNumberUS(bankTotalAvgNetCredit);
     if (Number.isFinite(direct) && direct > 0) return direct;
@@ -159,12 +161,12 @@ export const ApprovedOfferDisplay: React.FC<ApprovedOfferDisplayProps> = ({
     `$ ${n > 0 ? formatNumberUS(n) : "0.00"}`;
 
   return (
-    <div data-scrub-type className="w-full overflow-hidden rounded-xl border border-slate-400 shadow-sm">
+    <div data-scrub-type className="w-full overflow-hidden rounded-xl border border-slate-400 dark:border-[#243a58] shadow-sm">
       <div
-        className="flex flex-wrap items-center justify-center gap-4 border-slate-400 px-4 py-1.5"
-        style={{ backgroundColor: "#aed6ef", backgroundImage: SCRUB_WHITE_VEIL }}
+        className="flex flex-wrap items-center justify-center gap-4 border-slate-400 dark:border-[#243a58] px-4 py-1.5"
+        style={isDark ? { backgroundColor: "#1e3a5f" } : { backgroundColor: "#aed6ef", backgroundImage: SCRUB_WHITE_VEIL }}
       >
-        <span className="text-[16px] font-bold uppercase text-slate-700">
+        <span className="text-[16px] font-bold uppercase text-slate-700 dark:text-slate-100">
           Leverage
         </span>
       </div>
@@ -179,63 +181,63 @@ export const ApprovedOfferDisplay: React.FC<ApprovedOfferDisplayProps> = ({
             <col style={{ width: "16%" }} />
           </colgroup>
           <tbody>
-            <tr className="border-b border-slate-400 bg-white">
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+            <tr className="border-b border-slate-400 dark:border-[#243a58] bg-white dark:bg-card">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Our Levg / Repay
               </td>
-              <td className="whitespace-nowrap border-r border-slate-400 px-3 py-1.5 text-[13px] font-bold" style={{ color: "#0caa46" }}>
+              <td className="whitespace-nowrap border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 text-[13px] font-bold" style={{ color: "#0caa46" }}>
                 {ourHoldPct > 0 ? `${ourHoldPct.toFixed(2)}` : "0"} % /{" "}
                 {money(ourRepay)}
               </td>
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Current Levg / Repay
               </td>
-              <td className="whitespace-nowrap border-r border-slate-400 px-3 py-1.5 text-[13px] font-bold text-[#3d5c86]">
+              <td className="whitespace-nowrap border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 text-[13px] font-bold text-[#3d5c86] dark:text-sky-300">
                 {`${existingHoldPct > 0 ? `${existingHoldPct.toFixed(2)}%` : "0%"} / ${money(existingRepay)}`}
               </td>
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Total Levg / Repay
               </td>
               <td className="whitespace-nowrap px-3 py-1.5 text-[13px] font-bold" style={{ color: totalHoldPct > 60 ? "#ef4444" : "#ba8d14" }}>
                 {`${totalHoldPct > 0 ? `${totalHoldPct.toFixed(2)}%` : "0%"} / ${money(totalRepay)}`}
               </td>
             </tr>
-            <tr className="border-b border-slate-400 bg-white">
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+            <tr className="border-b border-slate-400 dark:border-[#243a58] bg-white dark:bg-card">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Current Monthly / Daily Repay
               </td>
               <td
                 colSpan={2}
-                className="whitespace-nowrap border-r border-slate-400 px-3 py-1.5 text-[13px] font-bold text-[#3d5c86]"
+                className="whitespace-nowrap border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 text-[13px] font-bold text-[#3d5c86] dark:text-sky-300"
               >
                 {money(existingRepay)} / {money(existingDailyRepay)}
               </td>
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Total Monthly / Daily Repay
               </td>
               <td
                 colSpan={2}
-                className="whitespace-nowrap px-3 py-1.5 text-[13px] font-bold text-[#3d5c86]"
+                className="whitespace-nowrap px-3 py-1.5 text-[13px] font-bold text-[#3d5c86] dark:text-sky-300"
               >
                 {money(totalRepay)} / {money(totalDailyRepay)}
               </td>
             </tr>
-            <tr className="border-slate-400 bg-white">
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+            <tr className="border-slate-400 dark:border-[#243a58] bg-white dark:bg-card">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Existing Active Positions
               </td>
               <td
                 colSpan={2}
-                className="border-r border-slate-400 px-3 py-1.5 text-center text-[13px] font-bold text-blue-500"
+                className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 text-center text-[13px] font-bold text-blue-500"
               >
                 {existingActivePositionsCount}
               </td>
-              <td className="border-r border-slate-400 px-3 py-1.5 font-bold text-[#143c2e]">
+              <td className="border-r border-slate-400 dark:border-[#243a58] px-3 py-1.5 font-bold text-[#143c2e] dark:text-emerald-300">
                 Recent month Leverage
               </td>
               <td
                 colSpan={2}
-                className="whitespace-nowrap px-3 py-1.5 text-[13px] font-bold text-[#3d5c86]"
+                className="whitespace-nowrap px-3 py-1.5 text-[13px] font-bold text-[#3d5c86] dark:text-sky-300"
               >
                 {recentMonthLeverage != null
                   ? `${formatNumberUS(recentMonthLeverage)} %`

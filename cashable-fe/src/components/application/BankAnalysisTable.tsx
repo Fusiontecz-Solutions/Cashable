@@ -1557,12 +1557,16 @@ const BankAnalysisTable = ({
   return (
     <div className="w-full space-y-4">
       {showCreditsTrend ? (
-        <BankMonthlyBarAndPositionsPie
-          bankTables={previewCreditsTrend.bankTables}
-          loanTransferAllocatedByBankAndMonth={
-            previewCreditsTrend.loanTransferAllocatedForChart
-          }
-        />
+        // data-app-dark-chart: in-app copy only — restyled for dark mode in index.css.
+        // The WD preview / PDF capture renders the same chart elsewhere and stays white.
+        <div data-app-dark-chart>
+          <BankMonthlyBarAndPositionsPie
+            bankTables={previewCreditsTrend.bankTables}
+            loanTransferAllocatedByBankAndMonth={
+              previewCreditsTrend.loanTransferAllocatedForChart
+            }
+          />
+        </div>
       ) : null}
 
       {!showOnlyTotals && banks.map((bank, bankIndex) => (

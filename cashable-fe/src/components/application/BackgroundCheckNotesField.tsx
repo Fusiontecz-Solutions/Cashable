@@ -39,7 +39,7 @@ export default function BackgroundCheckNotesField({
   if (structured && !editing) {
     return (
       <div className={cn("mt-3", className)}>
-        <div className="crm-bg-notes-preview rounded-lg border border-[#E5E7EB] bg-[#FAFBFC] p-3">
+        <div className="crm-bg-notes-preview rounded-lg border border-[#E5E7EB] dark:border-[#243a58] bg-[#FAFBFC] dark:bg-[#16263f] p-3">
           <div
             className="crm-bg-notes-host"
             dangerouslySetInnerHTML={{ __html: notes }}
@@ -79,7 +79,7 @@ export default function BackgroundCheckNotesField({
         onChange={(e) => onNotesChange(e.target.value)}
         onPaste={onPaste}
         placeholder={placeholder}
-        className="min-h-[76px] resize-y border-[#E5E7EB] bg-[#FAFBFC] text-sm placeholder:text-[#9CA3AF]"
+        className="min-h-[76px] resize-y border-[#E5E7EB] dark:border-[#243a58] bg-[#FAFBFC] dark:bg-[#16263f] text-sm placeholder:text-[#9CA3AF]"
       />
     </div>
   );

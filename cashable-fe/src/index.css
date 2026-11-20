@@ -252,6 +252,27 @@ pre,
 .dark :is(.border-slate-200, .border-gray-200):not([class*="dark:border-"]) {
   border-color: var(--border);
 }
+/*
+ * In-app Credits Trend chart (BankAnalysisTable wraps it in [data-app-dark-chart]). The chart
+ * component sets light colours inline for the WD preview / PDF capture, so the in-app copy is
+ * overridden here; the preview and PDF are untouched.
+ */
+.dark [data-app-dark-chart] .chart-cell {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+.dark [data-app-dark-chart] .chart-cell,
+.dark [data-app-dark-chart] .chart-cell :is(div, span, p) {
+  color: #cbd5e1 !important;
+}
+.dark [data-app-dark-chart] .recharts-cartesian-axis-tick text,
+.dark [data-app-dark-chart] .recharts-cartesian-axis-tick tspan {
+  fill: #94a3b8 !important;
+}
+.dark [data-app-dark-chart] :is(.recharts-cartesian-axis-line, .recharts-cartesian-grid line) {
+  stroke: var(--border) !important;
+}
+
 /* Native scrollbars (tables, panels) in dark mode. */
 .dark ::-webkit-scrollbar-track {
   background: transparent;

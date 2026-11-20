@@ -198,7 +198,7 @@ const BackgroundCheckPanel = ({ applicationId }: Props) => {
                                             href={checkLink(item.checkType, businessName)}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="inline-flex items-center gap-1 text-sm font-semibold text-[#2563EB] hover:underline"
+                                            className="inline-flex items-center gap-1 text-sm font-semibold text-[#2563EB] dark:text-blue-300 hover:underline"
                                             title="Open the third-party site in a new tab"
                                         >
                                             {CHECK_LABELS[item.checkType]} <ExternalLink className="h-3.5 w-3.5" />
