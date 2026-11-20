@@ -388,7 +388,12 @@ export function renderContractStatusUpdateEmailHtml(fields: ContractStatusUpdate
   const merchant = escapeHtml(clean(fields.merchantName) || 'the merchant');
   const copy = statusCopyFor(fields.status);
   const strong = (v: string) => `<strong style="color:#101828;">${v}</strong>`;
-  const lead = copy.lead.replace('{book}', strong(book)).replace('{merchant}', strong(merchant));
+  const attached = Boolean(clean(fields.attachmentName));
+  const leadText =
+    attached && copy.label === 'Signed'
+      ? '{merchant} has signed the {book} contract in PearSign. The signed copy is attached to this email and saved on the deal in the CRM.'
+      : copy.lead;
+  const lead = leadText.replace('{book}', strong(book)).replace('{merchant}', strong(merchant));
   const extraRows: Array<[string, string]> = [['Status', escapeHtml(copy.label)]];
   if (clean(fields.updatedAt)) extraRows.push(['Updated', escapeHtml(clean(fields.updatedAt))]);
   const signers = (fields.signers || []).filter((s) => clean(s.name));
@@ -406,7 +411,7 @@ export function renderContractStatusUpdateEmailHtml(fields: ContractStatusUpdate
     badge: copy.badge,
     leadHtml: lead,
     extraRows,
-    attachmentCaption: '',
+    attachmentCaption: attached ? 'Signed contract &middot; attached to this email' : '',
     noteText: 'You can open the deal in the Cashable CRM to see the contract and its full signing history.',
     footerText: 'This is an automated notification sent when a PearSign contract changes status.',
   });

@@ -806,6 +806,15 @@ async function announceStatus(
   }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
 
   if (!EMAILED_NOTICE_GROUPS.has(group)) return;
+  // The Signed update carries the signed contract.
+  let pdf: Buffer | null = null;
+  if (group === 'signed') {
+    try {
+      pdf = await downloadPearSignEnvelopePdf(envelopeId, 'latest');
+    } catch (err) {
+      console.warn('[PearSign] signed PDF for the status email unavailable:', (err as Error)?.message);
+    }
+  }
   const threads = await readTeamThreads(contractId, envelopeId);
   const result = await notifyPearSignStatusChange({
     contractId,
@@ -818,6 +827,7 @@ async function announceStatus(
     signers: state.recipients ?? [],
     recipientStatuses,
     threads,
+    pdf,
   });
   if (JSON.stringify(result.threads) !== JSON.stringify(threads)) {
     await writeTeamThreads(contractId, envelopeId, result.threads).catch((err) =>

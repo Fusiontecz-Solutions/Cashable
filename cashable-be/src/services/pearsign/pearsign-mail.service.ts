@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { contractPdfFileName } from '../../utils/contractPdfFileName';
 import prisma from '../../config/prismaClient';
 import { BRAND_DISPLAY_NAME, BRAND_LOGO_URL, buildBrandLogoAttachments } from '../../constants/brand';
 import { APPROVAL_BANNER_LOGO_URL } from '../emailService';
@@ -17,7 +18,6 @@ import {
   type ContractEmailKind,
 } from '../contractEmailHistoryService';
 import {
-  buildContractEnvelopePdfFilename,
   formatContractOfferAmountForSubject,
 } from '../../utils/contractEnvelopeEmailSubject';
 
@@ -164,7 +164,7 @@ async function emailContext(input: ContractMailInput) {
     merchantName,
     applicationNumber: app?.applicationId != null ? String(app.applicationId) : null,
     fundedAmount: rawAmount ? formatContractOfferAmountForSubject(rawAmount) : null,
-    pdfFilename: buildContractEnvelopePdfFilename(label),
+    pdfFilename: contractPdfFileName(merchantName),
     logoSrc: BRAND_LOGO_URL || (lightLogo ? `cid:${lightLogo.cid}` : APPROVAL_BANNER_LOGO_URL),
     logoAttachments: !BRAND_LOGO_URL && lightLogo ? [lightLogo] : [],
   };
@@ -454,6 +454,8 @@ export async function notifyPearSignStatusChange(input: {
   recipientStatuses?: Array<{ signerEmail: string; status: string; signedAt?: string | null }>;
   /** Existing threads for this envelope (from earlier updates). */
   threads?: ContractUpdateThreads | null;
+  /** Signed contract PDF, attached to the Signed update only. */
+  pdf?: Buffer | null;
 }): Promise<PearSignMailOutcome & { threads: ContractUpdateThreads }> {
   const threads: ContractUpdateThreads = { ...(input.threads ?? {}) };
   const out: PearSignMailOutcome & { threads: ContractUpdateThreads } = { emailed: [], failed: [], threads };
@@ -461,6 +463,7 @@ export async function notifyPearSignStatusChange(input: {
   if (!to.length) return out;
   try {
     const ctx = await emailContext({ ...input, ccEmails: [] });
+    const pdf = input.pdf?.length ? input.pdf : null;
     const byEmail = new Map((input.recipientStatuses ?? []).map((r) => [lower(r.signerEmail), r]));
     const signers = input.signers
       .filter((s) => String(s.name || s.email || '').trim())
@@ -481,6 +484,7 @@ export async function notifyPearSignStatusChange(input: {
       status: input.status,
       updatedAt: formatEmailDateTime(),
       signers,
+      attachmentName: pdf ? ctx.pdfFilename : null,
       companyName: BRAND_DISPLAY_NAME,
       logoSrc: ctx.logoSrc,
       brandPrimary: BRAND_PRIMARY,
@@ -513,11 +517,17 @@ export async function notifyPearSignStatusChange(input: {
           // Only the first email defines the thread; replies keep pointing at it.
           if (!reply) threads[TEAM_THREAD] = { messageId: d.messageId ?? ownMessageId, gmailThreadId: d.gmailThreadId };
         },
-        attachments: ctx.logoAttachments,
+        attachments: [
+          ...ctx.logoAttachments,
+          ...(pdf ? [{ filename: ctx.pdfFilename, content: pdf, contentType: 'application/pdf' }] : []),
+        ],
         resend: {
           contractId: input.contractId,
           envelopeId: input.envelopeId,
-          attachments: ctx.logoAttachments.length ? ['brand_logo'] : [],
+          attachments: [
+            ...(ctx.logoAttachments.length ? (['brand_logo'] as const) : []),
+            ...(pdf ? (['contract_pdf'] as const) : []),
+          ],
           pdfFilename: ctx.pdfFilename,
         },
       });

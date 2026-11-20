@@ -149,6 +149,7 @@ import {
 } from "./contractdata/kycDocumentPrefill";
 import KycExtractionReviewCard from "./contractdata/KycExtractionReviewCard";
 import { usePearSignContract } from "./pearsign/usePearSignContract";
+import { contractPdfFileName } from "@/lib/contractPdfFileName";
 import { PearSignReviewModal, PearSignSendDialog } from "./pearsign/PearSignReviewModal";
 import { cn, formatDate, formatDateTimeUS } from "@/lib/utils";
 import { findApplicationFileForDocumentRequest } from "@/lib/documentRequestMatch";
@@ -3396,13 +3397,16 @@ const PDFViewerModal = ({
                 toast.error("PearSign returned an empty PDF.");
                 return;
             }
-            const fileLabel = String(
-                applicationIdForLookup || envelopeId || "contract",
-            ).replace(/[^\w.-]+/g, "_");
             const objectUrl = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = objectUrl;
-            anchor.download = `filled-contract-${fileLabel}.pdf`;
+            // Always "CASHABLE FUND LLC: <Merchant>.pdf".
+            anchor.download = contractPdfFileName(
+                resolveContractBusinessLegalNameForPrefill(
+                    (contractRecord ?? {}) as Record<string, unknown>,
+                    applicationData,
+                ),
+            );
             document.body.appendChild(anchor);
             anchor.click();
             anchor.remove();

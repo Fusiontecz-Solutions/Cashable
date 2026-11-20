@@ -62,3 +62,22 @@ describe('Contract Update email', () => {
     expect(html).toContain('Contract Signed');
   });
 });
+
+describe('signed update with the signed contract attached', () => {
+  const base = {
+    bookName: 'Cashable',
+    merchantName: 'ACME LLC',
+    companyName: 'Cashable',
+    logoSrc: 'https://example.com/logo.png',
+    brandPrimary: '#0B5D3B',
+    brandAccent: '#22c55e',
+    status: 'completed',
+  };
+  it('mentions and shows the attachment only when a PDF is attached', () => {
+    const withPdf = renderContractStatusUpdateEmailHtml({ ...base, attachmentName: 'ACME-contract.pdf' });
+    expect(withPdf).toContain('The signed copy is attached to this email');
+    expect(withPdf).toContain('ACME-contract.pdf');
+    const without = renderContractStatusUpdateEmailHtml(base);
+    expect(without).not.toContain('attached to this email');
+  });
+});

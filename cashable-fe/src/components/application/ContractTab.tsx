@@ -68,7 +68,7 @@ import OwnerModal, { type OwnerEntry } from "./OwnerModal";
 import BusinessInfoModal from "./BusinessInfoModal";
 import type { TermsOffer } from "@/types/termsOfferTypes";
 import { toast } from "react-toastify";
-import { Ban, FileText, Landmark, Loader2, Mail, RefreshCw, Send } from "lucide-react";
+import { Ban, Download, FileText, Landmark, Loader2, Mail, RefreshCw, Send } from "lucide-react";
 import { ContractEmailHistoryDialog } from "./ContractEmailHistoryDialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -102,7 +102,9 @@ import {
     type BuildContractPrefillFieldsArgs,
     type ContractPrefillContractRecords,
     type ContractPrefillField,
+    resolveContractBusinessLegalNameForPrefill,
 } from "./contractdata/Contract";
+import { contractPdfFileName } from "@/lib/contractPdfFileName";
 import {
     applyDocumentTemplateMappingPrefillOverrides,
     DOCUMENT_SEND_HISTORY_KEY,
@@ -479,6 +481,7 @@ export default function ContractTab({
     const [regeneratingContract, setRegeneratingContract] = useState(false);
     const [viewingSignedContract, setViewingSignedContract] = useState(false);
     const [viewingSignedEnvelopeId, setViewingSignedEnvelopeId] = useState<string | null>(null);
+    const [downloadingEnvelopeId, setDownloadingEnvelopeId] = useState<string | null>(null);
     const [voidingContract, setVoidingContract] = useState(false);
     const [resendingEnvelopeRowKey, setResendingEnvelopeRowKey] = useState<string | null>(null);
     const [refreshingSigningStatus, setRefreshingSigningStatus] = useState(false);
@@ -1701,15 +1704,23 @@ export default function ContractTab({
         }
     };
 
-    const handleViewSignedContract = async (envelopeIdOverride?: string) => {
+    const handleViewSignedContract = async (
+        envelopeIdOverride?: string,
+        opts?: { download?: boolean },
+    ) => {
         if (!applicationUuid) {
             toast.error("Missing application ID.");
             return;
         }
 
+        const downloadOnly = opts?.download === true;
         const envelopeKey = String(envelopeIdOverride ?? "").trim() || null;
-        setViewingSignedEnvelopeId(envelopeKey);
-        setViewingSignedContract(true);
+        if (downloadOnly) {
+            setDownloadingEnvelopeId(envelopeKey ?? "current");
+        } else {
+            setViewingSignedEnvelopeId(envelopeKey);
+            setViewingSignedContract(true);
+        }
         try {
             let contract = fetchedContract;
             if (!contract) {
@@ -1790,13 +1801,22 @@ export default function ContractTab({
             }
 
             const objectUrl = URL.createObjectURL(blob);
-            const fileLabel = String(
-                (applicationData as { applicationId?: unknown })?.applicationId ??
-                    applicationUuid,
-            ).replace(/[^\w.-]+/g, "_");
-            const fileName = `${
-                matchingRow?.rowType === "ach" ? "ach-form" : "contract"
-            }-${fileLabel}.pdf`;
+            // Always "CASHABLE FUND LLC: <Merchant>.pdf".
+            const fileName = contractPdfFileName(
+                resolveContractBusinessLegalNameForPrefill(contractRecord, applicationData),
+            );
+
+            if (downloadOnly) {
+                // Save straight to disk, no preview.
+                const link = document.createElement("a");
+                link.href = objectUrl;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+                return;
+            }
 
             setSignedPdfPreviewUrl((prev) => {
                 if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
@@ -1825,8 +1845,12 @@ export default function ContractTab({
                 "Could not load the contract document.";
             toast.error(String(msg));
         } finally {
-            setViewingSignedContract(false);
-            setViewingSignedEnvelopeId(null);
+            if (downloadOnly) {
+                setDownloadingEnvelopeId(null);
+            } else {
+                setViewingSignedContract(false);
+                setViewingSignedEnvelopeId(null);
+            }
         }
     };
 
@@ -4492,6 +4516,34 @@ export default function ContractTab({
                                             />
                                         ) : (
                                             <FileText className="h-3.5 w-3.5" aria-hidden />
+                                        )}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                            void handleViewSignedContract(rowEnvelopeId, {
+                                                download: true,
+                                            })
+                                        }
+                                        disabled={downloadingEnvelopeId === rowEnvelopeId}
+                                        className={`h-7 w-7 shrink-0 ${brandActionButtonClass}`}
+                                        title={
+                                            isAchRow
+                                                ? "Download ACH form"
+                                                : isPackageRow
+                                                  ? "Download supplemental documents"
+                                                  : "Download contract"
+                                        }
+                                    >
+                                        {downloadingEnvelopeId === rowEnvelopeId ? (
+                                            <Loader2
+                                                className="h-3.5 w-3.5 animate-spin"
+                                                aria-hidden
+                                            />
+                                        ) : (
+                                            <Download className="h-3.5 w-3.5" aria-hidden />
                                         )}
                                     </Button>
                                     {!rowFullySigned && !rowIsVoided ? (
