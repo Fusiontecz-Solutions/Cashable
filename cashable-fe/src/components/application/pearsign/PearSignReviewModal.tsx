@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { signingProviderName } from "@/lib/signingProvider";
 import { toast } from "react-toastify";
 import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
@@ -484,7 +485,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
             toast.error("The browser blocked the new tab. Allow pop-ups for this site and try again.");
             return;
         }
-        tab.document.title = "Contract — PearSign preview";
+        tab.document.title = `Contract — ${signingProviderName()} preview`;
         tab.document.body.innerHTML =
             '<div style="font:14px system-ui,sans-serif;color:#475569;display:flex;height:100vh;align-items:center;justify-content:center">Building the filled contract…</div>';
         try {
@@ -808,7 +809,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                 {/* Footer */}
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-700">
                     <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Yellow boxes are where each owner signs or initials in PearSign; blue boxes are completed by the signer. Final fonts may differ slightly.
+                        Yellow boxes are where each owner signs or initials in {signingProviderName()}; blue boxes are completed by the signer. Final fonts may differ slightly.
                     </span>
                     <div className="flex items-center gap-2">
                         <Button type="button" variant="outline" onClick={() => void close()} disabled={finishing}>
@@ -824,11 +825,11 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                     ? review.blockers[0]
                                     : ctl.isActive
                                       ? "An envelope is already out for signature"
-                                      : "Close the review and send via PearSign"
+                                      : `Close the review and send via ${signingProviderName()}`
                             }
                         >
                             {finishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
-                            Review done — Send via PearSign
+                            Review done — Send via {signingProviderName()}
                         </Button>
                     </div>
                 </div>
@@ -887,7 +888,7 @@ export function PearSignSendDialog({
                             <Send className="h-4 w-4" />
                         </div>
                         <div>
-                            <DialogTitle className="text-base font-semibold">Send via PearSign</DialogTitle>
+                            <DialogTitle className="text-base font-semibold">Send via {signingProviderName()}</DialogTitle>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
                                 PearSign emails the {review?.funderName || "funder"} {ctl.mode === "package" ? "contract package" : "agreement"} to each owner in this order.
                             </p>
@@ -937,7 +938,7 @@ export function PearSignSendDialog({
                             <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                 {ctl.mode === "package"
                                     ? "One envelope: the contract with the selected addendums and state disclosure, in the order shown in the review."
-                                    : "Addendums, ACH and state disclosures are not part of this envelope — send them with PearSign as before."}
+                                    : `Addendums, ACH and state disclosures are not part of this envelope — send them with ${signingProviderName()} as before.`}
                             </p>
                         </>
                     ) : null}
@@ -956,15 +957,15 @@ export function PearSignSendDialog({
                                     variant="outline"
                                     disabled={sending}
                                     onClick={() => setEditorOpen(true)}
-                                    title="Open the package in PearSign's editor to move, resize or add fields, then send from there"
+                                    title={`Open the package in ${signingProviderName()}'s editor to move, resize or add fields, then send from there`}
                                 >
                                     <PencilRuler className="mr-1.5 h-4 w-4" />
-                                    Edit in PearSign
+                                    Edit in {signingProviderName()}
                                 </Button>
                             ) : null}
                             <Button type="button" className="bg-[var(--brand)] text-white hover:opacity-90" disabled={sending} onClick={onConfirm}>
                                 {sending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
-                                {sending ? "Sending…" : "Send via PearSign"}
+                                {sending ? "Sending…" : `Send via ${signingProviderName()}`}
                             </Button>
                         </div>
                     </div>
@@ -1021,9 +1022,9 @@ export function PearSignEditorDialog({
             toast.error("The browser blocked the new window. Allow pop-ups for this site and try again.");
             return;
         }
-        win.document.title = "PearSign editor";
+        win.document.title = `${signingProviderName()} editor`;
         win.document.body.innerHTML =
-            '<div style="font:14px system-ui,sans-serif;color:#475569;display:flex;height:100vh;align-items:center;justify-content:center">Opening the PearSign editor…</div>';
+            '<div style="font:14px system-ui,sans-serif;color:#475569;display:flex;height:100vh;align-items:center;justify-content:center">Opening the {signingProviderName()} editor…</div>';
         setLoading(true);
         try {
             const s = await ctlRef.current.openEditor({});
@@ -1033,7 +1034,7 @@ export function PearSignEditorDialog({
             win.location.href = s.editorUrl;
         } catch (e) {
             win.close();
-            toast.error(e instanceof Error ? e.message : "Could not open the PearSign editor.");
+            toast.error(e instanceof Error ? e.message : `Could not open the ${signingProviderName()} editor.`);
         } finally {
             setLoading(false);
         }
@@ -1057,7 +1058,7 @@ export function PearSignEditorDialog({
                 if (!cancelled) setSession({ sessionId: s.sessionId, editorUrl: s.editorUrl });
             })
             .catch((e: unknown) => {
-                if (!cancelled) setError(e instanceof Error ? e.message : "Could not open the PearSign editor.");
+                if (!cancelled) setError(e instanceof Error ? e.message : `Could not open the ${signingProviderName()} editor.`);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -1076,7 +1077,7 @@ export function PearSignEditorDialog({
                 const out = await ctlRef.current.finishEditor(session.sessionId);
                 if (out?.status === "sent") {
                     doneRef.current = true;
-                    toast.success("Contract sent from the PearSign editor. PearSign emailed the signing links.", {
+                    toast.success(`Contract sent from the ${signingProviderName()} editor. ${signingProviderName()} emailed the signing links.`, {
                         autoClose: 9000,
                     });
                     cbRef.current.onSent();
@@ -1086,16 +1087,16 @@ export function PearSignEditorDialog({
                     doneRef.current = true;
                     toast.info(
                         out.status === "expired"
-                            ? "The PearSign editor expired. Nothing was sent."
-                            : "PearSign editor closed. Nothing was sent.",
+                            ? `The ${signingProviderName()} editor expired. Nothing was sent.`
+                            : `${signingProviderName()} editor closed. Nothing was sent.`,
                     );
                     cbRef.current.onClose();
                     return true;
                 }
-                if (!quiet) toast.info("PearSign has not sent it yet. Click Send inside the editor first.");
+                if (!quiet) toast.info(`${signingProviderName()} has not sent it yet. Click Send inside the editor first.`);
                 return false;
             } catch (e) {
-                if (!quiet) toast.error(e instanceof Error ? e.message : "Could not check the PearSign editor.");
+                if (!quiet) toast.error(e instanceof Error ? e.message : `Could not check the ${signingProviderName()} editor.`);
                 return false;
             } finally {
                 checkingRef.current = false;
@@ -1120,7 +1121,7 @@ export function PearSignEditorDialog({
             if (/completed|sent|cancel|closed/.test(type)) void check(true);
             else if (/error/.test(type)) {
                 const msg = typeof data === "object" && data && typeof data.message === "string" ? data.message : "";
-                toast.error(msg ? `PearSign editor: ${msg}` : "The PearSign editor reported an error.");
+                toast.error(msg ? `${signingProviderName()} editor: ${msg}` : `The ${signingProviderName()} editor reported an error.`);
             }
         };
         window.addEventListener("message", onMessage);
@@ -1135,7 +1136,7 @@ export function PearSignEditorDialog({
         if (session && !doneRef.current) {
             // It may have just been sent: record it rather than lose it.
             if (await check(true)) return;
-            if (!window.confirm("Close the PearSign editor? Nothing is sent unless you clicked Send inside PearSign.")) return;
+            if (!window.confirm(`Close the ${signingProviderName()} editor? Nothing is sent unless you clicked Send inside ${signingProviderName()}.`)) return;
         }
         cbRef.current.onClose();
     }, [session, check]);
@@ -1215,7 +1216,7 @@ export function PearSignEditorDialog({
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
                             <ExternalLink className="h-7 w-7 text-[var(--brand)]" />
                             <p className="max-w-xl text-sm text-slate-700 dark:text-slate-200">
-                                The PearSign editor is open in its own window. Edit the fields there and click Send — this
+                                The {signingProviderName()} editor is open in its own window. Edit the fields there and click Send — this
                                 page records the envelope automatically.
                             </p>
                             <Button
@@ -1231,7 +1232,7 @@ export function PearSignEditorDialog({
                         <iframe
                             key={session.sessionId}
                             src={session.editorUrl}
-                            title="PearSign editor"
+                            title={`${signingProviderName()} editor`}
                             className="h-full w-full border-0 bg-white"
                             allow="clipboard-read; clipboard-write"
                         />

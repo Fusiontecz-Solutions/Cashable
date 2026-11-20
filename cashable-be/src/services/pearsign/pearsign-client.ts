@@ -1,4 +1,11 @@
 import axios from '../../types/http';
+import {
+  boldSignDocumentId,
+  boldSignDownload,
+  boldSignEnvelopeDetails,
+  boldSignRevoke,
+  isBoldSignEnvelopeId,
+} from './boldsign-client';
 
 /**
  * Thin client for the PearSign REST API (https://pearsign.com/api/v1).
@@ -26,7 +33,8 @@ export function isPearSignConfigured(): boolean {
  * DocuSign ids are bare dashed GUIDs, so the `env-` prefix is what tells them apart.
  */
 export function looksLikePearSignEnvelopeId(id?: string | null): boolean {
-  return /^env-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? '').trim());
+  // `bs-<uuid>` is a BoldSign document sent through the same CRM flow (see boldsign-client.ts).
+  return /^(env|bs)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? '').trim());
 }
 
 export class PearSignApiError extends Error {
@@ -275,6 +283,7 @@ export async function sendPearSignEnvelope(input: PearSignSendInput): Promise<Pe
 }
 
 export async function getPearSignEnvelope(envelopeId: string): Promise<PearSignEnvelopeDetails> {
+  if (isBoldSignEnvelopeId(envelopeId)) return boldSignEnvelopeDetails(envelopeId);
   const res = await request<{ data?: PearSignEnvelopeDetails } & Partial<PearSignEnvelopeDetails>>(
     'GET',
     `/envelopes/${encodeURIComponent(envelopeId)}`,
@@ -283,6 +292,7 @@ export async function getPearSignEnvelope(envelopeId: string): Promise<PearSignE
 }
 
 export async function voidPearSignEnvelope(envelopeId: string): Promise<void> {
+  if (isBoldSignEnvelopeId(envelopeId)) return boldSignRevoke(boldSignDocumentId(envelopeId));
   await request('DELETE', `/envelopes/${encodeURIComponent(envelopeId)}`);
 }
 
@@ -291,6 +301,7 @@ export async function downloadPearSignEnvelopePdf(
   envelopeId: string,
   version: 'latest' | 'original' = 'latest',
 ): Promise<Buffer> {
+  if (isBoldSignEnvelopeId(envelopeId)) return boldSignDownload(boldSignDocumentId(envelopeId));
   const data = await request<ArrayBuffer>('GET', `/envelopes/${encodeURIComponent(envelopeId)}/download`, {
     params: { version },
     binary: true,

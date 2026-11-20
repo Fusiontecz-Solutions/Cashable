@@ -1,4 +1,5 @@
 import { axiosPatch } from "@/redux/axios";
+import { signingProviderName } from "@/lib/signingProvider";
 import { formatDate } from "@/lib/utils";
 import { toast } from "react-toastify";
 import type { BuildContractPrefillFieldsArgs } from "./Contract";
@@ -138,13 +139,13 @@ export function docuSignPrefillSyncToast(
     const attempted = Number(result?.attempted ?? 0);
     if (applied > 0) {
         toast.success(
-            `PearSign draft updated (${applied} data label${applied === 1 ? "" : "s"}).`,
+            `${signingProviderName()} draft updated (${applied} data label${applied === 1 ? "" : "s"}).`,
         );
         return;
     }
     if (attempted > 0) {
         toast.warning(
-            "Prefill saved in CRM, but no matching PearSign data labels were found on this draft.",
+            `Prefill saved in CRM, but no matching ${signingProviderName()} data labels were found on this draft.`,
         );
     }
 }

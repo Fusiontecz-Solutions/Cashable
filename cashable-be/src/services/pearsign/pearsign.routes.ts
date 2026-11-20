@@ -1,6 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { authenticateToken } from '../../middleware/authMiddleware';
 import { PearSignApiError } from './pearsign-client';
+import { boldSignSandbox, signingProvider } from './boldsign-client';
 import {
   PearSignContractError,
   buildPearSignReviewPreview,
@@ -161,6 +162,15 @@ router.post(
 );
 
 router.post('/contracts/:contractId/sync', handle((req) => syncPearSignContract(contractIdParam(req))));
+
+/** Which e-signature service new contracts go through (labels in the CRM screens). */
+router.get(
+  '/provider',
+  handle(async () => {
+    const provider = signingProvider();
+    return { provider, name: provider === 'boldsign' ? 'BoldSign' : 'PearSign', sandbox: provider === 'boldsign' && boldSignSandbox() };
+  }),
+);
 
 router.post(
   '/contracts/:contractId/void',

@@ -1,8 +1,9 @@
+import { signingProviderName } from "@/lib/signingProvider";
 const DOCUSIGN_LOADING_PAGE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Opening PearSign</title>
+  <title>Opening ${signingProviderName()}</title>
   <style>
     body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
       font-family: system-ui, sans-serif; background: #f8fafc; color: #0f172a; }
@@ -20,8 +21,8 @@ const DOCUSIGN_LOADING_PAGE_HTML = `<!DOCTYPE html>
 <body>
   <div class="card">
     <div class="spinner" aria-hidden="true"></div>
-    <h1>Opening PearSign</h1>
-    <p>Preparing your form for review. This tab will load PearSign in a moment.</p>
+    <h1>Opening ${signingProviderName()}</h1>
+    <p>Preparing your form for review. This tab will load ${signingProviderName()} in a moment.</p>
   </div>
 </body>
 </html>`;

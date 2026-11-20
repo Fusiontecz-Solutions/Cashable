@@ -40,6 +40,7 @@ import boldsignRoutes from '../services/boldsign/boldsign.routes';
 import dropboxSignRoutes from '../services/dropboxsign/dropboxsign.routes';
 import pearSignRoutes from '../services/pearsign/pearsign.routes';
 import pearSignWebhookRoutes from '../services/pearsign/pearsign-webhook';
+import boldSignWebhookRoutes from '../services/pearsign/boldsign-webhook';
 import automatedBankStatementRoutes from '../services/automatedBankStatement/automatedBankStatement.route';
 import teamChatRoutes from '../team_chat/chat.routes';
 import contractRoutes from './contractRoutes';
@@ -95,6 +96,7 @@ router.use('/commission-requests', commissionRequestRoutes);
 router.get('/google/callback', googleCallback);
 router.use('/gmail', gmailServiceRoutes);
 router.use('/docusign', docusignRoutes);
+router.use('/boldsign/webhook', boldSignWebhookRoutes); // public; only triggers a re-read from BoldSign
 router.use('/boldsign', boldsignRoutes);
 router.use('/dropboxsign', dropboxSignRoutes);
 router.use('/pearsign/webhook', pearSignWebhookRoutes); // public, signature-verified

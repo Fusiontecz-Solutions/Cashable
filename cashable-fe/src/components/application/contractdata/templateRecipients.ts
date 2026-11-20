@@ -91,6 +91,7 @@ export function getTemplateRoleEmailFromRow(row: Record<string, unknown>): strin
     );
 }
 
+import { signingProviderName } from "@/lib/signingProvider";
 import {
     OWNER2_NAME_SYNC_CAMEL_KEYS,
     clearParty2PrefillPartial,
@@ -679,7 +680,7 @@ export function validateDocuSignSignerRoles(
         return {
             valid: false,
             message:
-                "Add at least one signer with a role name and email before sending to PearSign.",
+                `Add at least one signer with a role name and email before sending to ${signingProviderName()}.`,
         };
     }
     const missing = roles
@@ -693,7 +694,7 @@ export function validateDocuSignSignerRoles(
             .join(", ");
         return {
             valid: false,
-            message: `Every PearSign signer needs an email. Missing for: ${labels}.`,
+            message: `Every ${signingProviderName()} signer needs an email. Missing for: ${labels}.`,
         };
     }
     return { valid: true };

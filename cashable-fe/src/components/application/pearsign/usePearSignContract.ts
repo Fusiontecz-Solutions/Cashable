@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { signingProviderName } from "@/lib/signingProvider";
 import { axiosGet, axiosPost, axiosPut } from "@/redux/axios";
 
 /**
@@ -216,7 +217,7 @@ export function usePearSignContract(opts: {
             setMode("contract");
             setPreviewOpen(true);
         } catch (e) {
-            const msg = apiErrorMessage(e, "Could not prepare the PearSign review.");
+            const msg = apiErrorMessage(e, `Could not prepare the ${signingProviderName()} review.`);
             setError(msg);
             throw new Error(msg);
         } finally {
@@ -250,7 +251,7 @@ export function usePearSignContract(opts: {
             setPreviewOpen(true);
         } catch (e) {
             prefetchedPreviewRef.current = null;
-            const msg = apiErrorMessage(e, "Could not load the PearSign package review.");
+            const msg = apiErrorMessage(e, `Could not load the ${signingProviderName()} package review.`);
             setError(msg);
             throw new Error(msg);
         } finally {
@@ -341,7 +342,7 @@ export function usePearSignContract(opts: {
             } catch (e) {
                 // code PEARSIGN_ALREADY_COMPLETED: a signer completed this document in the last 60 days.
                 const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
-                throw Object.assign(new Error(apiErrorMessage(e, "PearSign send failed.")), { code });
+                throw Object.assign(new Error(apiErrorMessage(e, `${signingProviderName()} send failed.`)), { code });
             } finally {
                 setBusy(null);
             }
@@ -361,7 +362,7 @@ export function usePearSignContract(opts: {
                 });
                 return res?.data?.data as { sessionId: string; editorUrl: string; expiresAt: string | null };
             } catch (e) {
-                throw new Error(apiErrorMessage(e, "Could not open the PearSign editor."));
+                throw new Error(apiErrorMessage(e, `Could not open the ${signingProviderName()} editor.`));
             } finally {
                 setBusy(null);
             }
@@ -382,7 +383,7 @@ export function usePearSignContract(opts: {
                 if (data?.status === "sent" && data.state) setState(data.state);
                 return data;
             } catch (e) {
-                throw new Error(apiErrorMessage(e, "Could not check the PearSign editor."));
+                throw new Error(apiErrorMessage(e, `Could not check the ${signingProviderName()} editor.`));
             }
         },
         [base, contractId],
@@ -397,7 +398,7 @@ export function usePearSignContract(opts: {
             setState(next);
             return next;
         } catch (e) {
-            throw new Error(apiErrorMessage(e, "Could not refresh PearSign status."));
+            throw new Error(apiErrorMessage(e, `Could not refresh ${signingProviderName()} status.`));
         } finally {
             setBusy(null);
         }
@@ -423,7 +424,7 @@ export function usePearSignContract(opts: {
                 return { alreadyEnded: data?.alreadyEnded };
             } catch (e) {
                 const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
-                throw Object.assign(new Error(apiErrorMessage(e, "Could not void the PearSign envelope.")), { code });
+                throw Object.assign(new Error(apiErrorMessage(e, `Could not void the ${signingProviderName()} envelope.`)), { code });
             } finally {
                 setBusy(null);
             }
@@ -444,7 +445,7 @@ export function usePearSignContract(opts: {
             window.setTimeout(() => URL.revokeObjectURL(url), 30 * 60_000);
         } catch (e) {
             tab?.close();
-            throw new Error(await blobErrorMessage(e, "Could not download the PearSign contract."));
+            throw new Error(await blobErrorMessage(e, `Could not download the ${signingProviderName()} contract.`));
         } finally {
             setBusy(null);
         }

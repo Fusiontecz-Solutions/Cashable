@@ -1,4 +1,5 @@
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
+import { signingProviderName } from "@/lib/signingProvider";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -380,10 +381,10 @@ function tryOpenDocuSignSenderUrl(senderUrl: string): boolean {
 
 function writeDocuSignLoadingTab(doc: Document): void {
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening PearSign</title>
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening ${signingProviderName()}</title>
 <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc;color:#334155}
 .box{text-align:center;padding:2rem}.spin{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
-@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spin"></div><p>Opening PearSign…</p></div></body></html>`);
+@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spin"></div><p>Opening ${signingProviderName()}…</p></div></body></html>`);
     doc.close();
 }
 
@@ -407,9 +408,9 @@ function writeDocuSignErrorTab(doc: Document, message: string): void {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>PearSign</title>
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${signingProviderName()}</title>
 <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fef2f2;color:#991b1b;padding:1rem}
-.box{max-width:28rem;text-align:center}</style></head><body><div class="box"><p><strong>Could not open PearSign</strong></p><p>${safe}</p></div></body></html>`);
+.box{max-width:28rem;text-align:center}</style></head><body><div class="box"><p><strong>Could not open ${signingProviderName()}</strong></p><p>${safe}</p></div></body></html>`);
     doc.close();
 }
 
@@ -2252,9 +2253,9 @@ const PDFViewerModal = ({
             return "Send new contract";
         }
         if (!includeMainContractInSend && canSendWithoutContract) {
-            return "Review & send documents in PearSign";
+            return `Review & send documents in ${signingProviderName()}`;
         }
-        return "Review & send in PearSign";
+        return `Review & send in ${signingProviderName()}`;
     }, [
         canSendNewContract,
         showResendContractOnSentStep,
@@ -2904,7 +2905,7 @@ const PDFViewerModal = ({
                 setPrefilledBoldSignPdfLoading(false);
             }
             setPrefilledBoldSignPdfHint(
-                "No PearSign envelope yet. Send the contract to PearSign first.",
+                `No ${signingProviderName()} envelope yet. Send the contract to ${signingProviderName()} first.`,
             );
             return;
         }
@@ -2949,7 +2950,7 @@ const PDFViewerModal = ({
                 setPrefilledBoldSignPdfLoading(false);
             }
             setPrefilledBoldSignPdfHint(
-                "PearSign envelope polling limit exceeded (250 GET/hour). Wait before reloading this PDF — status still updates via webhook.",
+                `${signingProviderName()} envelope polling limit exceeded (250 GET/hour). Wait before reloading this PDF — status still updates via webhook.`,
             );
             return;
         }
@@ -3013,7 +3014,7 @@ const PDFViewerModal = ({
 
                     const blob = res.data as Blob;
                     if (!blob?.size) {
-                        lastError = "PearSign returned an empty PDF.";
+                        lastError = `${signingProviderName()} returned an empty PDF.`;
                         continue;
                     }
 
@@ -3048,7 +3049,7 @@ const PDFViewerModal = ({
             });
             setPrefilledBoldSignPdfHint(
                 lastError ||
-                    "Could not load prefilled PDF from PearSign. Try again in a few seconds.",
+                    `Could not load prefilled PDF from ${signingProviderName()}. Try again in a few seconds.`,
             );
         } finally {
             if (manageLoading && prefilledActiveLoadIdRef.current === loadId) {
@@ -3340,7 +3341,7 @@ const PDFViewerModal = ({
         const appId = applicationIdForLookupRef.current;
 
         if (!envelopeId && !appId) {
-            toast.error("Send the contract to PearSign first to download the filled PDF.");
+            toast.error(`Send the contract to ${signingProviderName()} first to download the filled PDF.`);
             return;
         }
 
@@ -3394,7 +3395,7 @@ const PDFViewerModal = ({
                     ? res.data
                     : new Blob([res.data], { type: "application/pdf" });
             if (!blob.size) {
-                toast.error("PearSign returned an empty PDF.");
+                toast.error(`${signingProviderName()} returned an empty PDF.`);
                 return;
             }
             const objectUrl = URL.createObjectURL(blob);
@@ -3818,11 +3819,11 @@ const PDFViewerModal = ({
     const handleCancelContract = async () => {
         const envelopeId = String(linkedEnvelopeIdRef.current || linkedEnvelopeId || "").trim();
         if (!envelopeId) {
-            toast.error("No PearSign envelope is linked to this contract.");
+            toast.error(`No ${signingProviderName()} envelope is linked to this contract.`);
             return;
         }
         const confirmed = window.confirm(
-            "Void this contract in PearSign? Signers will no longer be able to sign. You can send a new contract afterward.",
+            `Void this contract in ${signingProviderName()}? Signers will no longer be able to sign. You can send a new contract afterward.`,
         );
         if (!confirmed) return;
 
@@ -3849,12 +3850,12 @@ const PDFViewerModal = ({
                 setActiveStep("summary");
             }
             toast.success(
-                "Contract voided in PearSign. Use Review & send when you are ready to send again.",
+                `Contract voided in ${signingProviderName()}. Use Review & send when you are ready to send again.`,
             );
         } catch (error) {
             console.error("Failed to cancel PearSign contract:", error);
             const msg = await parseApiErrorMessageFromAxios(error);
-            toast.error(msg || "Failed to void contract in PearSign.");
+            toast.error(msg || `Failed to void contract in ${signingProviderName()}.`);
         } finally {
             setIsCancellingContract(false);
         }
@@ -3918,7 +3919,7 @@ const PDFViewerModal = ({
                 setPrefilledBoldSignPdfHint(null);
                 if (outForSignatureBeforeSend) {
                     toast.info(
-                        "Creating a new PearSign draft. Previous envelope was not voided.",
+                        `Creating a new ${signingProviderName()} draft. Previous envelope was not voided.`,
                     );
                 }
             }
@@ -3945,7 +3946,7 @@ const PDFViewerModal = ({
                 if (!signerValidation.valid) {
                     const msg =
                         signerValidation.message ||
-                        "Add signer role names and emails in Contract Signers before sending to PearSign.";
+                        `Add signer role names and emails in Contract Signers before sending to ${signingProviderName()}.`;
                     if (docuSignTab) {
                         try {
                             writeDocuSignErrorTab(docuSignTab.document, msg);
@@ -4006,7 +4007,7 @@ const PDFViewerModal = ({
                     invalidateDocuSignPdfCache();
                 }
                 if (isResendAfterSigned) {
-                    toast.info("Creating a new PearSign envelope to resend the contract.");
+                    toast.info(`Creating a new ${signingProviderName()} envelope to resend the contract.`);
                 }
 
                 const prefillFieldsForDraft = buildDocuSignPrefillFieldsPayload().map((f) => ({
@@ -4042,7 +4043,7 @@ const PDFViewerModal = ({
                 });
                 if (pearSignMode) {
                     if ((prepared as { provider?: string } | undefined)?.provider !== "pearsign") {
-                        throw new Error("The PearSign package could not be prepared.");
+                        throw new Error(`The ${signingProviderName()} package could not be prepared.`);
                     }
                     await openPearSignPackageReviewRef.current();
                     return;
@@ -4070,7 +4071,7 @@ const PDFViewerModal = ({
                         onResult: ({ completed, signatureRequestId }) => {
                             if (completed) {
                                 toast.success(
-                                    "Contract sent from the PearSign editor. The signing email was delivered to the signer(s).",
+                                    `Contract sent from the ${signingProviderName()} editor. The signing email was delivered to the signer(s).`,
                                     { autoClose: 12000 },
                                 );
                                 setActiveStep("sent");
@@ -4096,14 +4097,14 @@ const PDFViewerModal = ({
                                 );
                             } else {
                                 toast.info(
-                                    "PearSign editor closed without sending. Click Review & send to start again.",
+                                    `${signingProviderName()} editor closed without sending. Click Review & send to start again.`,
                                     { autoClose: 10000 },
                                 );
                             }
                         },
                     });
                     toast.info(
-                        "PearSign editor opened in a new tab. Review the contract and click Send for signature there.",
+                        `${signingProviderName()} editor opened in a new tab. Review the contract and click Send for signature there.`,
                         { autoClose: 10000 },
                     );
                     return;
@@ -4124,7 +4125,7 @@ const PDFViewerModal = ({
 
                 if (!envelopeId) {
                     const msg =
-                        "Could not create the PearSign draft. Check signers and template configuration.";
+                        `Could not create the ${signingProviderName()} draft. Check signers and template configuration.`;
                     if (docuSignTab) {
                         try {
                             writeDocuSignErrorTab(docuSignTab.document, msg);
@@ -4155,7 +4156,7 @@ const PDFViewerModal = ({
                         forceDocuSignSync: true,
                     });
                     toast.success(
-                        "Contract sent via PearSign - the signing email was delivered to the signer(s).",
+                        `Contract sent via ${signingProviderName()} - the signing email was delivered to the signer(s).`,
                         { autoClose: 12000 },
                     );
                     return;
@@ -4168,7 +4169,7 @@ const PDFViewerModal = ({
                 if (!senderUrl) {
                     const msg =
                         senderViewResult.error ||
-                        "Draft envelope was created but PearSign did not return a review URL yet. Wait a few seconds and click Review & send again.";
+                        `Draft envelope was created but ${signingProviderName()} did not return a review URL yet. Wait a few seconds and click Review & send again.`;
                     if (docuSignTab) {
                         try {
                             writeDocuSignErrorTab(docuSignTab.document, msg);
@@ -4199,7 +4200,7 @@ const PDFViewerModal = ({
                         setDocuSignOpenUrl(null);
                         beginAwaitingDocuSignSend();
                         toast.success(
-                            "PearSign opened with the latest CRM values. Edit freely there — those edits go to the signer. CRM will not update this open draft; click Review & send again to rebuild from CRM.",
+                            `${signingProviderName()} opened with the latest CRM values. Edit freely there — those edits go to the signer. CRM will not update this open draft; click Review & send again to rebuild from CRM.`,
                             { autoClose: 14000 },
                         );
                         return;
@@ -4213,7 +4214,7 @@ const PDFViewerModal = ({
                     setDocuSignOpenUrl(senderUrl);
                     beginAwaitingDocuSignSend();
                     toast.info(
-                        "Your browser blocked the PearSign tab. Click Open PearSign below (or allow pop-ups for this site).",
+                        `Your browser blocked the ${signingProviderName()} tab. Click Open ${signingProviderName()} below (or allow pop-ups for this site).`,
                         { autoClose: 12000 },
                     );
                     return;
@@ -4222,13 +4223,13 @@ const PDFViewerModal = ({
                 setDocuSignOpenUrl(null);
                 beginAwaitingDocuSignSend();
                 toast.success(
-                    "PearSign opened with the latest CRM values. Edit freely there — those edits go to the signer. CRM will not update this open draft; click Review & send again to rebuild from CRM.",
+                    `${signingProviderName()} opened with the latest CRM values. Edit freely there — those edits go to the signer. CRM will not update this open draft; click Review & send again to rebuild from CRM.`,
                     { autoClose: 14000 },
                 );
             } else if (onSendToDocusign) {
                 await onSendToDocusign(toSend);
             } else {
-                const msg = "PearSign is not configured for this contract.";
+                const msg = `${signingProviderName()} is not configured for this contract.`;
                 if (docuSignTab) {
                     try {
                         writeDocuSignErrorTab(docuSignTab.document, msg);
@@ -4243,7 +4244,7 @@ const PDFViewerModal = ({
             const msg =
                 error instanceof Error && error.message
                     ? error.message
-                    : "Failed to open PearSign. Try again.";
+                    : `Failed to open ${signingProviderName()}. Try again.`;
             if (docuSignTab) {
                 try {
                     writeDocuSignErrorTab(docuSignTab.document, msg);
@@ -5048,7 +5049,7 @@ const PDFViewerModal = ({
                     void loadPrefilledPdfRef.current(undefined, { maxAttempts: 1 });
                     if (!silent) {
                         toast.success(
-                            "Contract sent in PearSign. Step 4 shows signing status and the envelope PDF.",
+                            `Contract sent in ${signingProviderName()}. Step 4 shows signing status and the envelope PDF.`,
                         );
                     }
                     if (!ccEmailDeliveredRef.current && cc.length > 0) {
@@ -5520,7 +5521,7 @@ const PDFViewerModal = ({
         try {
             await pearSign.openPackageReview();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Could not open the PearSign review.");
+            toast.error(e instanceof Error ? e.message : `Could not open the ${signingProviderName()} review.`);
         }
     };
 
@@ -5541,8 +5542,8 @@ const PDFViewerModal = ({
             } catch (e) {
                 if ((e as { code?: string })?.code !== "PEARSIGN_ALREADY_COMPLETED") throw e;
                 const again = window.confirm(
-                    "A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.\n\n" +
-                        "Send it again anyway? It goes out as a new envelope and PearSign records it as a repeat. Nothing earlier is voided.",
+                    `A signer already completed this document in ${signingProviderName()} within the last 60 days, so ${signingProviderName()} did not send it again.\n\n` +
+                        `Send it again anyway? It goes out as a new envelope and ${signingProviderName()} records it as a repeat. Nothing earlier is voided.`,
                 );
                 if (!again) return;
                 out = await pearSign.send({ ccEmails: pearSignCcEmails, allowRepeat: true });
@@ -5562,36 +5563,36 @@ const PDFViewerModal = ({
             }
             void refreshContractSigningStateRef.current?.(true);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "PearSign send failed.");
+            toast.error(e instanceof Error ? e.message : `${signingProviderName()} send failed.`);
         }
     }, [pearSign, pearSignCcEmails]);
 
     const handlePearSignSync = useCallback(async () => {
         try {
             const next = await pearSign.sync();
-            toast.info(`PearSign status: ${next?.status || "unknown"}`);
+            toast.info(`${signingProviderName()} status: ${next?.status || "unknown"}`);
             void refreshContractSigningStateRef.current?.(true);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Could not refresh PearSign status.");
+            toast.error(e instanceof Error ? e.message : `Could not refresh ${signingProviderName()} status.`);
         }
     }, [pearSign]);
 
     const handlePearSignVoid = useCallback(async () => {
-        if (!window.confirm("Void the PearSign envelope? The signers can no longer sign it.")) return;
+        if (!window.confirm(`Void the ${signingProviderName()} envelope? The signers can no longer sign it.`)) return;
         try {
             const out = await pearSign.voidEnvelope();
             toast.success(
                 out?.alreadyEnded
-                    ? `This envelope was already ${out.alreadyEnded} in PearSign; the CRM is updated.`
-                    : "PearSign envelope voided.",
+                    ? `This envelope was already ${out.alreadyEnded} in ${signingProviderName()}; the CRM is updated.`
+                    : `${signingProviderName()} envelope voided.`,
             );
             void refreshContractSigningStateRef.current?.(true);
         } catch (e) {
-            const message = e instanceof Error ? e.message : "Could not void the PearSign envelope.";
+            const message = e instanceof Error ? e.message : `Could not void the ${signingProviderName()} envelope.`;
             if ((e as { code?: string })?.code === "PEARSIGN_ENVELOPE_NOT_FOUND") {
                 const release = window.confirm(
                     `${message}\n\nRemove this envelope from the CRM so you can send a new contract?\n` +
-                        "Only do this if you are sure it is not out for signature in PearSign.",
+                        `Only do this if you are sure it is not out for signature in ${signingProviderName()}.`,
                 );
                 if (!release) return;
                 try {
@@ -5641,7 +5642,7 @@ const PDFViewerModal = ({
                 if (lastPrefillSyncFailureToastKeyRef.current !== toastKey) {
                     lastPrefillSyncFailureToastKeyRef.current = toastKey;
                     toast.warning(
-                        "Prefill saved in CRM, but the PearSign draft could not be updated. Use Review & send to refresh the draft.",
+                        `Prefill saved in CRM, but the ${signingProviderName()} draft could not be updated. Use Review & send to refresh the draft.`,
                     );
                 }
             }
@@ -6423,7 +6424,7 @@ const PDFViewerModal = ({
         async (row: ContractDocumentTemplateMappingRow) => {
             if (!boldSignTemplateIsPreviewable(row?.template)) {
                 setDocumentUploadMessage(
-                    "This template has no PDF URL or PearSign template id.",
+                    `This template has no PDF URL or ${signingProviderName()} template id.`,
                 );
                 return;
             }
@@ -7680,7 +7681,7 @@ const PDFViewerModal = ({
                                                     Info Required
                                                 </h2>
                                                 <p className="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-                                                    Link PearSign templates, set contract state and funder, then capture
+                                                    Link {signingProviderName()} templates, set contract state and funder, then capture
                                                     addendum and ACH details for sending.
                                                 </p>
                                             </div>
@@ -8157,7 +8158,7 @@ const PDFViewerModal = ({
                                                             Addendum Templates
                                                         </label>
                                                         <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                                                            Select a PearSign template to add it automatically — same template can be added multiple times.
+                                                            Select a {signingProviderName()} template to add it automatically — same template can be added multiple times.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -8212,7 +8213,7 @@ const PDFViewerModal = ({
                                                     })
                                                     : null}
                                                 {addendumDocs.length > 0 ? (
-                                                    <optgroup label="Uploaded PDFs (preview only — not merged in PearSign)">
+                                                    <optgroup label={`Uploaded PDFs (preview only — not merged in ${signingProviderName()})`}>
                                                         {addendumDocs.map((file: any) => (
                                                             <option
                                                                 key={`up-${String(file?.id || "")}`}
@@ -8230,7 +8231,7 @@ const PDFViewerModal = ({
                                             </select>
                                             {selectedAddendumOption.startsWith("up:") ? (
                                                 <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">
-                                                    Uploaded PDFs are for preview only and are not merged into PearSign. Choose a PearSign template to add it.
+                                                    Uploaded PDFs are for preview only and are not merged into {signingProviderName()}. Choose a {signingProviderName()} template to add it.
                                                 </p>
                                             ) : null}
                                         </div>
@@ -8674,8 +8675,8 @@ const PDFViewerModal = ({
                                                                 </span>
                                                                 <span className="mt-0.5 block text-[11px] text-slate-500 dark:text-slate-400">
                                                                     {disclosureFirstInSend
-                                                                        ? "Opens first in PearSign: disclosure → contract → addenda."
-                                                                        : "Placed last in PearSign: contract → addenda → disclosure."}
+                                                                        ? `Opens first in ${signingProviderName()}: disclosure → contract → addenda.`
+                                                                        : `Placed last in ${signingProviderName()}: contract → addenda → disclosure.`}
                                                                 </span>
                                                             </span>
                                                         </label>
@@ -8722,7 +8723,7 @@ const PDFViewerModal = ({
                                                             Addendum
                                                         </h4>
                                                         <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                                                            PearSign addendum templates merged when you send the contract.
+                                                            {signingProviderName()} addendum templates merged when you send the contract.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -8736,7 +8737,7 @@ const PDFViewerModal = ({
 
                                             <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                                 <FileSignature className="h-3 w-3 text-[var(--brand)]" aria-hidden />
-                                                PearSign templates
+                                                {signingProviderName()} templates
                                             </p>
                                             <div className="space-y-2">
                                                 {addendumTemplateMappings.length > 0 ? (
@@ -9823,7 +9824,7 @@ const PDFViewerModal = ({
                                                                 Add every owner or guarantor who must sign. The first slot uses
                                                                 your template role (e.g. Client); additional signers default to
                                                                 Signer. Saved signers are
-                                                                sent to PearSign when you Review &amp; send.
+                                                                sent to {signingProviderName()} when you Review &amp; send.
                                                             </p>
                                                         </div>
                                                         <Button
@@ -10085,7 +10086,7 @@ const PDFViewerModal = ({
                                                                     }
                                                                     toast.success(
                                                                         hadDraft
-                                                                            ? "Signers saved. Click Review & send again to open PearSign with the updated signers."
+                                                                            ? `Signers saved. Click Review & send again to open ${signingProviderName()} with the updated signers.`
                                                                             : cid != null
                                                                               ? "Signers saved. They will be used when you Review & send."
                                                                               : "Signers updated for this session. They will be used when you Review & send.",
@@ -10181,8 +10182,8 @@ const PDFViewerModal = ({
                                                     Deal Review
                                                 </h3>
                                                 <p className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
-                                                    CRM values for your PearSign field labels. Review here, then use
-                                                    Review & send in PearSign — signing is completed in PearSign only.
+                                                    CRM values for your {signingProviderName()} field labels. Review here, then use
+                                                    Review & send in {signingProviderName()} — signing is completed in {signingProviderName()} only.
                                                 </p>
                                             </div>
                                             {canEditContractPrefill ? (
@@ -10434,7 +10435,7 @@ const PDFViewerModal = ({
                                                                   ? "Signers have an open envelope. You can void it, or send a new contract without voiding the previous one."
                                                                   : canResendContract
                                                                     ? "All signers completed. Use Send new contract below to start a new envelope, or view the signed PDF on the right."
-                                                                    : "The PearSign envelope was sent. Status and contract details refresh automatically."}
+                                                                    : `The ${signingProviderName()} envelope was sent. Status and contract details refresh automatically.`}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -10561,7 +10562,7 @@ const PDFViewerModal = ({
                                                             Contract signing status
                                                         </h3>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                            CRM status is updated when PearSign webhooks are received (viewed, signed,
+                                                            CRM status is updated when {signingProviderName()} webhooks are received (viewed, signed,
                                                             completed, etc.).
                                                         </p>
                                                     </div>
@@ -10815,7 +10816,7 @@ const PDFViewerModal = ({
                                         {String(resolvedContract?.status ?? "").toUpperCase() ===
                                         "COMPLETED"
                                             ? "Signed contract"
-                                            : "PearSign envelope"}
+                                            : `${signingProviderName()} envelope`}
                                     </button>
                                 ) : null}
                             </div>
@@ -10865,7 +10866,7 @@ const PDFViewerModal = ({
                                 ) : prefilledBoldSignPdfLoading ? (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white px-4 text-center text-xs text-slate-500">
                                         <Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" aria-hidden />
-                                        <span>Loading contract from PearSign…</span>
+                                        <span>Loading contract from {signingProviderName()}…</span>
                                     </div>
                                 ) : prefilledBoldSignPdfUrl ? (
                                     <DirectPdfViewer fileUrl={prefilledBoldSignPdfUrl} />
@@ -10873,7 +10874,7 @@ const PDFViewerModal = ({
                                     <div className="absolute inset-0 flex min-h-[200px] items-center justify-center bg-white px-4 text-center text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                                         {prefilledBoldSignPdfHint
                                             ? prefilledBoldSignPdfHint
-                                            : "PearSign PDF appears on step 4 (Sent) after the contract envelope is sent."}
+                                            : `${signingProviderName()} PDF appears on step 4 (Sent) after the contract envelope is sent.`}
                                     </div>
                                 )}
                             </div>
@@ -11050,7 +11051,7 @@ const PDFViewerModal = ({
                         <div className="flex shrink-0 flex-col items-end gap-2 border-t border-slate-100 pt-2 dark:border-slate-700 lg:border-t-0 lg:pt-0">
                             {docuSignOpenUrl && activeStep !== "sent" ? (
                                 <p className="max-w-md text-right text-xs text-amber-800 dark:text-amber-200">
-                                    Pop-up blocked. Click Open PearSign to continue in a new tab.
+                                    Pop-up blocked. Click Open {signingProviderName()} to continue in a new tab.
                                 </p>
                             ) : null}
                             <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
@@ -11076,7 +11077,7 @@ const PDFViewerModal = ({
                                     onClick={() => void handleSend()}
                                     disabled={isSending || isCancellingContract}
                                 >
-                                    {isSending ? "Preparing PearSign…" : docuSignPrimaryActionLabel}
+                                    {isSending ? `Preparing ${signingProviderName()}…` : docuSignPrimaryActionLabel}
                                 </Button>
                             ) : activeStep === "sent" && !canCancelSentContract ? (
                                     <Button
@@ -11099,7 +11100,7 @@ const PDFViewerModal = ({
                                         if (tryOpenDocuSignSenderUrl(url)) {
                                             setDocuSignOpenUrl(null);
                                             toast.success(
-                                                "PearSign opened in a new tab. Click Send there when you are ready.",
+                                                `${signingProviderName()} opened in a new tab. Click Send there when you are ready.`,
                                                 { autoClose: 10000 },
                                             );
                                         } else {
@@ -11112,7 +11113,7 @@ const PDFViewerModal = ({
                                     }}
                                     disabled={isCancellingContract}
                                 >
-                                    Open PearSign
+                                    Open {signingProviderName()}
                                 </Button>
                             ) : canReviewAndSendCurrentPackage ? (
                                 <>
@@ -11123,14 +11124,14 @@ const PDFViewerModal = ({
                                             className={DOCUSIGN_PRIMARY_BTN_CLASS}
                                             onClick={handlePearSignReview}
                                             disabled={!!pearSign.busy || isSending || isCancellingContract}
-                                            title="Review the whole package (contract + selected addendums + disclosure), then send it as one PearSign envelope"
+                                            title={`Review the whole package (contract + selected addendums + disclosure), then send it as one ${signingProviderName()} envelope`}
                                         >
-                                            {isSending || pearSign.busy === "review" ? "Preparing review…" : "Review & send in PearSign"}
+                                            {isSending || pearSign.busy === "review" ? "Preparing review…" : `Review & send in ${signingProviderName()}`}
                                         </Button>
                                     ) : null}
                                     {/* Same label as the review button → one button only (no duplicate). */}
                                     {showPearSignReview &&
-                                    docuSignPrimaryActionLabel === "Review & send in PearSign" ? null : (
+                                    docuSignPrimaryActionLabel === `Review & send in ${signingProviderName()}` ? null : (
                                     <Button
                                         type="button"
                                         variant={showPearSignReview ? "outline" : "default"}
@@ -11142,7 +11143,7 @@ const PDFViewerModal = ({
                                         onClick={() => void handleSend()}
                                         disabled={isSending || isCancellingContract}
                                     >
-                                        {isSending ? "Preparing PearSign…" : docuSignPrimaryActionLabel}
+                                        {isSending ? `Preparing ${signingProviderName()}…` : docuSignPrimaryActionLabel}
                                     </Button>
                                     )}
                                 </>
@@ -11185,7 +11186,7 @@ const PDFViewerModal = ({
                                             disabled={!!pearSign.busy}
                                             onClick={() => void handlePearSignVoid()}
                                         >
-                                            {pearSign.busy === "void" ? "Voiding…" : "Void PearSign"}
+                                            {pearSign.busy === "void" ? "Voiding…" : `Void ${signingProviderName()}`}
                                         </Button>
                                     ) : null}
                                 </div>
@@ -11269,7 +11270,7 @@ const PDFViewerModal = ({
                 onAfterPrefillSaved={() => {
                     if (crmPrefillFrozenForOpenDraftRef.current) {
                         toast.info(
-                            "CRM prefill saved. The open PearSign draft will not be overwritten — click Review & send again to open a new draft with these values.",
+                            `CRM prefill saved. The open ${signingProviderName()} draft will not be overwritten — click Review & send again to open a new draft with these values.`,
                             { autoClose: 10000 },
                         );
                         return;

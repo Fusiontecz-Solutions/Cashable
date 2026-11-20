@@ -326,21 +326,21 @@ const STATUS_COPY: Record<'sent' | 'viewed' | 'signed', StatusCopy> = {
     label: 'Sent',
     title: 'Contract Sent',
     badge: { ...BADGE_PROGRESS, label: '&#9679;&nbsp; Sent for Signature' },
-    lead: 'The {book} contract for {merchant} has been sent to the merchant for signature through PearSign. Updates on this contract will follow in this email thread.',
+    lead: 'The {book} contract for {merchant} has been sent to the merchant for signature. Updates on this contract will follow in this email thread.',
     preheader: 'the contract is out for signature.',
   },
   viewed: {
     label: 'Viewed',
     title: 'Contract Viewed',
     badge: { ...BADGE_INFO, label: '&#9679;&nbsp; Viewed' },
-    lead: '{merchant} has opened the {book} contract in PearSign. It has not been signed yet.',
+    lead: '{merchant} has opened the {book} contract. It has not been signed yet.',
     preheader: 'the merchant has opened the contract.',
   },
   signed: {
     label: 'Signed',
     title: 'Contract Signed',
     badge: { ...BADGE_DONE, label: '&#10003;&nbsp; Signed' },
-    lead: '{merchant} has signed the {book} contract in PearSign. The signed copy is saved on the deal in the CRM.',
+    lead: '{merchant} has signed the {book} contract. The signed copy is saved on the deal in the CRM.',
     preheader: 'the merchant has signed the contract.',
   },
 };
@@ -391,7 +391,7 @@ export function renderContractStatusUpdateEmailHtml(fields: ContractStatusUpdate
   const attached = Boolean(clean(fields.attachmentName));
   const leadText =
     attached && copy.label === 'Signed'
-      ? '{merchant} has signed the {book} contract in PearSign. The signed copy is attached to this email and saved on the deal in the CRM.'
+      ? '{merchant} has signed the {book} contract. The signed copy is attached to this email and saved on the deal in the CRM.'
       : copy.lead;
   const lead = leadText.replace('{book}', strong(book)).replace('{merchant}', strong(merchant));
   const extraRows: Array<[string, string]> = [['Status', escapeHtml(copy.label)]];
@@ -413,7 +413,7 @@ export function renderContractStatusUpdateEmailHtml(fields: ContractStatusUpdate
     extraRows,
     attachmentCaption: attached ? 'Signed contract &middot; attached to this email' : '',
     noteText: 'You can open the deal in the Cashable CRM to see the contract and its full signing history.',
-    footerText: 'This is an automated notification sent when a PearSign contract changes status.',
+    footerText: 'This is an automated notification sent when a contract out for signature changes status.',
   });
 }
 

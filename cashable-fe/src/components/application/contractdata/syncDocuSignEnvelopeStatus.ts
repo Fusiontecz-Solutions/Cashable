@@ -1,4 +1,5 @@
 import { axiosPost } from "@/redux/axios";
+import { signingProviderName } from "@/lib/signingProvider";
 import {
     isDocuSignEnvelopeSyncTerminal,
     isDocuSignStatusTerminal,
@@ -116,11 +117,11 @@ export async function syncDocuSignEnvelopeStatus(
             lastSyncedAtByEnvelope.set(eid, Date.now());
             if (options?.silent) return { rateLimited: true };
             throw new Error(
-                "PearSign hourly API limit reached (3000/hour). Wait about an hour, then click Update status once.",
+                `${signingProviderName()} hourly API limit reached (3000/hour). Wait about an hour, then click Update status once.`,
             );
         }
         throw new Error(
-            extractDocuSignApiErrorMessage(err, "Could not sync PearSign envelope status."),
+            extractDocuSignApiErrorMessage(err, `Could not sync ${signingProviderName()} envelope status.`),
         );
     }
 }

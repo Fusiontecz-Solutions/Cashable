@@ -1,4 +1,5 @@
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
+import { signingProviderName } from "@/lib/signingProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -1745,7 +1746,7 @@ export default function ContractTab({
             ).trim();
             if (!envelopeId) {
                 toast.error(
-                    "No PearSign envelope found. Refresh contract status after signing completes.",
+                    `No ${signingProviderName()} envelope found. Refresh contract status after signing completes.`,
                 );
                 return;
             }
@@ -1796,7 +1797,7 @@ export default function ContractTab({
                     ? res.data
                     : new Blob([res.data], { type: "application/pdf" });
             if (!blob.size) {
-                toast.error("PearSign returned an empty PDF.");
+                toast.error(`${signingProviderName()} returned an empty PDF.`);
                 return;
             }
 
@@ -1889,7 +1890,7 @@ export default function ContractTab({
                 if (result.rateLimited) {
                     if (!silent) {
                         setContractSyncError(
-                            "PearSign polling limit reached for contract. Wait a few minutes or rely on webhook updates.",
+                            `${signingProviderName()} polling limit reached for contract. Wait a few minutes or rely on webhook updates.`,
                         );
                     }
                 } else {
@@ -1968,7 +1969,7 @@ export default function ContractTab({
                 if (result.rateLimited) {
                     if (!silent) {
                         setAchSyncError(
-                            "PearSign polling limit reached for ACH. Wait a few minutes or rely on webhook updates.",
+                            `${signingProviderName()} polling limit reached for ACH. Wait a few minutes or rely on webhook updates.`,
                         );
                     }
                 } else {
@@ -2024,7 +2025,7 @@ export default function ContractTab({
                 if (result.rateLimited) {
                     if (!silent) {
                         setPackageSyncError(
-                            "PearSign polling limit reached for supplemental documents. Wait a few minutes or rely on webhook updates.",
+                            `${signingProviderName()} polling limit reached for supplemental documents. Wait a few minutes or rely on webhook updates.`,
                         );
                     }
                 } else {
@@ -2149,7 +2150,7 @@ export default function ContractTab({
             return;
         }
         const confirmed = window.confirm(
-            `Void "${row.label}" in PearSign? Signers will no longer be able to sign this document.`,
+            `Void "${row.label}" in ${signingProviderName()}? Signers will no longer be able to sign this document.`,
         );
         if (!confirmed) return;
 
@@ -2166,7 +2167,7 @@ export default function ContractTab({
                 }),
             ).unwrap();
             await reloadFetchedContract();
-            toast.success(`${row.label} voided in PearSign.`);
+            toast.success(`${row.label} voided in ${signingProviderName()}.`);
         } catch (err: unknown) {
             const msg =
                 typeof err === "string"
@@ -2212,7 +2213,7 @@ export default function ContractTab({
                     ? err
                     : String(
                           (err as { message?: string })?.message ||
-                              "Failed to resend PearSign email.",
+                              `Failed to resend ${signingProviderName()} email.`,
                       );
             toast.error(msg);
         } finally {
@@ -2525,7 +2526,7 @@ export default function ContractTab({
         }
 
         if (!applicationUuid) {
-            failDocuSignEnvelope("Application is required to send via PearSign.");
+            failDocuSignEnvelope(`Application is required to send via ${signingProviderName()}.`);
         }
         if (standaloneAchOnly) {
             if (!achDocumentRef && addendumDocuments.length === 0) {
@@ -2681,7 +2682,7 @@ export default function ContractTab({
 
             if (roles.length === 0) {
                 failDocuSignEnvelope(
-                    "Could not resolve any PearSign signers. Add a client email on this application.",
+                    `Could not resolve any ${signingProviderName()} signers. Add a client email on this application.`,
                 );
             }
 
@@ -3456,7 +3457,7 @@ export default function ContractTab({
             const dropboxClientId = String((sendResponse as any)?.clientId ?? "").trim();
 
             if (!documentId && !(dropboxProvider && senderUrl)) {
-                failDocuSignEnvelope("PearSign did not return a document ID.");
+                failDocuSignEnvelope(`${signingProviderName()} did not return a document ID.`);
             }
 
             if (
@@ -3591,7 +3592,7 @@ export default function ContractTab({
                 (prefillApplied == null || prefillApplied === 0)
             ) {
                 toast.warning(
-                    "Contract sent, but PearSign field labels did not match CRM prefill ids. Signer may need to fill fields manually. Check template Data Labels in PearSign Admin.",
+                    `Contract sent, but ${signingProviderName()} field labels did not match CRM prefill ids. Signer may need to fill fields manually. Check template Data Labels in ${signingProviderName()} Admin.`,
                     { autoClose: 8000 },
                 );
             }
@@ -3606,8 +3607,8 @@ export default function ContractTab({
                     onResult: ({ completed, signatureRequestId }) => {
                         toast[completed ? "success" : "info"](
                             completed
-                                ? "Contract sent from the PearSign editor. The signing email was delivered to the signer(s)."
-                                : "PearSign editor closed without sending.",
+                                ? `Contract sent from the ${signingProviderName()} editor. The signing email was delivered to the signer(s).`
+                                : `${signingProviderName()} editor closed without sending.`,
                             { autoClose: 10000 },
                         );
                         if (completed && signatureRequestId) {
@@ -3628,14 +3629,14 @@ export default function ContractTab({
                     },
                 });
                 toast.info(
-                    "PearSign editor opened in a new tab. Review and click Send for signature there.",
+                    `${signingProviderName()} editor opened in a new tab. Review and click Send for signature there.`,
                     { autoClose: 10000 },
                 );
             } else if (!options.autoSend && !options.suppressSuccessToast) {
                 toast.success(
                     recipientList
-                        ? `PearSign draft is ready.${mergeNote}${prefillNote} Signer(s): ${recipientList}.`
-                        : `PearSign draft is ready.${mergeNote}${prefillNote}`,
+                        ? `${signingProviderName()} draft is ready.${mergeNote}${prefillNote} Signer(s): ${recipientList}.`
+                        : `${signingProviderName()} draft is ready.${mergeNote}${prefillNote}`,
                 );
             } else if (
                 !autoSent &&
@@ -3646,20 +3647,20 @@ export default function ContractTab({
                 window.open(senderUrl, "_blank", "noopener,noreferrer");
                 toast.success(
                     recipientList
-                        ? `Draft opened in PearSign.${mergeNote}${prefillNote} Review and click Send in PearSign to email signers. Signer(s): ${recipientList}.`
-                        : `Draft opened in PearSign.${mergeNote}${prefillNote} Review and click Send in PearSign to email signers.`,
+                        ? `Draft opened in ${signingProviderName()}.${mergeNote}${prefillNote} Review and click Send in ${signingProviderName()} to email signers. Signer(s): ${recipientList}.`
+                        : `Draft opened in ${signingProviderName()}.${mergeNote}${prefillNote} Review and click Send in ${signingProviderName()} to email signers.`,
                 );
             } else if (autoSent) {
                 toast.success(
                     recipientList
-                        ? `Contract sent via PearSign.${mergeNote}${prefillNote} Signing email sent to: ${recipientList}.`
-                        : `Contract sent via PearSign.${mergeNote}${prefillNote}`,
+                        ? `Contract sent via ${signingProviderName()}.${mergeNote}${prefillNote} Signing email sent to: ${recipientList}.`
+                        : `Contract sent via ${signingProviderName()}.${mergeNote}${prefillNote}`,
                 );
             } else if (!senderUrl) {
                 toast.success(
                     autoSent
-                        ? `Contract sent via PearSign.${mergeNote}${prefillNote}`
-                        : "Envelope created, but no PearSign review URL was returned.",
+                        ? `Contract sent via ${signingProviderName()}.${mergeNote}${prefillNote}`
+                        : `Envelope created, but no ${signingProviderName()} review URL was returned.`,
                 );
             }
 
@@ -3684,7 +3685,7 @@ export default function ContractTab({
                     (error as { response?: { data?: { message?: string } } })
                         ?.response?.data?.message ??
                     (error as Error)?.message ??
-                    "Failed to send template via PearSign.";
+                    `Failed to send template via ${signingProviderName()}.`;
             const msg =
                 typeof raw === "string" ? raw : JSON.stringify(raw ?? "");
             if (isDocuSignMissingSignerMessage(msg)) {
@@ -3735,7 +3736,7 @@ export default function ContractTab({
             (result as { provider?: string } | undefined)?.provider === "dropboxsign" &&
             Boolean((result as { sendUrl?: string | null } | undefined)?.sendUrl);
         if (!envelopeId && !isDropboxDraft) {
-            throw new Error("PearSign did not return an envelope ID after creating the draft.");
+            throw new Error(`${signingProviderName()} did not return an envelope ID after creating the draft.`);
         }
         if (isDropboxDraft && !envelopeId) {
             return {
@@ -5210,7 +5211,7 @@ export default function ContractTab({
                                         colSpan={11}
                                         className={`text-center py-8 ${isDark ? "text-gray-400" : "text-[#687182]"}`}
                                     >
-                                        No PearSign sends yet. Rows appear here after a
+                                        No {signingProviderName()} sends yet. Rows appear here after a
                                         contract, addendum, disclosure, or ACH form is sent
                                         (each document listed separately). Sent, viewed,
                                         signed, completed, and voided stays visible; drafts

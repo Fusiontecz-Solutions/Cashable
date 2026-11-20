@@ -1,4 +1,5 @@
 import { toPrefillUppercase } from "./prefillUppercase";
+import { signingProviderName } from "@/lib/signingProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import {
@@ -312,7 +313,7 @@ export function TemplateMappingPrefillEditDialog({
             toast.success(
                 coordinateLayout
                     ? "ACH form field values saved."
-                    : "Template mapping and PearSign field overrides saved.",
+                    : `Template mapping and ${signingProviderName()} field overrides saved.`,
             );
             onSaved(coordinateLayout ? tabValues : undefined);
             onOpenChange(false);
@@ -347,7 +348,7 @@ export function TemplateMappingPrefillEditDialog({
           ? row.template.name
           : coordinateLayout
             ? "ACH authorization"
-            : row?.template?.templateId || "PearSign template";
+            : row?.template?.templateId || `${signingProviderName()} template`;
 
     const dialogTitle = coordinateLayout
         ? `Edit ACH form — ${titleName}`

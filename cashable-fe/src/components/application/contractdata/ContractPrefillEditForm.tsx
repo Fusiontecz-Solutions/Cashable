@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { signingProviderName } from "@/lib/signingProvider";
 import type { LucideIcon } from "lucide-react";
 import {
     Building2,
@@ -572,7 +573,7 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
             id: "exhibit_a",
             title: "Exhibit A — additional entities",
             description:
-                "Up to 10 additional entity names subject to the contract (page 17; PearSign data labels exhibit_a_value_1 … 10).",
+                `Up to 10 additional entity names subject to the contract (page 17; ${signingProviderName()} data labels exhibit_a_value_1 … 10).`,
             Icon: Layers,
             groups: [
                 {
@@ -1410,7 +1411,7 @@ export function ContractPrefillEditForm({
                     id: linkedAddendumNavSectionId(mapping.id),
                     title,
                     description:
-                        "PearSign addendum template fields merged when you send the contract.",
+                        `${signingProviderName()} addendum template fields merged when you send the contract.`,
                     Icon: Layers,
                     groups: [],
                 });
@@ -2209,7 +2210,7 @@ export function ContractPrefillEditForm({
             resetAddendumFromSources();
             resetDisclosureFromSources();
             setSaveError(null);
-            toast.success("Saved overrides cleared; PearSign will use application data again.");
+            toast.success(`Saved overrides cleared; ${signingProviderName()} will use application data again.`);
         } catch (e) {
             console.error(e);
             const msg = messageFromSaveError(e, "Failed to clear overrides.");
@@ -2457,11 +2458,11 @@ export function ContractPrefillEditForm({
                         </div>
                         <div className="min-w-0 space-y-1">
                             <DialogTitle className="text-left text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                                Verify contract prefill (PearSign)
+                                Verify contract prefill ({signingProviderName()})
                             </DialogTitle>
                             <p className="text-muted-foreground text-sm font-normal leading-snug">
                                 Walk through each agreement section and confirm values match the deal. Saved overrides
-                                merge into PearSign when you open or send the contract.
+                                merge into {signingProviderName()} when you open or send the contract.
                             </p>
                         </div>
                     </div>

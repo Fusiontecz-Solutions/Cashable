@@ -1,4 +1,5 @@
 import { isPearSignConfigured } from '../services/pearsign/pearsign-client';
+import { isBoldSignConfigured } from '../services/pearsign/boldsign-client';
 import { listActivePearSignContractIds, syncPearSignContract } from '../services/pearsign/pearsign-contract.service';
 
 /**
@@ -34,7 +35,8 @@ async function tick() {
 }
 
 export function startPearSignContractStatusJob() {
-  if (timer || !isPearSignConfigured() || process.env.PEARSIGN_STATUS_POLL_DISABLED === 'true') return;
+  // Polls PearSign and BoldSign contracts alike (bs- ids are routed to BoldSign).
+  if (timer || !(isPearSignConfigured() || isBoldSignConfigured()) || process.env.PEARSIGN_STATUS_POLL_DISABLED === 'true') return;
   timer = setInterval(() => void tick(), INTERVAL_MS);
   timer.unref?.();
   setTimeout(() => void tick(), 30_000).unref?.();

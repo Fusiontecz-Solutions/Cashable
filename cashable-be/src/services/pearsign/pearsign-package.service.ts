@@ -40,6 +40,19 @@ import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsi
 import { buildPearSignPreviewPdf, loadBasePdf, primeBasePdfCache } from './pearsign-preview.service';
 import { renderTypedCoj, type CojKind, type PackageTypedCoj } from '../docusign/utils/coj-typed-document';
 import {
+  BOLDSIGN_PX_PER_PT,
+  boldSignCreateEmbeddedSend,
+  boldSignDocumentProperties,
+  boldSignSandbox,
+  boldSignSendDocument,
+  isBoldSignConfigured,
+  isBoldSignEnvelopeId,
+  signingProvider,
+  toBoldSignEnvelopeId,
+  type BoldSignFormField,
+  type BoldSignSigner,
+} from './boldsign-client';
+import {
   cleanStyles,
   isPearSignIndependentKey,
   mergeStyles,
@@ -373,7 +386,9 @@ export async function stagePearSignPackage(input: {
   ccEmails?: string[];
   actorUserId?: string | number | null;
 }) {
-  if (!isPearSignConfigured()) throw new PearSignContractError('PEARSIGN_API_KEY is not configured on the server.', 500);
+  if (signingProvider() === 'boldsign' ? !isBoldSignConfigured() : !isPearSignConfigured()) {
+    throw new PearSignContractError(`${signingProvider() === 'boldsign' ? 'BOLDSIGN_API_KEY' : 'PEARSIGN_API_KEY'} is not configured on the server.`, 500);
+  }
   const contractId = Number(input.contractId);
   if (!Number.isFinite(contractId) || contractId <= 0) {
     throw new PearSignContractError('Save the contract before preparing a PearSign package.');
@@ -895,12 +910,114 @@ async function recordPackageSent(
   return { next, ccMail };
 }
 
+/**
+ * The package's fields as BoldSign signers + form fields: CRM values are read-only text, empty
+ * CRM boxes stay editable, signer boxes become Signature / Initial / DateSigned. Positions are the
+ * same boxes PearSign gets (grown for the font), scaled from PDF points to BoldSign's 96-DPI pixels.
+ */
+export function boldSignSignersFor(
+  prep: Pick<PreparedPackageSend, 'pkg' | 'createFields' | 'fieldValues'>,
+): BoldSignSigner[] {
+  const px = (n: number) => Math.round(n * BOLDSIGN_PX_PER_PT * 100) / 100;
+  const usedIds = new Set<string>();
+  const fieldId = (name: string) => {
+    const base = name.replace(/[^A-Za-z0-9_]/g, '_').slice(0, 90) || 'field';
+    let id = base;
+    for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
+    usedIds.add(id);
+    return id;
+  };
+  return prep.pkg.recipients.map((r, i) => ({
+    name: r.name,
+    emailAddress: r.email,
+    signerOrder: i + 1,
+    formFields: prep.createFields
+      .filter((f) => f.roleId === r.roleId)
+      .map((f): BoldSignFormField => {
+        const p = f.position;
+        const bounds = { x: px(p.x), y: px(p.y), width: px(p.width), height: px(p.height) };
+        const base = { id: fieldId(f.fieldName), name: f.fieldName, pageNumber: p.page, bounds };
+        if (f.type === 'signature') return { ...base, fieldType: 'Signature', isRequired: f.required };
+        if (f.type === 'initials') return { ...base, fieldType: 'Initial', isRequired: f.required };
+        if (f.type === 'date') return { ...base, fieldType: 'DateSigned', isRequired: true };
+        const value = prep.fieldValues[f.fieldName];
+        return {
+          ...base,
+          fieldType: 'TextBox',
+          font: 'Helvetica',
+          ...(f.fontSize ? { fontSize: f.fontSize } : {}),
+          ...(value
+            ? { value, isReadOnly: true, isRequired: false }
+            : { isReadOnly: false, isRequired: f.required }),
+        };
+      }),
+  }));
+}
+
+/** BoldSign send: one document from the reviewed package, BoldSign emails each owner in order. */
+async function sendBoldSignPackage(
+  contractId: number,
+  actorUserId: string | null,
+  prep: PreparedPackageSend,
+) {
+  const { pkg, values, fieldValues, blank, pdf, sentStyles, message } = prep;
+  let documentId: string;
+  try {
+    ({ documentId } = await boldSignSendDocument({
+      title: pkg.title,
+      message,
+      pdfBase64: [pdf.toString('base64')],
+      signers: boldSignSignersFor(prep),
+      metaData: { contractId: String(contractId), source: 'cashable-crm' },
+    }));
+  } catch (e) {
+    if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+    throw e;
+  }
+  const envelopeId = toBoldSignEnvelopeId(documentId);
+  console.info('[BoldSign] package sent', {
+    contractId,
+    envelopeId,
+    sandbox: boldSignSandbox(),
+    documents: pkg.documents.length,
+    prefilled: Object.keys(fieldValues).length,
+    blank,
+  });
+  const { next, ccMail } = await recordPackageSent(contractId, actorUserId, prep, {
+    envelopeId,
+    templateId: null,
+    status: 'sent',
+    values,
+    sentPackage: {
+      mergedPdfUrl: pkg.mergedPdfUrl,
+      fields: pkg.fields,
+      recipients: pkg.recipients,
+      documents: pkg.documents,
+      styles: sentStyles,
+      typedCojs: pkg.typedCojs,
+    },
+    pearSignEmailedSigners: true,
+    signingUrls: [],
+    source: 'boldsign_package_send',
+  });
+  return {
+    state: next,
+    prefilledFieldCount: Object.keys(fieldValues).length,
+    blankFieldCount: blank,
+    emailSent: true,
+    invitesFailed: ccMail.invites.failed,
+    documents: pkg.documents.map((d) => d.name),
+    ccMail,
+  };
+}
+
 export async function sendPearSignPackage(
   contractId: number,
   actorUserId: string | null,
   body: { message?: string; allowRepeat?: unknown } = {},
 ) {
   const prep = await preparePackageSend(contractId, body);
+  if (signingProvider() === 'boldsign') return sendBoldSignPackage(contractId, actorUserId, prep);
   const { pkg, values, fieldValues, blank, pdf, sentStyles, createFields, signerRoles, message } = prep;
 
   // Per-send template from the merged package.
@@ -1058,6 +1175,7 @@ export async function openPearSignPackageEditor(
 ) {
   const origins = editorOrigins(body.pageOrigin, body.origin);
   const prep = await preparePackageSend(contractId, body);
+  if (signingProvider() === 'boldsign') return openBoldSignPackageEditor(contractId, actorUserId, prep);
   const { pkg, fieldValues, pdf, createFields, signerRoles, message } = prep;
   let session;
   try {
@@ -1156,6 +1274,69 @@ export function packageFromEditorFields(
  * Called when the editor reports it finished (and safe to call again): reads the session from
  * PearSign and, once it has an envelope, records it exactly like a normal send.
  */
+/**
+ * BoldSign's editor: the reviewed package as a BoldSign draft opened on its prepare page, where
+ * fields can be moved, resized or added before clicking Send. The draft id is the session id.
+ */
+async function openBoldSignPackageEditor(contractId: number, actorUserId: string | null, prep: PreparedPackageSend) {
+  let created: { documentId: string; sendUrl: string };
+  try {
+    created = await boldSignCreateEmbeddedSend({
+      title: prep.pkg.title,
+      message: prep.message,
+      pdfBase64: [prep.pdf.toString('base64')],
+      signers: boldSignSignersFor(prep),
+      metaData: { contractId: String(contractId), source: 'cashable-crm' },
+    });
+  } catch (e) {
+    if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+    throw e;
+  }
+  const sessionId = toBoldSignEnvelopeId(created.documentId);
+  await writeEditorSession(contractId, {
+    sessionId,
+    createdAt: new Date().toISOString(),
+    createdByUserId: actorUserId,
+    message: prep.message,
+  });
+  console.info('[BoldSign] editor draft opened', { contractId, documentId: created.documentId, sandbox: boldSignSandbox() });
+  return { sessionId, editorUrl: created.sendUrl, expiresAt: null };
+}
+
+/** The BoldSign draft is sent once its status leaves Draft; record it like a normal send. */
+async function finishBoldSignPackageEditor(
+  contractId: number,
+  actorUserId: string | null,
+  record: EditorSessionRecord,
+  envelopeId: string,
+) {
+  const contract = await loadContract(contractId);
+  const current = readState(contract.contractPrefillOverrides);
+  if (current?.envelopeId === envelopeId) return { status: 'sent', state: current, alreadyRecorded: true };
+  const props = await boldSignDocumentProperties(envelopeId.replace(/^bs-/i, ''));
+  const status = String(props.status || '').toLowerCase();
+  if (status === 'draft' || status === 'scheduled') return { status: 'open', state: current };
+  if (status === 'revoked' || status === 'expired') {
+    await writeEditorSession(contractId, null);
+    return { status: status === 'expired' ? 'expired' : 'cancelled', state: current };
+  }
+  const prep = await preparePackageSend(contractId, { message: record.message });
+  // Fields may have been moved in BoldSign's editor: the PDF comes from BoldSign, not a CRM redraw.
+  const { next } = await recordPackageSent(contractId, actorUserId ?? record.createdByUserId, prep, {
+    envelopeId,
+    templateId: null,
+    status: 'sent',
+    values: prep.values,
+    sentPackage: null,
+    pearSignEmailedSigners: true,
+    signingUrls: [],
+    source: 'boldsign_editor_send',
+  });
+  await writeEditorSession(contractId, null);
+  console.info('[BoldSign] editor send recorded', { contractId, envelopeId });
+  return { status: 'sent', state: next, documents: prep.pkg.documents.map((d) => d.name) };
+}
+
 export async function finishPearSignPackageEditor(
   contractId: number,
   actorUserId: string | null,
@@ -1167,6 +1348,7 @@ export async function finishPearSignPackageEditor(
   if (!record || !sessionId || record.sessionId !== sessionId) {
     throw new PearSignContractError('That PearSign editor session does not belong to this contract.', 404);
   }
+  if (isBoldSignEnvelopeId(sessionId)) return finishBoldSignPackageEditor(contractId, actorUserId, record, sessionId);
   const session = await getPearSignEditorSession(sessionId);
   const status = String(session.status || '').toLowerCase();
   const current = readState(contract.contractPrefillOverrides);

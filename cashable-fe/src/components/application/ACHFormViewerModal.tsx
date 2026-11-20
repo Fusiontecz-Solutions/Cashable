@@ -1,4 +1,5 @@
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
+import { signingProviderName } from "@/lib/signingProvider";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -357,10 +358,10 @@ function tryOpenDocuSignSenderUrl(senderUrl: string): boolean {
 
 function writeDocuSignLoadingTab(doc: Document): void {
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening PearSign</title>
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Opening ${signingProviderName()}</title>
 <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8fafc;color:#334155}
 .box{text-align:center;padding:2rem}.spin{width:40px;height:40px;border:3px solid #e2e8f0;border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
-@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spin"></div><p>Opening PearSign…</p></div></body></html>`);
+@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="box"><div class="spin"></div><p>Opening ${signingProviderName()}…</p></div></body></html>`);
     doc.close();
 }
 
@@ -370,9 +371,9 @@ function writeDocuSignErrorTab(doc: Document, message: string): void {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
     doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>PearSign</title>
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${signingProviderName()}</title>
 <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fef2f2;color:#991b1b;padding:1rem}
-.box{max-width:28rem;text-align:center}</style></head><body><div class="box"><p><strong>Could not open PearSign</strong></p><p>${safe}</p></div></body></html>`);
+.box{max-width:28rem;text-align:center}</style></head><body><div class="box"><p><strong>Could not open ${signingProviderName()}</strong></p><p>${safe}</p></div></body></html>`);
     doc.close();
 }
 
@@ -724,8 +725,8 @@ export default function ACHFormViewerModal({
             } catch (e) {
                 if ((e as { code?: string })?.code !== "PEARSIGN_ALREADY_COMPLETED") throw e;
                 const again = window.confirm(
-                    "A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.\n\n" +
-                        "Send it again anyway? It goes out as a new envelope and PearSign records it as a repeat. Nothing earlier is voided.",
+                    `A signer already completed this document in ${signingProviderName()} within the last 60 days, so ${signingProviderName()} did not send it again.\n\n` +
+                        `Send it again anyway? It goes out as a new envelope and ${signingProviderName()} records it as a repeat. Nothing earlier is voided.`,
                 );
                 if (!again) return;
                 out = await pearSign.send({ ccEmails: pearSignCcEmails, allowRepeat: true });
@@ -745,7 +746,7 @@ export default function ACHFormViewerModal({
             }
             onContractDocumentsChanged?.();
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "PearSign send failed.");
+            toast.error(e instanceof Error ? e.message : `${signingProviderName()} send failed.`);
         }
     }, [pearSign, pearSignCcEmails, onContractDocumentsChanged]);
 
@@ -1632,7 +1633,7 @@ export default function ACHFormViewerModal({
     const loadDocuSignPdf = useCallback(async () => {
         if (!achPdfEnvelopeId) {
             setDocuSignPdfUrl(null);
-            setDocuSignPdfHint("Send the ACH form via PearSign to preview the filled envelope.");
+            setDocuSignPdfHint(`Send the ACH form via ${signingProviderName()} to preview the filled envelope.`);
             return;
         }
         setDocuSignPdfLoading(true);
@@ -1654,7 +1655,7 @@ export default function ACHFormViewerModal({
             );
             const blob = res.data instanceof Blob ? res.data : new Blob([res.data]);
             if (!blob.size) {
-                setDocuSignPdfHint("PearSign returned an empty PDF. Try again shortly.");
+                setDocuSignPdfHint(`${signingProviderName()} returned an empty PDF. Try again shortly.`);
                 return;
             }
             if (docuSignBlobUrlRef.current) {
@@ -1668,7 +1669,7 @@ export default function ACHFormViewerModal({
                 (err as { response?: { data?: { message?: string } }; message?: string })?.response
                     ?.data?.message ||
                 (err as { message?: string })?.message ||
-                "Could not load ACH PDF from PearSign.";
+                `Could not load ACH PDF from ${signingProviderName()}.`;
             setDocuSignPdfHint(String(msg));
             setDocuSignPdfUrl(null);
         } finally {
@@ -2010,8 +2011,8 @@ export default function ACHFormViewerModal({
             ) {
                 toast.info(
                     achEnvelopeView.isCompleted || achEnvelopeView.isTerminal
-                        ? "Funder changed. Click Resend ACH form (or Send ACH form) to create a new PearSign envelope with the selected funder."
-                        : "Funder changed. Use Resend ACH form to create a new PearSign draft with the selected funder's PDF.",
+                        ? `Funder changed. Click Resend ACH form (or Send ACH form) to create a new ${signingProviderName()} envelope with the selected funder.`
+                        : `Funder changed. Use Resend ACH form to create a new ${signingProviderName()} draft with the selected funder's PDF.`,
                 );
             }
         },
@@ -2138,7 +2139,7 @@ export default function ACHFormViewerModal({
                 !secondEmail
                     ? "Signer 2 removed. Only Signer 1 will be used on the next ACH send."
                     : achEnvelopeView.hasEnvelope && !achEnvelopeView.isOutForSignature
-                      ? "Signer saved. Click Review & send again to open PearSign with the updated signer."
+                      ? `Signer saved. Click Review & send again to open ${signingProviderName()} with the updated signer.`
                       : "Signer saved. It will be used when you review and send the ACH form.",
             );
         } catch (err: unknown) {
@@ -2213,7 +2214,7 @@ export default function ACHFormViewerModal({
     const handleVoidAch = async () => {
         if (readOnly || !achEnvelopeId || !achMapping?.id) return;
         const confirmed = window.confirm(
-            "Void this ACH form in PearSign? Signers will no longer be able to sign. You can send a new ACH form afterward.",
+            `Void this ACH form in ${signingProviderName()}? Signers will no longer be able to sign. You can send a new ACH form afterward.`,
         );
         if (!confirmed) return;
 
@@ -2241,11 +2242,11 @@ export default function ACHFormViewerModal({
             automaticAchPrefillTriggerRef.current = null;
             await refreshContractRow({ notifyParent: true });
             toast.success(
-                "ACH form voided in PearSign. Use Review & send when you are ready to send again.",
+                `ACH form voided in ${signingProviderName()}. Use Review & send when you are ready to send again.`,
             );
         } catch (error: unknown) {
             const msg =
-                (error as { message?: string })?.message || "Failed to void ACH form in PearSign.";
+                (error as { message?: string })?.message || `Failed to void ACH form in ${signingProviderName()}.`;
             toast.error(String(msg));
         } finally {
             setIsVoidingAch(false);
@@ -2271,7 +2272,7 @@ export default function ACHFormViewerModal({
             toast.info(
                 achEnvelopeView.isOutForSignature
                     ? "Creating another ACH envelope. The previous form will remain active."
-                    : "Creating a new PearSign envelope to resend the ACH form.",
+                    : `Creating a new ${signingProviderName()} envelope to resend the ACH form.`,
             );
         }
 
@@ -2395,7 +2396,7 @@ export default function ACHFormViewerModal({
                 return;
             }
             if (draftProvider !== "dropboxsign" || !preparedSenderUrl) {
-                throw new Error("The PearSign package could not be prepared.");
+                throw new Error(`The ${signingProviderName()} package could not be prepared.`);
             }
             if (draftProvider === "dropboxsign" && preparedSenderUrl) {
                 await openDropboxSignEmbedded(
@@ -2406,8 +2407,8 @@ export default function ACHFormViewerModal({
                         onResult: ({ completed, signatureRequestId }) => {
                             toast[completed ? "success" : "info"](
                                 completed
-                                    ? "ACH form sent from the PearSign editor."
-                                    : "PearSign editor closed without sending.",
+                                    ? `ACH form sent from the ${signingProviderName()} editor.`
+                                    : `${signingProviderName()} editor closed without sending.`,
                                 { autoClose: 10000 },
                             );
                             if (completed && signatureRequestId) {
@@ -2420,13 +2421,13 @@ export default function ACHFormViewerModal({
                     },
                 );
                 toast.info(
-                    "PearSign editor opened in a new tab. Review the ACH form and click Send for signature there.",
+                    `${signingProviderName()} editor opened in a new tab. Review the ACH form and click Send for signature there.`,
                     { autoClose: 10000 },
                 );
                 return;
             }
             if (!envelopeId) {
-                const msg = "Could not create the ACH PearSign draft.";
+                const msg = `Could not create the ACH ${signingProviderName()} draft.`;
                 if (docuSignTab) writeDocuSignErrorTab(docuSignTab.document, msg);
                 toast.error(msg);
                 return;
@@ -2443,7 +2444,7 @@ export default function ACHFormViewerModal({
                     }
                 }
                 toast.success(
-                    "ACH form sent via PearSign - the signing email was delivered to the signer(s).",
+                    `ACH form sent via ${signingProviderName()} - the signing email was delivered to the signer(s).`,
                     { autoClose: 12000 },
                 );
                 return;
@@ -2461,7 +2462,7 @@ export default function ACHFormViewerModal({
             if (!senderUrl) {
                 const msg =
                     senderViewResult.error ||
-                    "ACH draft was created but PearSign did not return a review URL yet.";
+                    `ACH draft was created but ${signingProviderName()} did not return a review URL yet.`;
                 if (docuSignTab) writeDocuSignErrorTab(docuSignTab.document, msg);
                 toast.error(msg, { autoClose: 12000 });
                 return;
@@ -2485,12 +2486,12 @@ export default function ACHFormViewerModal({
             }
             if (!opened) {
                 toast.info(
-                    "Your browser blocked the PearSign tab. Allow pop-ups for this site and try again.",
+                    `Your browser blocked the ${signingProviderName()} tab. Allow pop-ups for this site and try again.`,
                     { autoClose: 12000 },
                 );
             } else {
                 toast.success(
-                    "ACH opened with the latest CRM values. Edit freely in PearSign — those edits go to the signer. CRM will not update this open draft.",
+                    `ACH opened with the latest CRM values. Edit freely in ${signingProviderName()} — those edits go to the signer. CRM will not update this open draft.`,
                     { autoClose: 14000 },
                 );
             }
@@ -2517,7 +2518,7 @@ export default function ACHFormViewerModal({
             const msg =
                 typeof error === "string"
                     ? error
-                    : (error as Error)?.message || "Failed to prepare ACH form in PearSign.";
+                    : (error as Error)?.message || `Failed to prepare ACH form in ${signingProviderName()}.`;
             if (docuSignTab) writeDocuSignErrorTab(docuSignTab.document, msg);
             toast.error(msg);
         } finally {
@@ -2563,7 +2564,7 @@ export default function ACHFormViewerModal({
                         </DialogTitle>
                         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             Preview the ACH form, edit prefilled fields, then review and send in
-                            PearSign. Status updates when PearSign webhooks are received.
+                            {signingProviderName()}. Status updates when {signingProviderName()} webhooks are received.
                         </p>
                     </div>
 
@@ -2898,7 +2899,7 @@ export default function ACHFormViewerModal({
                                     {showAchSignerEditor && canEditRecipients ? (
                                         <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-600 dark:bg-slate-900/60">
                                             <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                                                Role, name, and email for each PearSign signer. Signer 2 is optional.
+                                                Role, name, and email for each {signingProviderName()} signer. Signer 2 is optional.
                                             </p>
                                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                                 Signer 1
@@ -3161,7 +3162,7 @@ export default function ACHFormViewerModal({
                                                 ACH signing status
                                             </h3>
                                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                Updated via PearSign webhooks (viewed, signed,
+                                                Updated via {signingProviderName()} webhooks (viewed, signed,
                                                 completed).
                                             </p>
                                         </div>
@@ -3174,7 +3175,7 @@ export default function ACHFormViewerModal({
                                         disabled={statusRefreshing || !achEnvelopeId}
                                         title={
                                             achEnvelopeId
-                                                ? "Refresh ACH signing status from PearSign"
+                                                ? `Refresh ACH signing status from ${signingProviderName()}`
                                                 : "No ACH envelope to refresh yet"
                                         }
                                         onClick={() => void refreshAchSigningPreview(false)}
@@ -3294,7 +3295,7 @@ export default function ACHFormViewerModal({
                                         )}
                                         onClick={() => setPdfPaneTab("docusign")}
                                     >
-                                        {isSignedAch ? "Signed ACH form" : "PearSign envelope"}
+                                        {isSignedAch ? "Signed ACH form" : `${signingProviderName()} envelope`}
                                     </button>
                                 ) : null}
                             </div>
@@ -3321,7 +3322,7 @@ export default function ACHFormViewerModal({
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-slate-500">
                                         {docuSignPdfHint ||
-                                            "Send the ACH form via PearSign to preview the filled envelope here."}
+                                            `Send the ACH form via ${signingProviderName()} to preview the filled envelope here.`}
                                     </div>
                                 )}
                             </div>
@@ -3439,14 +3440,14 @@ export default function ACHFormViewerModal({
                         await refreshContractRow();
                         if (synced === "skipped_frozen") {
                             toast.info(
-                                "ACH fields saved in CRM. The open PearSign draft will not be overwritten — click Review & send again to apply these values.",
+                                `ACH fields saved in CRM. The open ${signingProviderName()} draft will not be overwritten — click Review & send again to apply these values.`,
                                 { autoClose: 10000 },
                             );
                         } else if (synced === true) {
-                            toast.success("ACH fields updated on the PearSign draft envelope.");
+                            toast.success(`ACH fields updated on the ${signingProviderName()} draft envelope.`);
                         } else if (synced === false) {
                             toast.warn(
-                                "ACH fields saved in CRM, but PearSign draft tabs could not be updated. Click Review & send again to open a fresh envelope with your edits.",
+                                `ACH fields saved in CRM, but ${signingProviderName()} draft tabs could not be updated. Click Review & send again to open a fresh envelope with your edits.`,
                             );
                             // Stale / deleted envelope IDs (ENVELOPE_DOES_NOT_EXIST) block future sync —
                             // clear draft linkage so the next Review & send creates a clean envelope.
@@ -3463,7 +3464,7 @@ export default function ACHFormViewerModal({
                             );
                         } else if (synced === "skipped_no_envelope") {
                             toast.info(
-                                "ACH fields saved. Click Review & send to open PearSign with these values.",
+                                `ACH fields saved. Click Review & send to open ${signingProviderName()} with these values.`,
                             );
                         } else if (synced === "skipped_multi_form") {
                             toast.info(
@@ -3491,7 +3492,7 @@ export default function ACHFormViewerModal({
                 onBackToReview={() => {
                     setPearSignSendOpen(false);
                     void pearSign.openPackageReview().catch((e: unknown) =>
-                        toast.error(e instanceof Error ? e.message : "Could not open the PearSign review."),
+                        toast.error(e instanceof Error ? e.message : `Could not open the ${signingProviderName()} review.`),
                     );
                 }}
             />
