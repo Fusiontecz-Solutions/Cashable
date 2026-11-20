@@ -5564,11 +5564,31 @@ const PDFViewerModal = ({
     const handlePearSignVoid = useCallback(async () => {
         if (!window.confirm("Void the PearSign envelope? The signers can no longer sign it.")) return;
         try {
-            await pearSign.voidEnvelope();
-            toast.success("PearSign envelope voided.");
+            const out = await pearSign.voidEnvelope();
+            toast.success(
+                out?.alreadyEnded
+                    ? `This envelope was already ${out.alreadyEnded} in PearSign; the CRM is updated.`
+                    : "PearSign envelope voided.",
+            );
             void refreshContractSigningStateRef.current?.(true);
         } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Could not void the PearSign envelope.");
+            const message = e instanceof Error ? e.message : "Could not void the PearSign envelope.";
+            if ((e as { code?: string })?.code === "PEARSIGN_ENVELOPE_NOT_FOUND") {
+                const release = window.confirm(
+                    `${message}\n\nRemove this envelope from the CRM so you can send a new contract?\n` +
+                        "Only do this if you are sure it is not out for signature in PearSign.",
+                );
+                if (!release) return;
+                try {
+                    await pearSign.voidEnvelope({ releaseIfMissing: true });
+                    toast.success("Removed from the CRM. You can send a new contract now.");
+                    void refreshContractSigningStateRef.current?.(true);
+                } catch (e2) {
+                    toast.error(e2 instanceof Error ? e2.message : "Could not remove the envelope.");
+                }
+                return;
+            }
+            toast.error(message);
         }
     }, [pearSign]);
 

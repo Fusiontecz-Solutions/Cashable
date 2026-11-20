@@ -1008,7 +1008,18 @@ export async function syncPearSignContract(contractId: number) {
   return { state: next, changed };
 }
 
-export async function voidPearSignContract(contractId: number) {
+/** Error code the Review UI uses to offer "remove it from the CRM" (see voidPearSignContract). */
+export const PEARSIGN_ENVELOPE_NOT_FOUND = 'PEARSIGN_ENVELOPE_NOT_FOUND';
+
+/**
+ * Void the contract's active envelope. When PearSign refuses (403/404):
+ *  - the envelope already finished in PearSign (voided / completed / declined / expired) → the CRM
+ *    simply syncs to that status;
+ *  - PearSign does not know the envelope at all (e.g. created under another API key, or deleted)
+ *    → error PEARSIGN_ENVELOPE_NOT_FOUND with PearSign's own message, unless `releaseIfMissing`
+ *    (the user confirmed) — then the CRM marks it voided so a new contract can be sent.
+ */
+export async function voidPearSignContract(contractId: number, opts: { releaseIfMissing?: boolean } = {}) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
   if (!state?.envelopeId) throw new PearSignContractError('No PearSign envelope to void.');
@@ -1018,13 +1029,36 @@ export async function voidPearSignContract(contractId: number) {
   try {
     await voidPearSignEnvelope(state.envelopeId);
   } catch (e) {
-    if (e instanceof PearSignApiError && (e.status === 404 || e.status === 403)) {
+    if (!(e instanceof PearSignApiError && (e.status === 404 || e.status === 403 || e.status === 400))) throw e;
+    // What does PearSign say about this envelope?
+    let remote: PearSignEnvelopeDetails | null = null;
+    try {
+      remote = await getPearSignEnvelope(state.envelopeId);
+    } catch (lookupErr) {
+      if (!(lookupErr instanceof PearSignApiError && (lookupErr.status === 404 || lookupErr.status === 403))) throw lookupErr;
+    }
+    const remoteStatus = String(remote?.status || '').toLowerCase();
+    if (remote && !isActivePearSignStatus(remoteStatus)) {
+      // Already finished in PearSign: just catch the CRM up (no error).
+      const synced = await syncPearSignContract(contractId);
+      return { state: synced.state, alreadyEnded: remoteStatus };
+    }
+    if (remote) {
       throw new PearSignContractError(
-        'PearSign did not allow voiding this envelope with the CRM API key. Void it in the PearSign dashboard, then click Refresh status here.',
+        `PearSign refused to void this envelope (${e.message}). Void it in the PearSign dashboard, then click Refresh status here.`,
         400,
       );
     }
-    throw e;
+    if (!opts.releaseIfMissing) {
+      throw Object.assign(
+        new PearSignContractError(
+          `PearSign cannot find this envelope with the CRM's API key (${e.message}). It may have been created under another PearSign account or deleted.`,
+          409,
+        ),
+        { code: PEARSIGN_ENVELOPE_NOT_FOUND },
+      );
+    }
+    console.warn(`[PearSign] envelope ${state.envelopeId} not found in PearSign; released in the CRM by user (contract ${contractId})`);
   }
   const endedAt = new Date().toISOString();
   const next: PearSignContractState = await cleanupEphemeralTemplate(contractId, {

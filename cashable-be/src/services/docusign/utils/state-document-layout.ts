@@ -21,10 +21,13 @@ function textPlacements(
       documentId: config.documentId,
       pageNumber: tab.pageNumber || config.pageNumber,
       x: tab.x,
-      y: tab.y,
+      // Fields with a height were measured against the disclosure PDFs (box centred on the printed
+      // line). The rest keep the old Dropbox Sign top-anchored y: on these forms the printed line's
+      // baseline sits ~9.8pt below it, so a 15pt box starting 1.2pt higher is centred on the line.
+      y: tab.height ? tab.y : String(Math.max(0, Math.round(Number(tab.y) - 1.2))),
       /** Omitted → envelope builder sizes tab width to the prefilled value. */
       width: tab.width && tab.width !== 'auto' ? tab.width : undefined,
-      height: tab.height || '18',
+      height: tab.height || '15',
       optional: tab.optional === true,
       lockedForSigner: tab.lockedForSigner === true,
       ...(tab.fontSize ? { fontSize: tab.fontSize } : {}),

@@ -72,7 +72,8 @@ function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
       const message = err instanceof Error ? err.message : 'PearSign request failed.';
       if (status >= 500) console.error('[PearSign]', req.method, req.originalUrl, err);
       else console.warn('[PearSign]', req.method, req.originalUrl, status, message);
-      if (!res.headersSent) res.status(status).json({ success: false, message });
+      const code = typeof (err as { code?: unknown })?.code === 'string' ? (err as { code: string }).code : undefined;
+      if (!res.headersSent) res.status(status).json({ success: false, message, ...(code ? { code } : {}) });
     }
   };
 }
@@ -141,7 +142,10 @@ router.post(
 
 router.post('/contracts/:contractId/sync', handle((req) => syncPearSignContract(contractIdParam(req))));
 
-router.post('/contracts/:contractId/void', handle((req) => voidPearSignContract(contractIdParam(req))));
+router.post(
+  '/contracts/:contractId/void',
+  handle((req) => voidPearSignContract(contractIdParam(req), { releaseIfMissing: req.body?.releaseIfMissing === true })),
+);
 
 router.get(
   '/contracts/:contractId/download',

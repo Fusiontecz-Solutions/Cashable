@@ -210,6 +210,7 @@ function pearSignSendNames(names: string[]): Map<string, string> {
 export async function convertEnvelopeToPearSignPackage(envelopeDefinition: EnvelopeDefinition, layoutKeys?: string[]) {
   const env = envelopeDefinition || {};
   const docs = env.documents || [];
+  const measureFont = await measureHelvetica();
   if (!docs.length) throw new PearSignContractError('The package has no documents.');
 
   // 1. Merge the PDFs in envelope order (disclosure / contract / addendums, as built).
@@ -309,7 +310,8 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
           // Auto-width tabs (state disclosures, no width of their own) size to the value; never
           // past the page edge. Tabs with a width (layout blanks) keep it, so a long value never
           // spreads over the printed words after the blank.
-          const needed = value.length * 5.4 + 8;
+          // Room for the value at the standard 10pt (measured with the real font, not a guess).
+          const needed = measureFont.widthOfTextAtSize(value, 10) + 8;
           const maxW = Math.max(40, (pageWidth.get(mergedPage) ?? 612) - 12 - x);
           width = Math.min(Math.max(width, needed), maxW);
         }

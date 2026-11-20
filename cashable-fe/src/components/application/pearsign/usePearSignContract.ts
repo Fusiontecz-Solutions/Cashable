@@ -354,18 +354,33 @@ export function usePearSignContract(opts: {
         }
     }, [contractId]);
 
-    const voidEnvelope = useCallback(async () => {
-        if (!contractId) return;
-        setBusy("void");
-        try {
-            const res = await axiosPost(`/pearsign/contracts/${contractId}/void`);
-            setState((res?.data?.data?.state as PearSignState | null) ?? null);
-        } catch (e) {
-            throw new Error(apiErrorMessage(e, "Could not void the PearSign envelope."));
-        } finally {
-            setBusy(null);
-        }
-    }, [contractId]);
+    /**
+     * Void the active envelope. Returns `alreadyEnded` when PearSign had already finished it (the CRM
+     * just synced). When PearSign does not know the envelope, throws an error with
+     * `code === "PEARSIGN_ENVELOPE_NOT_FOUND"`; call again with `releaseIfMissing` (after the user
+     * confirms) to remove it from the CRM so a new contract can be sent.
+     */
+    const voidEnvelope = useCallback(
+        async (opts?: { releaseIfMissing?: boolean }): Promise<{ alreadyEnded?: string } | undefined> => {
+            if (!contractId) return;
+            setBusy("void");
+            try {
+                const res = await axiosPost(
+                    `/pearsign/contracts/${contractId}/void`,
+                    opts?.releaseIfMissing ? { releaseIfMissing: true } : {},
+                );
+                const data = res?.data?.data as { state?: PearSignState | null; alreadyEnded?: string } | undefined;
+                setState(data?.state ?? null);
+                return { alreadyEnded: data?.alreadyEnded };
+            } catch (e) {
+                const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+                throw Object.assign(new Error(apiErrorMessage(e, "Could not void the PearSign envelope.")), { code });
+            } finally {
+                setBusy(null);
+            }
+        },
+        [contractId],
+    );
 
     /** Open the sent contract (values as sent, or the signed PDF once completed) in a new tab. */
     const openSentPdf = useCallback(async () => {
