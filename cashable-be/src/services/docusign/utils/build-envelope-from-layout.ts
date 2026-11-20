@@ -898,6 +898,11 @@ export function expandPrefillValues(
   }
   mirrorIdentityFields(out, PARTY1_SS_KEYS);
   mirrorIdentityFields(out, PARTY1_DL_KEYS);
+  // "SSN (LAST 4)" boxes (Prepay Discount) must never print the full SSN.
+  {
+    const digits = String(out.guaranty_owner1_ss || out.guaranty_guarantor1_ss || '').replace(/\D/g, '');
+    if (digits.length >= 4) out.guaranty_owner1_ss_last4 = digits.slice(-4);
+  }
   if (ownerCount === undefined || ownerCount >= 2) {
     syncParty2NameFields(out);
     mirrorIdentityFields(out, PARTY2_SS_KEYS);

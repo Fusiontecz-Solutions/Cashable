@@ -23,7 +23,7 @@
     "business_address_full",
     "client_legal_name",
     "doing_business_as",
-    "guaranty_owner1_ss",
+    "guaranty_owner1_ss_last4",
     "owner1_guarantor_name",
     "purchase_amount",
     "purchase_price",
@@ -193,8 +193,8 @@
       "optional": true,
       "width": "64",
       "height": "16",
-      "variable": "guaranty_owner1_ss",
-      "sourceTabLabel": "guaranty_owner1_ss"
+      "variable": "guaranty_owner1_ss_last4",
+      "sourceTabLabel": "guaranty_owner1_ss_last4"
     },
     {
       "id": "p13",
