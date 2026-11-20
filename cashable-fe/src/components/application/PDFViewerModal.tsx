@@ -151,7 +151,13 @@ import {
 import KycExtractionReviewCard from "./contractdata/KycExtractionReviewCard";
 import { usePearSignContract } from "./pearsign/usePearSignContract";
 import { contractPdfFileName } from "@/lib/contractPdfFileName";
-import { PearSignReviewModal, PearSignSendDialog } from "./pearsign/PearSignReviewModal";
+import {
+    PearSignEditorDialog,
+    PearSignReviewModal,
+    PearSignSendDialog,
+    openSigningEditorInTab,
+} from "./pearsign/PearSignReviewModal";
+import { isBoldSignActive } from "@/lib/signingProvider";
 import { cn, formatDate, formatDateTimeUS } from "@/lib/utils";
 import { findApplicationFileForDocumentRequest } from "@/lib/documentRequestMatch";
 import { normalizeRoleKey } from "@/lib/sessionRole";
@@ -3873,6 +3879,9 @@ const PDFViewerModal = ({
          * server refuses Dropbox Sign sends — so no button may fall back to it.
          */
         const pearSignMode = true;
+        // BoldSign: Review & send opens BoldSign's own editor in a new tab (values filled in);
+        // the CRM watches for Send there. PearSign keeps the CRM review.
+        const directEditor = isBoldSignActive();
         const packageIncludesMainContract =
             !canSendWithoutContract || includeMainContractInSendRef.current;
         const outForSignatureBeforeSend = getPrimaryContractEnvelopeView(
@@ -3891,7 +3900,7 @@ const PDFViewerModal = ({
         let docuSignTab: Window | null = null;
         try {
             setDocuSignOpenUrl(null);
-            docuSignTab = pearSignMode ? null : window.open("about:blank", "_blank");
+            docuSignTab = pearSignMode && !directEditor ? null : window.open("about:blank", "_blank");
             if (docuSignTab) {
                 try {
                     writeDocuSignLoadingTab(docuSignTab.document);
@@ -4044,6 +4053,10 @@ const PDFViewerModal = ({
                 if (pearSignMode) {
                     if ((prepared as { provider?: string } | undefined)?.provider !== "pearsign") {
                         throw new Error(`The ${signingProviderName()} package could not be prepared.`);
+                    }
+                    if (directEditor) {
+                        setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
+                        return;
                     }
                     await openPearSignPackageReviewRef.current();
                     return;
@@ -5499,6 +5512,12 @@ const PDFViewerModal = ({
         },
     });
     const [pearSignSendOpen, setPearSignSendOpen] = useState(false);
+    /** BoldSign editor opened in its own tab by Review & send; watched until Send is clicked there. */
+    const [signingEditorTab, setSigningEditorTab] = useState<{
+        sessionId: string;
+        editorUrl: string;
+        window: Window | null;
+    } | null>(null);
     const pearSignPackageIncludesMainContract =
         !canSendWithoutContract || includeMainContractInSend;
     const showPearSignReview =
@@ -5550,7 +5569,7 @@ const PDFViewerModal = ({
             }
             setPearSignSendOpen(false);
             toast.success(
-                `Contract sent via PearSign (${out.prefilledFieldCount} values prefilled${
+                `Contract sent via ${signingProviderName()} (${out.prefilledFieldCount} values prefilled${
                     out.blankFieldCount ? `, ${out.blankFieldCount} blank` : ""
                 }). ${out.emailSent ? "Signing invites emailed to the signers." : ""}`.trim(),
                 { autoClose: 9000 },
@@ -10888,7 +10907,7 @@ const PDFViewerModal = ({
                             <div className="space-y-1.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-[11px] font-semibold text-[var(--brand)] dark:text-[var(--brand-accent)]">
-                                        PearSign signers ({docuSignSignerRolesForSend.length}):
+                                        {signingProviderName()} signers ({docuSignSignerRolesForSend.length}):
                                     </span>
                                     <Button
                                         type="button"
@@ -11151,7 +11170,7 @@ const PDFViewerModal = ({
                             {pearSign.available && pearSign.state?.envelopeId ? (
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                                        PearSign contract: {pearSign.state.status || "sent"}
+                                        {signingProviderName()} contract: {pearSign.state.status || "sent"}
                                     </span>
                                     <Button
                                         type="button"
@@ -11355,6 +11374,16 @@ const PDFViewerModal = ({
                 onApply={applySpaCalculation}
             />
             <PearSignReviewModal ctl={pearSign} onDone={() => setPearSignSendOpen(true)} />
+            <PearSignEditorDialog
+                ctl={pearSign}
+                open={Boolean(signingEditorTab)}
+                existing={signingEditorTab}
+                onClose={() => setSigningEditorTab(null)}
+                onSent={() => {
+                    setSigningEditorTab(null);
+                    void refreshContractSigningStateRef.current?.(true);
+                }}
+            />
             <PearSignSendDialog
                 ctl={pearSign}
                 open={pearSignSendOpen}

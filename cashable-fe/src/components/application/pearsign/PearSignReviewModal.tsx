@@ -890,7 +890,7 @@ export function PearSignSendDialog({
                         <div>
                             <DialogTitle className="text-base font-semibold">Send via {signingProviderName()}</DialogTitle>
                             <p className="text-xs text-slate-500 dark:text-slate-400">
-                                PearSign emails the {review?.funderName || "funder"} {ctl.mode === "package" ? "contract package" : "agreement"} to each owner in this order.
+                                {signingProviderName()} emails the {review?.funderName || "funder"} {ctl.mode === "package" ? "contract package" : "agreement"} to each owner in this order.
                             </p>
                         </div>
                     </div>
@@ -932,7 +932,7 @@ export function PearSignSendDialog({
                             {ccEmails.length ? (
                                 <p className="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                                     <Users className="mt-0.5 h-3 w-3 shrink-0" />
-                                    CC ({ccEmails.join(", ")}) is recorded on the contract — PearSign does not email CC copies.
+                                    CC ({ccEmails.join(", ")}) is recorded on the contract — {signingProviderName()} does not email CC copies.
                                 </p>
                             ) : null}
                             <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -987,16 +987,34 @@ const EDITOR_POLL_MS = 5000;
  * The team can move, resize, add or delete fields and clicks Send inside PearSign; the CRM then
  * records the envelope exactly like a normal send.
  */
+/**
+ * Open the provider's editor for the staged package in `tab` (opened by the click, so pop-up
+ * blockers allow it) — or a new tab — and return the session to watch with PearSignEditorDialog.
+ */
+export async function openSigningEditorInTab(
+    ctl: PearSignController,
+    tab: Window | null,
+): Promise<{ sessionId: string; editorUrl: string; window: Window | null }> {
+    const s = await ctl.openEditor({});
+    let win = tab && !tab.closed ? tab : null;
+    if (win) win.location.href = s.editorUrl;
+    else win = window.open(s.editorUrl, "_blank");
+    return { sessionId: s.sessionId, editorUrl: s.editorUrl, window: win };
+}
+
 export function PearSignEditorDialog({
     ctl,
     open,
     onClose,
     onSent,
+    existing,
 }: {
     ctl: PearSignController;
     open: boolean;
     onClose: () => void;
     onSent: () => void;
+    /** An editor already opened in its own tab (Review & send with BoldSign): just watch it. */
+    existing?: { sessionId: string; editorUrl: string; window: Window | null } | null;
 }) {
     const [session, setSession] = useState<{ sessionId: string; editorUrl: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -1050,6 +1068,12 @@ export function PearSignEditorDialog({
             doneRef.current = false;
             return;
         }
+        if (existing) {
+            setSession({ sessionId: existing.sessionId, editorUrl: existing.editorUrl });
+            setPopup(true);
+            popupRef.current = existing.window;
+            return;
+        }
         let cancelled = false;
         setLoading(true);
         ctlRef.current
@@ -1066,7 +1090,7 @@ export function PearSignEditorDialog({
         return () => {
             cancelled = true;
         };
-    }, [open]);
+    }, [open, existing]);
 
     /** Ask the CRM what the editor did; returns true once the editor is finished either way. */
     const check = useCallback(
@@ -1160,7 +1184,7 @@ export function PearSignEditorDialog({
                         </div>
                         <div className="min-w-0">
                             <DialogTitle className="truncate text-sm font-semibold">
-                                Edit in PearSign — {ctl.review?.funderName || "Contract"}
+                                Edit in {signingProviderName()} — {ctl.review?.funderName || "Contract"}
                             </DialogTitle>
                             <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
                                 Move, resize or add fields, then click Send in the editor. The CRM records the envelope automatically.
@@ -1202,7 +1226,7 @@ export function PearSignEditorDialog({
                     {loading ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-slate-500">
                             <Loader2 className="h-6 w-6 animate-spin" />
-                            Preparing the package in PearSign…
+                            Preparing the package in {signingProviderName()}…
                         </div>
                     ) : error ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">

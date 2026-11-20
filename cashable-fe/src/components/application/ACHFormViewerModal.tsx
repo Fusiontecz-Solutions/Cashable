@@ -133,7 +133,13 @@ import {
 import { parseAchAuthorizationDocuSignFromPrefill } from "./contractdata/achAuthorizationDocuSign";
 import LockedCcChips from "./LockedCcChips";
 import { usePearSignContract } from "./pearsign/usePearSignContract";
-import { PearSignReviewModal, PearSignSendDialog } from "./pearsign/PearSignReviewModal";
+import {
+    PearSignEditorDialog,
+    PearSignReviewModal,
+    PearSignSendDialog,
+    openSigningEditorInTab,
+} from "./pearsign/PearSignReviewModal";
+import { isBoldSignActive } from "@/lib/signingProvider";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -709,6 +715,8 @@ export default function ACHFormViewerModal({
         getPayload: () => null,
     });
     const [pearSignSendOpen, setPearSignSendOpen] = useState(false);
+    /** BoldSign editor opened in its own tab by Review & send; watched until Send is clicked there. */
+    const [signingEditorTab, setSigningEditorTab] = useState<{ sessionId: string; editorUrl: string; window: Window | null } | null>(null);
     const pearSignCcEmails = useMemo(
         () =>
             mergeWithDefaultCcEmails(
@@ -733,7 +741,7 @@ export default function ACHFormViewerModal({
             }
             setPearSignSendOpen(false);
             toast.success(
-                `ACH form sent via PearSign (${out.prefilledFieldCount} values prefilled${
+                `ACH form sent via ${signingProviderName()} (${out.prefilledFieldCount} values prefilled${
                     out.blankFieldCount ? `, ${out.blankFieldCount} blank` : ""
                 }). ${out.emailSent ? "Signing invites emailed to the signers." : ""}`.trim(),
                 { autoClose: 9000 },
@@ -2276,8 +2284,10 @@ export default function ACHFormViewerModal({
             );
         }
 
-        // PearSign only: the review opens inside the CRM, so no separate editor tab is opened.
-        const docuSignTab = null as Window | null;
+        // PearSign: the review opens inside the CRM. BoldSign: its own editor opens in a new tab
+        // (opened here, inside the click, so pop-up blockers allow it).
+        const directEditor = isBoldSignActive();
+        const docuSignTab = directEditor ? window.open("about:blank", "_blank") : null;
         try {
             if (docuSignTab) {
                 try {
@@ -2391,6 +2401,10 @@ export default function ACHFormViewerModal({
                 (prepared as { provider?: string } | undefined)?.provider ?? "",
             ).trim();
             if (draftProvider === "pearsign") {
+                if (directEditor) {
+                    setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
+                    return;
+                }
                 // Package staged on the server → review it in the CRM, then send from there.
                 await pearSign.openPackageReview();
                 return;
@@ -3315,7 +3329,7 @@ export default function ACHFormViewerModal({
                                 ) : docuSignPdfLoading ? (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs text-slate-500">
                                         <Loader2 className="h-6 w-6 animate-spin text-[var(--brand)]" />
-                                        Loading ACH form from PearSign…
+                                        Loading ACH form from {signingProviderName()}…
                                     </div>
                                 ) : docuSignPdfUrl ? (
                                     <DirectPdfViewer fileUrl={docuSignPdfUrl} />
@@ -3355,7 +3369,7 @@ export default function ACHFormViewerModal({
                                 {isSendingAch ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Preparing PearSign…
+                                        Preparing {signingProviderName()}…
                                     </>
                                 ) : (
                                     achEnvelopeView.isOutForSignature
@@ -3375,7 +3389,7 @@ export default function ACHFormViewerModal({
                                 {isSendingAch ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Preparing PearSign…
+                                        Preparing {signingProviderName()}…
                                     </>
                                 ) : (
                                     "Review & send ACH form"
@@ -3479,6 +3493,16 @@ export default function ACHFormViewerModal({
 
             {/* ACH sends go through PearSign only: review the staged package, then send. */}
             <PearSignReviewModal ctl={pearSign} onDone={() => setPearSignSendOpen(true)} />
+            <PearSignEditorDialog
+                ctl={pearSign}
+                open={Boolean(signingEditorTab)}
+                existing={signingEditorTab}
+                onClose={() => setSigningEditorTab(null)}
+                onSent={() => {
+                    setSigningEditorTab(null);
+                    onContractDocumentsChanged?.();
+                }}
+            />
             <PearSignSendDialog
                 ctl={pearSign}
                 open={pearSignSendOpen}

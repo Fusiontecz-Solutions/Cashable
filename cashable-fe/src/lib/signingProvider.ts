@@ -50,3 +50,9 @@ export function useSigningProviderName(): string {
     }, []);
     return name;
 }
+
+/** True when new contracts go through BoldSign (Review & send then opens BoldSign's editor directly). */
+export function isBoldSignActive(): boolean {
+    if (!cached) void loadSigningProvider();
+    return cached?.provider === "boldsign";
+}
