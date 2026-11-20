@@ -79,6 +79,29 @@ export class PearSignContractError extends Error {
   }
 }
 
+/** Error code the send screens use to ask "send it again anyway?" (PearSign 422 already_completed). */
+export const PEARSIGN_ALREADY_COMPLETED = 'PEARSIGN_ALREADY_COMPLETED';
+
+/**
+ * A refused PearSign send as a CRM error. PearSign refuses a document a signer already completed
+ * in the last 60 days unless the send says `allowRepeat`; that case carries PEARSIGN_ALREADY_COMPLETED
+ * so the screen can ask the user and send again with `allowRepeat: true`.
+ */
+export function pearSignSendError(e: PearSignApiError): PearSignContractError {
+  const b = (e.body && typeof e.body === 'object' ? e.body : {}) as { error?: { code?: unknown }; code?: unknown };
+  const code = String(b.error?.code ?? b.code ?? '').toLowerCase();
+  if (e.status === 422 && code === 'already_completed') {
+    return Object.assign(
+      new PearSignContractError(
+        'A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.',
+        409,
+      ),
+      { code: PEARSIGN_ALREADY_COMPLETED },
+    );
+  }
+  return new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+}
+
 export type PearSignRecipient = { roleId: string; roleName?: string; name: string; email: string };
 
 export type PearSignContractState = {
@@ -571,7 +594,7 @@ async function createStyledContractTemplate(contractId: number, r: ResolvedRevie
 export async function sendPearSignContract(
   contractId: number,
   actorUserId: string | null,
-  body: PearSignReviewBody & { message?: string; ccEmails?: unknown; senderName?: string },
+  body: PearSignReviewBody & { message?: string; ccEmails?: unknown; senderName?: string; allowRepeat?: unknown },
 ) {
   const r = await resolveReview(contractId, body, true);
   const { contract, row, template, crm } = r;
@@ -651,11 +674,11 @@ export async function sendPearSignContract(
       recipients: recipients.map((x) => ({ roleId: x.roleId, name: x.name, email: x.email })),
       fieldValues,
       sender: body.senderName ? { name: String(body.senderName).slice(0, 120) } : undefined,
-      options: { title, message, expirationDays: 30, sendEmail },
+      options: { title, message, expirationDays: 30, sendEmail, ...(body.allowRepeat === true ? { allowRepeat: true } : {}) },
     });
   } catch (e) {
     if (styled) await deletePearSignTemplate(sendTemplateId).catch(() => undefined);
-    if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+    if (e instanceof PearSignApiError) throw pearSignSendError(e);
     throw e;
   }
 

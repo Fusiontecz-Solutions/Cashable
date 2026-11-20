@@ -289,12 +289,12 @@ const KANSAS_WEEKLY_DISCLOSURE_SIGN_AND_DATE: Pick<
 
 /** Virginia disclosure page-1 coordinates (daily + weekly). */
 const VIRGINIA_DISCLOSURE_PAGE1_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
-  { tabLabel: 'disclosure_name', x: '450', y: '68', height: '15' },
-  { tabLabel: 'recipient_address', x: '365', y: '108' },
-  { tabLabel: 'funder_name', x: '446', y: '132', height: '15' },
-  { tabLabel: 'funder_address', x: '346', y: '166' },
-  { tabLabel: 'funder_phone', x: '466', y: '198' },
-  { tabLabel: 'funder_email', x: '344', y: '232' },
+  { tabLabel: 'disclosure_name', x: '450', y: '68', width: '144', height: '15' },
+  { tabLabel: 'recipient_address', x: '362', y: '106', width: '232', height: '15' },
+  { tabLabel: 'funder_name', x: '444', y: '132', width: '150', height: '15' },
+  { tabLabel: 'funder_address', x: '362', y: '170', width: '232', height: '15' },
+  { tabLabel: 'funder_phone', x: '486', y: '196', width: '108', height: '15' },
+  { tabLabel: 'funder_email', x: '362', y: '235', width: '232', height: '15' },
   { tabLabel: 'total_amount_sales_based_financing', x: '267', y: '43', width: '94', height: '15' },
   { tabLabel: 'fees_deducted', x: '267', y: '88', width: '92', height: '15' },
   { tabLabel: 'disbursement_amount', x: '267', y: '124', width: '92', height: '15' },
@@ -305,12 +305,12 @@ const VIRGINIA_DISCLOSURE_PAGE1_TEXT_TABS: StateDocumentFieldConfig['textTabs'] 
 
 /** Weekly variant - aligned to the weekly template PDF. */
 const VIRGINIA_WEEKLY_PAGE1_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
-  { tabLabel: 'disclosure_name', x: '450', y: '68', height: '15' },
-  { tabLabel: 'recipient_address', x: '365', y: '108' },
-  { tabLabel: 'funder_name', x: '446', y: '132', height: '15' },
-  { tabLabel: 'funder_address', x: '346', y: '166' },
-  { tabLabel: 'funder_phone', x: '466', y: '198' },
-  { tabLabel: 'funder_email', x: '344', y: '232' },
+  { tabLabel: 'disclosure_name', x: '450', y: '68', width: '144', height: '15' },
+  { tabLabel: 'recipient_address', x: '364', y: '106', width: '230', height: '15' },
+  { tabLabel: 'funder_name', x: '446', y: '132', width: '148', height: '15' },
+  { tabLabel: 'funder_address', x: '364', y: '171', width: '230', height: '15' },
+  { tabLabel: 'funder_phone', x: '491', y: '214', width: '103', height: '15' },
+  { tabLabel: 'funder_email', x: '364', y: '252', width: '230', height: '15' },
   { tabLabel: 'total_amount_sales_based_financing', x: '267', y: '43', width: '94', height: '15' },
   { tabLabel: 'fees_deducted', x: '267', y: '88', width: '92', height: '15' },
   { tabLabel: 'disbursement_amount', x: '267', y: '124', width: '92', height: '15' },
@@ -333,7 +333,7 @@ const VIRGINIA_DISCLOSURE_SIGN_AND_DATE: Pick<
     { x: '150', y: '711', pageNumber: '2' },
     { x: '438', y: '712', pageNumber: '2', signerParty: 'secondary' },
   ],
-  dateTabs: [{ x: '443', y: '45', tabLabel: 'agreement_date' }],
+  dateTabs: [{ x: '442', y: '42', tabLabel: 'agreement_date' }],
 };
 
 const VIRGINIA_PAGE2_HEADER_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
@@ -366,12 +366,12 @@ const VIRGINIA_WEEKLY_PAGE2_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
 
 /** Connecticut disclosure page 1 — daily layout. */
 const CONNECTICUT_DAILY_DISCLOSURE_PAGE1_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
-  { tabLabel: 'recipient_name', x: '450', y: '63', height: '15' },
-  { tabLabel: 'recipient_address', x: '345', y: '112' },
-  { tabLabel: 'funder_name', x: '426', y: '126', height: '15' },
-  { tabLabel: 'funder_address', x: '346', y: '167' },
-  { tabLabel: 'funder_phone', x: '468', y: '191', height: '15' },
-  { tabLabel: 'funder_email', x: '344', y: '229' },
+  { tabLabel: 'recipient_name', x: '429', y: '63', width: '165', height: '15' },
+  { tabLabel: 'recipient_address', x: '344', y: '101', width: '250', height: '15' },
+  { tabLabel: 'funder_name', x: '426', y: '126', width: '168', height: '15' },
+  { tabLabel: 'funder_address', x: '346', y: '164', width: '248', height: '15' },
+  { tabLabel: 'funder_phone', x: '468', y: '191', width: '126', height: '15' },
+  { tabLabel: 'funder_email', x: '344', y: '228', width: '250', height: '15' },
   { tabLabel: 'total_amount_commercial_financing', x: '267', y: '40', width: '74', height: '15' },
   { tabLabel: 'deducted_at_disbursement', x: '267', y: '75', width: '74', height: '15' },
   { tabLabel: 'total_commerical_financing', x: '267', y: '111', height: '15' },
@@ -383,12 +383,12 @@ const CONNECTICUT_DAILY_DISCLOSURE_PAGE1_TEXT_TABS: StateDocumentFieldConfig['te
 
 /** Connecticut disclosure page 1 — weekly layout (recipient address lower on page). */
 const CONNECTICUT_WEEKLY_DISCLOSURE_PAGE1_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
-  { tabLabel: 'recipient_name', x: '450', y: '69' },
-  { tabLabel: 'recipient_address', x: '345', y: '124' },
-  { tabLabel: 'funder_name', x: '424', y: '130' },
-  { tabLabel: 'funder_address', x: '346', y: '166' },
-  { tabLabel: 'funder_phone', x: '466', y: '189' },
-  { tabLabel: 'funder_email', x: '344', y: '229' },
+  { tabLabel: 'recipient_name', x: '430', y: '76', width: '164', height: '15' },
+  { tabLabel: 'recipient_address', x: '345', y: '113', width: '249', height: '15' },
+  { tabLabel: 'funder_name', x: '426', y: '156', width: '168', height: '15' },
+  { tabLabel: 'funder_address', x: '344', y: '220', width: '250', height: '15' },
+  { tabLabel: 'funder_phone', x: '470', y: '266', width: '124', height: '15' },
+  { tabLabel: 'funder_email', x: '344', y: '305', width: '250', height: '15' },
   { tabLabel: 'total_amount_commercial_financing', x: '267', y: '51' },
   { tabLabel: 'deducted_at_disbursement', x: '267', y: '75', width: '74', height: '15' },
   { tabLabel: 'total_commerical_financing', x: '267', y: '111', height: '15' },
@@ -512,7 +512,7 @@ const CONNECTICUT_DISCLOSURE_SIGN_INITIAL_AND_DATES: Pick<
 > = {
   initialHereTabs: [{ x: '258', y: '733' }],
   dateTabs: [
-    { x: '443', y: '45', tabLabel: 'disclosure_date' },
+    { x: '421', y: '38', tabLabel: 'disclosure_date' },
     { x: '475', y: '746', tabLabel: 'signature_date' },
     { x: '82', y: '39', pageNumber: '3', tabLabel: 'signature1_date' },
     {
@@ -536,7 +536,7 @@ const CONNECTICUT_WEEKLY_SIGN_INITIAL_AND_DATES: Pick<
 > = {
   initialHereTabs: [{ x: '258', y: '733' }],
   dateTabs: [
-    { x: '443', y: '45', tabLabel: 'disclosure_date' },
+    { x: '421', y: '38', tabLabel: 'disclosure_date' },
     { x: '475', y: '746', tabLabel: 'signature_date' },
     { x: '82', y: '39', pageNumber: '3', tabLabel: 'signature1_date' },
     {
@@ -577,6 +577,8 @@ const CALIFORNIA_DISCLOSURE_SIGN_AND_DATE: Pick<
 /** California disclosure coordinates — daily layout. */
 const CALIFORNIA_DAILY_DISCLOSURE_TEXT_TABS: StateDocumentFieldConfig['textTabs'] = [
   { tabLabel: 'funding_provided', x: '182', y: '99', width: '102', height: '15' },
+  /** "This is how much funding ___ will provide": the funder name after "funding". */
+  { tabLabel: 'funder_name', x: '415', y: '99', width: '111', height: '15' },
   { tabLabel: 'total_amount_of_fund_disbursed', x: '345', y: '141', width: '46', height: '15' },
   { tabLabel: 'estimated_annual_percentage_rate', x: '178', y: '233', width: '106', height: '15' },
   { tabLabel: 'avarage_monthly_income', x: '330', y: '316', width: '56', height: '15' },

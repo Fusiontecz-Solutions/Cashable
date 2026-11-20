@@ -13,6 +13,7 @@ import {
   PearSignApiError,
   createPearSignEditorSession,
   createPearSignTemplate,
+  deletePearSignTemplate,
   getPearSignEditorSession,
   getPearSignTemplate,
   isPearSignConfigured,
@@ -29,6 +30,7 @@ import {
   isActivePearSignStatus,
   linkDocument,
   loadContract,
+  pearSignSendError,
   readState,
   writeState,
   sendStatusNoticeOnce,
@@ -782,7 +784,11 @@ async function recordPackageSent(
   return { next, ccMail };
 }
 
-export async function sendPearSignPackage(contractId: number, actorUserId: string | null, body: { message?: string } = {}) {
+export async function sendPearSignPackage(
+  contractId: number,
+  actorUserId: string | null,
+  body: { message?: string; allowRepeat?: unknown } = {},
+) {
   const prep = await preparePackageSend(contractId, body);
   const { pkg, values, fieldValues, blank, pdf, sentStyles, createFields, signerRoles, message } = prep;
 
@@ -818,10 +824,12 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
       templateId: template.id,
       recipients: pkg.recipients.map((r) => ({ roleId: r.roleId, name: r.name, email: r.email })),
       fieldValues,
-      options: { title: pkg.title, message, expirationDays: 30, sendEmail },
+      options: { title: pkg.title, message, expirationDays: 30, sendEmail, ...(body.allowRepeat === true ? { allowRepeat: true } : {}) },
     });
   } catch (e) {
-    if (e instanceof PearSignApiError) throw new PearSignContractError(e.message, e.status >= 500 ? 502 : 400);
+    // Nothing was sent: drop the per-send template.
+    await deletePearSignTemplate(template.id).catch(() => undefined);
+    if (e instanceof PearSignApiError) throw pearSignSendError(e);
     throw e;
   }
   console.info('[PearSign] package sent', {
@@ -903,7 +911,7 @@ function readEditorSession(overrides: unknown): EditorSessionRecord | null {
 export async function openPearSignPackageEditor(
   contractId: number,
   actorUserId: string | null,
-  body: { origin?: unknown; message?: string },
+  body: { origin?: unknown; message?: string; allowRepeat?: unknown },
 ) {
   const origin = editorOrigin(body.origin);
   const prep = await preparePackageSend(contractId, body);
@@ -918,7 +926,7 @@ export async function openPearSignPackageEditor(
       signerRoles,
       fieldValues,
       recipients: pkg.recipients.map((r) => ({ roleId: r.roleId, name: r.name, email: r.email })),
-      options: { title: pkg.title, message, expirationDays: 30 },
+      options: { title: pkg.title, message, expirationDays: 30, ...(body.allowRepeat === true ? { allowRepeat: true } : {}) },
       metadata: { contractId, source: 'cashable-crm' },
       expiresInSeconds: 3600,
     });

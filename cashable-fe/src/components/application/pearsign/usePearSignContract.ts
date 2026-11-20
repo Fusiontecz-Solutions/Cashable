@@ -316,13 +316,15 @@ export function usePearSignContract(opts: {
     );
 
     const send = useCallback(
-        async (extra: { ccEmails?: string[]; message?: string }) => {
+        async (extra: { ccEmails?: string[]; message?: string; allowRepeat?: boolean }) => {
             if (!contractId) throw new Error("No contract.");
             setBusy("send");
             try {
                 const res = await axiosPost(
                     `${prefix}/send`,
-                    mode === "package" ? { message: extra.message } : { ...payload(), ...extra },
+                    mode === "package"
+                        ? { message: extra.message, ...(extra.allowRepeat ? { allowRepeat: true } : {}) }
+                        : { ...payload(), ...extra },
                 );
                 const data = res?.data?.data as {
                     state: PearSignState;
@@ -334,7 +336,9 @@ export function usePearSignContract(opts: {
                 setState(data.state);
                 return data;
             } catch (e) {
-                throw new Error(apiErrorMessage(e, "PearSign send failed."));
+                // code PEARSIGN_ALREADY_COMPLETED: a signer completed this document in the last 60 days.
+                const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code;
+                throw Object.assign(new Error(apiErrorMessage(e, "PearSign send failed.")), { code });
             } finally {
                 setBusy(null);
             }

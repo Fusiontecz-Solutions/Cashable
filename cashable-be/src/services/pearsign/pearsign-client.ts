@@ -194,6 +194,8 @@ export type PearSignSendInput = {
     message?: string;
     expirationDays?: number;
     sendEmail?: boolean;
+    /** Send again on purpose to a signer who completed this document within 60 days. */
+    allowRepeat?: boolean;
   };
 };
 
@@ -329,6 +331,8 @@ export type PearSignEditorSessionInput = {
     allowAddFields?: boolean;
     allowDeleteFields?: boolean;
     defaultFontSize?: number;
+    /** mode send: the editor's Send may repeat a document a signer completed within 60 days. */
+    allowRepeat?: boolean;
   };
   metadata?: Record<string, string | number | boolean>;
   expiresInSeconds?: number;

@@ -150,6 +150,7 @@ router.post(
     openPearSignPackageEditor(contractIdParam(req), actorId(req), {
       origin: req.get('origin') ?? req.body?.origin,
       message: req.body?.message,
+      allowRepeat: req.body?.allowRepeat,
     }),
   ),
 );

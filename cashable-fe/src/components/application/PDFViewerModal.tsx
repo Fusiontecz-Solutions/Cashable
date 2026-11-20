@@ -5535,7 +5535,20 @@ const PDFViewerModal = ({
 
     const handlePearSignSendConfirm = useCallback(async () => {
         try {
-            const out = await pearSign.send({ ccEmails: pearSignCcEmails });
+            let out;
+            try {
+                out = await pearSign.send({ ccEmails: pearSignCcEmails });
+            } catch (e) {
+                if ((e as { code?: string })?.code !== "PEARSIGN_ALREADY_COMPLETED") throw e;
+                const again = window.confirm(
+                    "A signer already completed this document in PearSign within the last 60 days, so PearSign did not send it again.
+
+" +
+                        "Send it again anyway? It goes out as a new envelope and PearSign records it as a repeat. Nothing earlier is voided.",
+                );
+                if (!again) return;
+                out = await pearSign.send({ ccEmails: pearSignCcEmails, allowRepeat: true });
+            }
             setPearSignSendOpen(false);
             toast.success(
                 `Contract sent via PearSign (${out.prefilledFieldCount} values prefilled${
