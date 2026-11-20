@@ -60,6 +60,7 @@ import { toEnvelopeSubjectUppercase } from '../../../utils/contractEnvelopeEmail
 import { isTexasFundingGroupFunderProfile } from '../../../utils/funderProfileResolver';
 import { stampFunderLogoOnPdfBase64 } from './stamp-funder-logo';
 import { fullUsStateName, normalizeUsAddress } from '../../../utils/usStateNames';
+import { renderTypedCoj, typedCojKind } from './coj-typed-document';
 
 const DOCUSIGN_SECONDARY_SIGNER_ROLE_NAME = DOCUSIGN_SECONDARY_ROLE_NAME;
 
@@ -1001,6 +1002,20 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   const forcedBurnKeys = new Set<string>();
   for (const [layoutIndex, layout] of layouts.entries()) {
     const layoutKeyStr = String(layout.key || '');
+    // Confessions of judgment are typed out like a filed court document (values written into the
+    // sentences in bold), replacing the fill-in form; only signature/initial spots stay as fields.
+    const cojKind = typedCojKind(layout);
+    if (cojKind) {
+      try {
+        const typed = await renderTypedCoj(cojKind, { ...values, ...(layoutValues[layoutIndex] || {}) });
+        flattenedLayouts.push({ ...layout, documentBase64: typed.pdf.toString('base64'), placements: typed.placements });
+        flattenedLayoutKeys.add(layout.key);
+        forcedBurnKeys.add(layout.key);
+        continue;
+      } catch (err) {
+        console.warn(`[contracts] typed COJ failed for "${layout.key}", using the fill-in form:`, err);
+      }
+    }
     const isPrepayLayout =
       layoutKeyStr === 'prepay_discount' ||
       layoutKeyStr.endsWith('_prepay_discount');
