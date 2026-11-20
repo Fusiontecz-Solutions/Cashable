@@ -59,7 +59,7 @@ import {
 import { toEnvelopeSubjectUppercase } from '../../../utils/contractEnvelopeEmailSubject';
 import { isTexasFundingGroupFunderProfile } from '../../../utils/funderProfileResolver';
 import { stampFunderLogoOnPdfBase64 } from './stamp-funder-logo';
-import { fullUsStateName } from '../../../utils/usStateNames';
+import { fullUsStateName, normalizeUsAddress } from '../../../utils/usStateNames';
 
 const DOCUSIGN_SECONDARY_SIGNER_ROLE_NAME = DOCUSIGN_SECONDARY_ROLE_NAME;
 
@@ -958,6 +958,10 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   }
   // The COJ "STATE OF ___" line spells the state out ("Massachusetts", never "MA").
   if (values.owner_state) values.owner_state = fullUsStateName(values.owner_state);
+  // Address lines use 2-letter state codes and never doubled commas ("…, GLENDALE, CA, 91203").
+  for (const key of ['business_address_full', 'mailing_address_full', 'guarantor_address_full'] as const) {
+    if (values[key]) values[key] = normalizeUsAddress(values[key]);
+  }
   // Iowa COJ judgment total: purchased amount + the $7,500 default fee.
   if (!values.coj_sum_with_default) {
     const rawAmount = String(values.purchase_amount ?? '').replace(/[^0-9.]/g, '');
