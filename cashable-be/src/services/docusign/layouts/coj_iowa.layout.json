@@ -28,16 +28,6 @@
     "owner_state",
     "purchase_amount"
   ],
-  "masks": [
-    {
-      "pageNumber": "1",
-      "x": "551",
-      "y": "519",
-      "width": "8",
-      "height": "12",
-      "reason": "Printed $ at the end of the line; the amount field on the next line prints its own $ (valuePrefix)."
-    }
-  ],
   "placements": [
     {
       "id": "p1",
@@ -171,7 +161,6 @@
       "optional": true,
       "width": "83",
       "height": "15",
-      "valuePrefix": "$",
       "variable": "coj_sum_with_default",
       "sourceTabLabel": "coj_sum_with_default"
     },

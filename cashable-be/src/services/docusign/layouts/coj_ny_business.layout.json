@@ -30,16 +30,6 @@
     "owner_state",
     "purchase_amount"
   ],
-  "masks": [
-    {
-      "pageNumber": "1",
-      "x": "551",
-      "y": "427",
-      "width": "8",
-      "height": "12",
-      "reason": "Printed $ at the end of the line; the amount field on the next line prints its own $ (valuePrefix)."
-    }
-  ],
   "placements": [
     {
       "id": "p1",
@@ -150,7 +140,6 @@
       "optional": true,
       "width": "57",
       "height": "15",
-      "valuePrefix": "$",
       "variable": "purchase_amount",
       "sourceTabLabel": "purchase_amount"
     },
