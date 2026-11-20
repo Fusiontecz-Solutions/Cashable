@@ -60,7 +60,7 @@ import { toEnvelopeSubjectUppercase } from '../../../utils/contractEnvelopeEmail
 import { isTexasFundingGroupFunderProfile } from '../../../utils/funderProfileResolver';
 import { stampFunderLogoOnPdfBase64 } from './stamp-funder-logo';
 import { fullUsStateName, normalizeUsAddress } from '../../../utils/usStateNames';
-import { renderTypedCoj, typedCojKind } from './coj-typed-document';
+import { cojInputs, renderTypedCoj, typedCojKind, type CojKind } from './coj-typed-document';
 
 const DOCUSIGN_SECONDARY_SIGNER_ROLE_NAME = DOCUSIGN_SECONDARY_ROLE_NAME;
 
@@ -963,6 +963,14 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   for (const key of ['business_address_full', 'mailing_address_full', 'guarantor_address_full'] as const) {
     if (values[key]) values[key] = normalizeUsAddress(values[key]);
   }
+  // ACH bank grid rows 2–3: the business name and tax ID repeat only on a row that has a bank.
+  for (const n of [2, 3]) {
+    const hasBank = ['name', 'routing', 'account'].some((k) =>
+      String(values[`authorization_client_bank${n}_${k}`] ?? '').trim(),
+    );
+    values[`authorization_client_bank${n}_business_name`] = hasBank ? String(values.client_legal_name ?? '') : '';
+    values[`authorization_client_bank${n}_tax_id`] = hasBank ? String(values.authorization_client_tax_id ?? '') : '';
+  }
   // Iowa COJ judgment total: purchased amount + the $7,500 default fee.
   if (!values.coj_sum_with_default) {
     const rawAmount = String(values.purchase_amount ?? '').replace(/[^0-9.]/g, '');
@@ -1000,6 +1008,13 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   // printed words. Burn COJ prefill into the PDF (shrink-to-fit) in every send
   // mode; the tabs were locked read-only anyway.
   const forcedBurnKeys = new Set<string>();
+  /** Typed COJs in this envelope (for the PearSign Review: editable inputs + page range). */
+  const typedCojs: Array<{
+    layoutIndex: number;
+    kind: CojKind;
+    pageCount: number;
+    inputs: Array<{ variable: string; label: string; value: string }>;
+  }> = [];
   for (const [layoutIndex, layout] of layouts.entries()) {
     const layoutKeyStr = String(layout.key || '');
     // Confessions of judgment are typed out like a filed court document (values written into the
@@ -1007,7 +1022,14 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     const cojKind = typedCojKind(layout);
     if (cojKind) {
       try {
-        const typed = await renderTypedCoj(cojKind, { ...values, ...(layoutValues[layoutIndex] || {}) });
+        const cojValues = { ...values, ...(layoutValues[layoutIndex] || {}) };
+        const typed = await renderTypedCoj(cojKind, cojValues);
+        typedCojs.push({
+          layoutIndex: flattenedLayouts.length,
+          kind: cojKind,
+          pageCount: typed.pageCount,
+          inputs: cojInputs(cojKind, cojValues),
+        });
         flattenedLayouts.push({ ...layout, documentBase64: typed.pdf.toString('base64'), placements: typed.placements });
         flattenedLayoutKeys.add(layout.key);
         forcedBurnKeys.add(layout.key);
@@ -1130,5 +1152,13 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     createTimePrefillTabCount,
     prefillFlattenedInPdf,
     layoutKeys: layouts.map((l) => l.key),
+    /** Typed COJs: envelope document index, first page in that document (1-based) and inputs. */
+    typedCojs: typedCojs.map((c) => ({
+      kind: c.kind,
+      pageCount: c.pageCount,
+      inputs: c.inputs,
+      documentIndex: mergedDocument ? 0 : c.layoutIndex,
+      startPageInDocument: mergedDocument ? (pageOffsetByLayoutIndex?.[c.layoutIndex] ?? 0) + 1 : 1,
+    })),
   };
 }

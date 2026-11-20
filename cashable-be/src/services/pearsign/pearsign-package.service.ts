@@ -37,7 +37,8 @@ import {
   type PearSignContractState,
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
-import { buildPearSignPreviewPdf, primeBasePdfCache } from './pearsign-preview.service';
+import { buildPearSignPreviewPdf, loadBasePdf, primeBasePdfCache } from './pearsign-preview.service';
+import { renderTypedCoj, type CojKind, type PackageTypedCoj } from '../docusign/utils/coj-typed-document';
 import {
   cleanStyles,
   isPearSignIndependentKey,
@@ -116,6 +117,8 @@ export type PearSignStagedPackage = {
   overrides: Record<string, string>;
   /** Review font sizes per key (unset = PearSign auto-fit). */
   styles?: Record<string, PearSignFieldStyle>;
+  /** Typed COJs: rebuilt from their Review entries for the preview and the send. */
+  typedCojs?: PackageTypedCoj[];
 };
 
 type Tab = Record<string, string | undefined>;
@@ -355,6 +358,14 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
 export async function stagePearSignPackage(input: {
   envelopeDefinition: EnvelopeDefinition;
   layoutKeys?: string[];
+  /** From the envelope builder: each typed COJ's document, first page and inputs. */
+  typedCojs?: Array<{
+    kind: CojKind;
+    pageCount: number;
+    documentIndex: number;
+    startPageInDocument: number;
+    inputs: Array<{ variable: string; label: string; value: string }>;
+  }>;
   contractId?: number;
   applicationId?: string;
   funderProfileId?: string | null;
@@ -380,6 +391,20 @@ export async function stagePearSignPackage(input: {
     input.envelopeDefinition,
     input.layoutKeys,
   );
+
+  // Typed COJs: their values become Review entries (no box on the page); the COJ pages are
+  // rebuilt from them for the preview and the send.
+  const typedCojs: PackageTypedCoj[] = [];
+  for (const [k, c] of (input.typedCojs ?? []).entries()) {
+    const doc = documents.find((d) => d.index === c.documentIndex);
+    if (!doc) continue;
+    const inputs = c.inputs.map((i) => ({ key: `d${c.documentIndex + 1}__coj${k + 1}__${i.variable}`, variable: i.variable, label: i.label }));
+    c.inputs.forEach((i, n) => {
+      crmValues[inputs[n].key] = i.value;
+    });
+    typedCojs.push({ kind: c.kind, startPage: doc.startPage + c.startPageInDocument - 1, pageCount: c.pageCount, inputs });
+  }
+  const cojKeys = new Set(typedCojs.flatMap((c) => c.inputs.map((i) => i.key)));
 
   // 4. Keep the merged PDF (PearSign template source + preview base).
   const up = await uploadService.uploadBuffer(mergedBytes, 'ih-crm/pearsign-packages', `package_${contractId}_${Date.now()}.pdf`, {
@@ -408,8 +433,9 @@ export async function stagePearSignPackage(input: {
     crmValues,
     // Keep Review edits for keys that still exist (re-staging after a CRM change).
     overrides: Object.fromEntries(
-      Object.entries(prevPackage?.overrides ?? {}).filter(([k]) => fields.some((f) => f.key === k)),
+      Object.entries(prevPackage?.overrides ?? {}).filter(([k]) => cojKeys.has(k) || fields.some((f) => f.key === k)),
     ),
+    typedCojs,
     styles: Object.fromEntries(
       Object.entries(cleanStyles(prevPackage?.styles)).filter(([k]) => fields.some((f) => f.key === k)),
     ),
@@ -499,6 +525,26 @@ async function effectiveFieldStyles(
   return out;
 }
 
+/**
+ * Value size per field (box), by field name: a size chosen in Review for its key wins; otherwise
+ * the one size of its page. Unlike effectiveFieldStyles a key's boxes are sized independently, so
+ * a long value squeezed into a narrow box on one page never shrinks the same value on another.
+ */
+async function fieldFontSizes(
+  pkg: Pick<DrawablePackage, 'fields' | 'styles'>,
+  values: Record<string, string>,
+): Promise<Map<string, number>> {
+  const font = await measureHelvetica();
+  const measure = (t: string, s: number) => font.widthOfTextAtSize(t, s);
+  const chosen = cleanStyles(pkg.styles);
+  const filled = pkg.fields.filter((f) => !(f.signerFilled || f.type === 'signature' || f.type === 'initials'));
+  const sizes = pearSignPageFontSizes(
+    filled.map((f) => ({ page: f.page, width: f.width, value: String(values[f.key] ?? '') })),
+    measure,
+  );
+  return new Map(filled.map((f, i) => [f.name, chosen[f.key]?.fontSize ?? sizes[i]]));
+}
+
 function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string>): Record<string, string> {
   const out = { ...pkg.crmValues, ...pkg.overrides };
   for (const [k, v] of Object.entries(extra ?? {})) {
@@ -514,7 +560,45 @@ type DrawablePackage = {
   fields: Array<Pick<PearSignPackageField, 'name' | 'key' | 'roleId' | 'signerFilled' | 'required' | 'page' | 'x' | 'y' | 'width' | 'height'> & { type: string }>;
   recipients: Array<{ roleId: string; roleName: string }>;
   styles?: Record<string, PearSignFieldStyle>;
+  typedCojs?: PackageTypedCoj[];
 };
+
+/**
+ * The package PDF to draw on / send: the merged PDF with every typed COJ rebuilt from the current
+ * values (same page count), and the package fields with each COJ signature box moved to where its
+ * "By:" line now is.
+ */
+export async function packageBase<F extends DrawablePackage['fields'][number]>(
+  pkg: Omit<DrawablePackage, 'fields'> & { fields: F[] },
+  values: Record<string, string>,
+): Promise<{ pdf: Buffer; fields: F[] }> {
+  const base = await loadBasePdf(pkg.mergedPdfUrl);
+  if (!pkg.typedCojs?.length) return { pdf: base, fields: pkg.fields };
+  const doc = await PDFDocument.load(base, { ignoreEncryption: true });
+  let fields = pkg.fields;
+  for (const coj of pkg.typedCojs) {
+    const cojValues: Record<string, string> = {};
+    for (const i of coj.inputs) cojValues[i.variable] = String(values[i.key] ?? '');
+    const typed = await renderTypedCoj(coj.kind, cojValues, { pageCount: coj.pageCount });
+    const src = await PDFDocument.load(typed.pdf);
+    const pages = await doc.copyPages(src, src.getPageIndices().slice(0, coj.pageCount));
+    pages.forEach((page, i) => {
+      doc.removePage(coj.startPage - 1 + i);
+      doc.insertPage(coj.startPage - 1 + i, page);
+    });
+    const spots = typed.placements
+      .filter((p) => p.type === 'signature')
+      .map((p) => ({ page: coj.startPage - 1 + Number(p.pageNumber), x: Number(p.x), y: Number(p.y) }));
+    const last = coj.startPage + coj.pageCount - 1;
+    let n = 0;
+    fields = fields.map((f) => {
+      if (f.type !== 'signature' || f.page < coj.startPage || f.page > last) return f;
+      const spot = spots[Math.min(n++, spots.length - 1)];
+      return spot ? { ...f, page: spot.page, x: spot.x, y: spot.y } : f;
+    });
+  }
+  return { pdf: Buffer.from(await doc.save()), fields };
+}
 
 /** The package as a PearSign-template-shaped object (for the shared preview renderer). */
 function asTemplate(pkg: DrawablePackage): PearSignTemplate {
@@ -538,15 +622,23 @@ export async function drawPearSignPackage(
   pkg: DrawablePackage,
   values: Record<string, string>,
   title: string,
+  /** Values the typed COJs are rebuilt from (default `values`; set when drawing without values). */
+  cojValues?: Record<string, string>,
 ) {
   const keyByName = new Map(pkg.fields.map((f) => [f.name, f.key]));
+  const built = await packageBase(pkg, cojValues ?? values);
   return buildPearSignPreviewPdf({
-    template: asTemplate(pkg),
+    template: asTemplate({ ...pkg, fields: built.fields }),
     sourcePdfUrl: pkg.mergedPdfUrl,
+    basePdf: built.pdf,
     values,
     signerFilledNames: new Set(pkg.fields.filter((f) => f.signerFilled).map((f) => f.name)),
     valueKeyFor: (name) => keyByName.get(name) ?? name,
     styles: await effectiveFieldStyles(pkg, values),
+    fieldStyleFor: await (async () => {
+      const sizes = await fieldFontSizes(pkg, values);
+      return (name: string) => (sizes.has(name) ? { fontSize: sizes.get(name) } : undefined);
+    })(),
     title,
   });
 }
@@ -559,10 +651,13 @@ export async function getPearSignPackageReview(contractId: number) {
   const docName = new Map(pkg.documents.map((d) => [d.index, d.name]));
 
   const fieldsByKey = new Map<string, { key: string; label: string; pages: number[]; document: string; docIndex: number }>();
-  const fieldLayout: Array<{ key: string; page: number; x: number; y: number; width: number; height: number }> = [];
+  const fieldLayout: Array<{ key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number }> = [];
+  const boxSizes = await fieldFontSizes(pkg, values);
   const signerBoxes: Array<{ kind: string; roleName: string; page: number; x: number; y: number; width: number; height: number }> = [];
   const roleName = new Map(pkg.recipients.map((r) => [r.roleId, r.roleName]));
-  for (const f of pkg.fields) {
+  // Signature boxes as they will be sent (a rebuilt COJ moves its "By:" line).
+  const reviewFields = pkg.typedCojs?.length ? (await packageBase(pkg, values)).fields : pkg.fields;
+  for (const f of reviewFields) {
     const box = { page: f.page, x: f.x, y: f.y, width: f.width, height: f.height };
     if (f.signerFilled) {
       signerBoxes.push({
@@ -572,10 +667,18 @@ export async function getPearSignPackageReview(contractId: number) {
       });
       continue;
     }
-    fieldLayout.push({ key: f.key, ...box });
+    fieldLayout.push({ key: f.key, ...box, fontSize: boxSizes.get(f.name) });
     const cur = fieldsByKey.get(f.key) ?? { key: f.key, label: f.label, pages: [], document: docName.get(f.docIndex) ?? '', docIndex: f.docIndex };
     if (!cur.pages.includes(f.page)) cur.pages.push(f.page);
     fieldsByKey.set(f.key, cur);
+  }
+  // Typed COJ values: no box on the page — editing one rebuilds the COJ pages.
+  for (const coj of pkg.typedCojs ?? []) {
+    const pages = Array.from({ length: coj.pageCount }, (_, i) => coj.startPage + i);
+    const docIndex = pkg.documents.find((d) => coj.startPage >= d.startPage && coj.startPage < d.startPage + d.pageCount)?.index ?? 0;
+    for (const i of coj.inputs) {
+      fieldsByKey.set(i.key, { key: i.key, label: `COJ · ${i.label}`, pages, document: docName.get(docIndex) ?? '', docIndex });
+    }
   }
   const fields = [...fieldsByKey.values()].sort((a, b) => a.docIndex - b.docIndex || Math.min(...a.pages) - Math.min(...b.pages));
 
@@ -607,6 +710,8 @@ export async function getPearSignPackageReview(contractId: number) {
     values,
     blankKeys: fields.filter((f) => !String(values[f.key] ?? '').trim()).map((f) => f.key),
     keepBlankKeys: fields.filter((f) => isPearSignIndependentKey(f.key)).map((f) => f.key),
+    /** Value keys whose edit rebuilds pages (typed COJs): the Review reloads the page images. */
+    rebuildKeys: (pkg.typedCojs ?? []).flatMap((c) => c.inputs.map((i) => i.key)),
     styles: cleanStyles(pkg.styles),
     /** Size each field is drawn and sent at (one size per page; Review choices included). */
     appliedStyles: await effectiveFieldStyles(pkg, values),
@@ -623,7 +728,7 @@ export async function savePearSignPackageOverrides(contractId: number, body: { o
   if (state?.envelopeId && isActivePearSignStatus(state.status)) {
     throw new PearSignContractError('This contract is out for signature in PearSign; void it before editing values.', 409);
   }
-  const keys = new Set(pkg.fields.map((f) => f.key));
+  const keys = new Set([...pkg.fields.map((f) => f.key), ...(pkg.typedCojs ?? []).flatMap((c) => c.inputs.map((i) => i.key))]);
   const next = { ...pkg.overrides };
   for (const [k, v] of Object.entries((body.overrides && typeof body.overrides === 'object' ? body.overrides : {}) as Record<string, unknown>)) {
     if (!keys.has(k)) continue;
@@ -643,8 +748,9 @@ export async function buildPearSignPackagePreview(contractId: number, body: { va
     body.values && typeof body.values === 'object'
       ? Object.fromEntries(Object.entries(body.values as Record<string, unknown>).map(([k, v]) => [k, String(v ?? '')]))
       : undefined;
-  const values = body.drawValues === false ? {} : packageValues(pkg, extra);
-  const { pdf, filledFieldCount } = await drawPearSignPackage(pkg, values, `${pkg.title} (preview)`);
+  const real = packageValues(pkg, extra);
+  const values = body.drawValues === false ? {} : real;
+  const { pdf, filledFieldCount } = await drawPearSignPackage(pkg, values, `${pkg.title} (preview)`, real);
   const fileName = `${slug(pkg.title, 80)}_preview.pdf`;
   return { pdf, filledFieldCount, fileName };
 }
@@ -676,18 +782,23 @@ async function preparePackageSend(contractId: number, body: { message?: string }
     else blank++;
   }
 
+  // The merged PDF with typed COJs rebuilt from the reviewed values (and their signature boxes
+  // moved to the rebuilt "By:" line).
   let pdf: Buffer;
+  let sendFields = pkg.fields;
   try {
-    pdf = await fetchRemoteAssetBuffer(pkg.mergedPdfUrl);
+    const built = await packageBase(pkg, values);
+    pdf = built.pdf;
+    sendFields = built.fields;
   } catch (err) {
     throw new PearSignContractError(`Could not load the package PDF: ${(err as Error)?.message}`, 502);
   }
   // Every CRM-filled box gets an explicit size + Helvetica (consistent across the package),
   // instead of PearSign's per-box auto-fit; a size chosen in Review wins.
-  const styles = await effectiveFieldStyles(pkg, values);
+  const sizes = await fieldFontSizes(pkg, values);
   const sentStyles = cleanStyles(pkg.styles);
-  const createFields: PearSignTemplateCreateInput['fields'] = pkg.fields.map((f) => {
-    const fontSize = f.signerFilled ? undefined : styles[f.key]?.fontSize;
+  const createFields: PearSignTemplateCreateInput['fields'] = sendFields.map((f) => {
+    const fontSize = f.signerFilled ? undefined : sizes.get(f.name);
     return {
       fieldName: sendName.get(f.name)!,
       type: f.type as PearSignFieldType,
@@ -846,7 +957,14 @@ export async function sendPearSignPackage(
     templateId: template.id,
     status: result.status,
     values,
-    sentPackage: { mergedPdfUrl: pkg.mergedPdfUrl, fields: pkg.fields, recipients: pkg.recipients, documents: pkg.documents, styles: sentStyles },
+    sentPackage: {
+      mergedPdfUrl: pkg.mergedPdfUrl,
+      fields: pkg.fields,
+      recipients: pkg.recipients,
+      documents: pkg.documents,
+      styles: sentStyles,
+      typedCojs: pkg.typedCojs,
+    },
     pearSignEmailedSigners: sendEmail && result.emailSent !== false,
     signingUrls: result.signingUrls ?? [],
     source: 'pearsign_package_send',
@@ -886,6 +1004,31 @@ export function editorOrigin(raw: unknown): string {
   return url.origin;
 }
 
+/**
+ * Every origin the CRM may be served from (the page's own origin and the request's Origin, each
+ * with and without "www."), so PearSign's frame-ancestors never refuses the framed editor.
+ */
+export function editorOrigins(...raws: unknown[]): string[] {
+  const out = new Set<string>();
+  for (const raw of raws) {
+    if (!String(raw ?? '').trim()) continue;
+    let origin: string;
+    try {
+      origin = editorOrigin(raw);
+    } catch {
+      continue;
+    }
+    out.add(origin);
+    const u = new URL(origin);
+    if (u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') {
+      const other = u.hostname.startsWith('www.') ? u.hostname.slice(4) : `www.${u.hostname}`;
+      out.add(`${u.protocol}//${other}${u.port ? `:${u.port}` : ''}`);
+    }
+  }
+  if (!out.size) return [editorOrigin(raws.find((r) => String(r ?? '').trim()))];
+  return [...out].slice(0, 10);
+}
+
 async function writeEditorSession(contractId: number, record: EditorSessionRecord | null) {
   const value = JSON.stringify(record);
   await prisma.$executeRaw`
@@ -911,16 +1054,16 @@ function readEditorSession(overrides: unknown): EditorSessionRecord | null {
 export async function openPearSignPackageEditor(
   contractId: number,
   actorUserId: string | null,
-  body: { origin?: unknown; message?: string; allowRepeat?: unknown },
+  body: { origin?: unknown; pageOrigin?: unknown; message?: string; allowRepeat?: unknown },
 ) {
-  const origin = editorOrigin(body.origin);
+  const origins = editorOrigins(body.pageOrigin, body.origin);
   const prep = await preparePackageSend(contractId, body);
   const { pkg, fieldValues, pdf, createFields, signerRoles, message } = prep;
   let session;
   try {
     session = await createPearSignEditorSession({
       mode: 'send',
-      allowedOrigins: [origin],
+      allowedOrigins: origins,
       documentBase64: pdf.toString('base64'),
       fields: createFields,
       signerRoles,
@@ -949,7 +1092,7 @@ export async function openPearSignPackageEditor(
     createdByUserId: actorUserId,
     message,
   });
-  console.info('[PearSign] editor session opened', { contractId, sessionId: session.sessionId, fields: createFields.length });
+  console.info('[PearSign] editor session opened', { contractId, sessionId: session.sessionId, fields: createFields.length, origins });
   return { sessionId: session.sessionId, editorUrl: session.editorUrl, expiresAt: session.expiresAt ?? null };
 }
 
@@ -959,7 +1102,7 @@ export async function openPearSignPackageEditor(
  * editor win. Used for the CRM-drawn PDF until the envelope is completed.
  */
 export function packageFromEditorFields(
-  pkg: Pick<PearSignStagedPackage, 'fields' | 'recipients' | 'documents' | 'mergedPdfUrl'>,
+  pkg: Pick<PearSignStagedPackage, 'fields' | 'recipients' | 'documents' | 'mergedPdfUrl' | 'typedCojs'>,
   sendName: Map<string, string>,
   values: Record<string, string>,
   sentStyles: Record<string, PearSignFieldStyle> | undefined,
@@ -1004,7 +1147,7 @@ export function packageFromEditorFields(
   }
   if (!fields.length) return null;
   return {
-    sentPackage: { mergedPdfUrl: pkg.mergedPdfUrl, fields, recipients: pkg.recipients, documents: pkg.documents, styles },
+    sentPackage: { mergedPdfUrl: pkg.mergedPdfUrl, fields, recipients: pkg.recipients, documents: pkg.documents, styles, typedCojs: pkg.typedCojs },
     values: outValues,
   };
 }

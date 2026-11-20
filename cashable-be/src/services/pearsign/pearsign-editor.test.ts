@@ -1,7 +1,7 @@
 jest.mock('../../config/prismaClient', () => ({ __esModule: true, default: {} }));
 jest.mock('puppeteer', () => ({ __esModule: true, default: {} }));
 
-import { editorOrigin, packageFromEditorFields } from './pearsign-package.service';
+import { editorOrigin, editorOrigins, packageFromEditorFields } from './pearsign-package.service';
 
 const pkg = {
   mergedPdfUrl: 'https://example.com/package.pdf',
@@ -83,5 +83,16 @@ describe('editorOrigin', () => {
   it('refuses plain http on a real host and garbage', () => {
     expect(() => editorOrigin('http://crm.example.com')).toThrow();
     expect(() => editorOrigin('')).toThrow();
+  });
+});
+
+describe('editorOrigins', () => {
+  it('allows the page and request origins with and without www, de-duplicated', () => {
+    expect(editorOrigins('https://crm.example.com/deal/1', 'https://crm.example.com')).toEqual([
+      'https://crm.example.com',
+      'https://www.crm.example.com',
+    ]);
+    expect(editorOrigins(undefined, 'https://www.example.com')).toEqual(['https://www.example.com', 'https://example.com']);
+    expect(editorOrigins('http://localhost:3043')).toEqual(['http://localhost:3043']);
   });
 });

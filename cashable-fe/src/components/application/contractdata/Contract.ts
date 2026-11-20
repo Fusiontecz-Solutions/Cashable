@@ -205,6 +205,13 @@ export interface BuildContractPrefillFieldsArgs {
     achDaysMonFriCheck?: string;
     achDaysMonFriHolidaysCheck?: string;
     achDaysSevenCheck?: string;
+    /** Extra bank accounts on the ACH authorization grid (rows 2 and 3); empty rows print blank. */
+    authorizationClientBank2Name?: string;
+    authorizationClientBank2Routing?: string;
+    authorizationClientBank2Account?: string;
+    authorizationClientBank3Name?: string;
+    authorizationClientBank3Routing?: string;
+    authorizationClientBank3Account?: string;
     // Optional snake_case aliases for external payload compatibility.
     ach_authorization_bank_portal_website?: string;
     ach_authorization_username?: string;
@@ -427,6 +434,12 @@ const FIELD_IDS = {
     achDaysMonFriCheck: ["ach_days_mon_fri_check"],
     achDaysMonFriHolidaysCheck: ["ach_days_mon_fri_holidays_check"],
     achDaysSevenCheck: ["ach_days_seven_check"],
+    authorizationClientBank2Name: ["authorization_client_bank2_name"],
+    authorizationClientBank2Routing: ["authorization_client_bank2_routing"],
+    authorizationClientBank2Account: ["authorization_client_bank2_account"],
+    authorizationClientBank3Name: ["authorization_client_bank3_name"],
+    authorizationClientBank3Routing: ["authorization_client_bank3_routing"],
+    authorizationClientBank3Account: ["authorization_client_bank3_account"],
 
     achAuthorizationReferenceName1: ["ach_authorization_reference_name1"],
     achAuthorizationReferenceNumber1: ["ach_authorization_reference_number_1"],
@@ -734,6 +747,12 @@ export const buildContractPrefillFields = ({
     achDaysMonFriCheck = "",
     achDaysMonFriHolidaysCheck = "",
     achDaysSevenCheck = "",
+    authorizationClientBank2Name = "",
+    authorizationClientBank2Routing = "",
+    authorizationClientBank2Account = "",
+    authorizationClientBank3Name = "",
+    authorizationClientBank3Routing = "",
+    authorizationClientBank3Account = "",
     ach_authorization_bank_portal_website = "",
     ach_authorization_username = "",
     ach_authorization_password = "",
@@ -1017,6 +1036,12 @@ export const buildContractPrefillFields = ({
             achAuthorizationEmergencyContact,
         ),
         ...mapIds(FIELD_IDS.achDaysMonFriCheck, "ACH Days Mon-Fri", achDaysMonFriCheck),
+        ...mapIds(FIELD_IDS.authorizationClientBank2Name, "Bank 2 name", authorizationClientBank2Name),
+        ...mapIds(FIELD_IDS.authorizationClientBank2Routing, "Bank 2 routing", authorizationClientBank2Routing),
+        ...mapIds(FIELD_IDS.authorizationClientBank2Account, "Bank 2 account", authorizationClientBank2Account),
+        ...mapIds(FIELD_IDS.authorizationClientBank3Name, "Bank 3 name", authorizationClientBank3Name),
+        ...mapIds(FIELD_IDS.authorizationClientBank3Routing, "Bank 3 routing", authorizationClientBank3Routing),
+        ...mapIds(FIELD_IDS.authorizationClientBank3Account, "Bank 3 account", authorizationClientBank3Account),
         ...mapIds(
             FIELD_IDS.achDaysMonFriHolidaysCheck,
             "ACH Days Mon-Fri incl. holidays",

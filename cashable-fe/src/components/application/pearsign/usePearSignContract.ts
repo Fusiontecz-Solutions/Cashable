@@ -18,7 +18,8 @@ import { axiosGet, axiosPost, axiosPut } from "@/redux/axios";
  * The PearSign API key never reaches the browser.
  */
 
-export type PearSignFieldBox = { key: string; page: number; x: number; y: number; width: number; height: number };
+/** `fontSize`: the size this box is drawn and sent at (boxes sharing a value are sized separately). */
+export type PearSignFieldBox = { key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number };
 export type PearSignFieldStyle = { fontSize?: number };
 
 /** Font sizes offered in Review (PearSign accepts 6–36pt). */
@@ -74,6 +75,8 @@ export type PearSignReview = {
     blankKeys: string[];
     /** Fields with their own value (page-1 EIN): clearing them keeps them blank instead of restoring the CRM value. */
     keepBlankKeys?: string[];
+    /** Value keys whose edit rebuilds pages on the server (typed COJ values); reload the pages after saving. */
+    rebuildKeys?: string[];
     /** Chosen font sizes per field key (unset = auto-fit). Sent to PearSign as the field's fontSize. */
     styles?: Record<string, PearSignFieldStyle>;
     /** Size each field is drawn and sent at: one size per page (server), Review choices included. */

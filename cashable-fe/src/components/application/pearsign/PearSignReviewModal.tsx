@@ -203,7 +203,7 @@ function PdfPages({
                                                   const active = b.key === activeKey;
                                                   const boxId = `${b.key}|${n}|${j}`;
                                                   const editing = editable && editingBox === boxId;
-                                                  const fontSize = styles[b.key]?.fontSize;
+                                                  const fontSize = b.fontSize ?? styles[b.key]?.fontSize;
                                                   const height = pearSignHeightForFont(b.height, fontSize);
                                                   const fit = text ? fitText(text, { ...b, height }, fontSize) : { size: fontSize ?? MAX_PT, wrap: false };
                                                   const style = {
@@ -299,6 +299,8 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
     const dirtyRef = useRef(new Set<string>());
     const timerRef = useRef<number | null>(null);
     const chainRef = useRef<Promise<void>>(Promise.resolve());
+    /** Reloads the page images (set once `rebuild` exists below). */
+    const rebuildRef = useRef<(() => Promise<void>) | null>(null);
     const [saveState, setSaveState] = useState<SaveState>("idle");
     const [filter, setFilter] = useState("");
     const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -349,6 +351,9 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
             try {
                 await ctlRef.current.saveOverrides(changes);
                 setSaveState(dirtyRef.current.size ? "saving" : "saved");
+                // A typed COJ value has no box: the server rebuilds the COJ pages, so reload them.
+                const rebuildKeys = new Set(ctlRef.current.review?.rebuildKeys ?? []);
+                if (keys.some((k) => rebuildKeys.has(k))) void rebuildRef.current?.();
             } catch (e) {
                 for (const k of keys) dirtyRef.current.add(k);
                 setSaveState("error");
@@ -394,6 +399,14 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
         return out;
     }, [review?.styles, sizeDraft]);
     /** What the page draws: the server's one-size-per-page sizes, with Review choices on top. */
+    // A size picked in Review applies to every box of that value; otherwise each box keeps its own.
+    const pageBoxes = useMemo(
+        () =>
+            (review?.fieldLayout ?? []).map((b) =>
+                styles[b.key]?.fontSize ? { ...b, fontSize: styles[b.key]?.fontSize } : b,
+            ),
+        [review?.fieldLayout, styles],
+    );
     const drawStyles = useMemo(
         () => ({ ...(review?.appliedStyles ?? {}), ...styles }),
         [review?.appliedStyles, styles],
@@ -456,6 +469,8 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
             if (id === requestRef.current) setBuilding(false);
         }
     }, []);
+
+    rebuildRef.current = rebuild;
 
     useEffect(() => {
         if (!open) return;
@@ -627,7 +642,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                     <div className="relative flex min-h-[40vh] min-w-0 flex-1 flex-col bg-slate-200 dark:bg-slate-800">
                         <PdfPages
                             url={pdfUrl}
-                            boxes={review.fieldLayout}
+                            boxes={pageBoxes}
                             values={live}
                             styles={drawStyles}
                             activeKey={activeKey}
@@ -985,6 +1000,9 @@ export function PearSignEditorDialog({
     const [session, setSession] = useState<{ sessionId: string; editorUrl: string } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    /** The editor runs in its own browser window (fallback when the framed editor stays blank). */
+    const [popup, setPopup] = useState(false);
+    const popupRef = useRef<Window | null>(null);
     const doneRef = useRef(false);
     const checkingRef = useRef(false);
     const ctlRef = useRef(ctl);
@@ -992,11 +1010,42 @@ export function PearSignEditorDialog({
     const cbRef = useRef({ onClose, onSent });
     cbRef.current = { onClose, onSent };
 
+    /**
+     * Open a fresh editor session in its own window (an editor link works once). Browsers block
+     * PearSign's sign-in cookie inside another site's frame; a top-level window keeps it.
+     */
+    const openInNewWindow = useCallback(async () => {
+        // Open the window inside the click so pop-up blockers allow it, then point it at the editor.
+        const win = window.open("", "pearsign-editor", "width=1400,height=900");
+        if (!win) {
+            toast.error("The browser blocked the new window. Allow pop-ups for this site and try again.");
+            return;
+        }
+        win.document.title = "PearSign editor";
+        win.document.body.innerHTML =
+            '<div style="font:14px system-ui,sans-serif;color:#475569;display:flex;height:100vh;align-items:center;justify-content:center">Opening the PearSign editor…</div>';
+        setLoading(true);
+        try {
+            const s = await ctlRef.current.openEditor({});
+            setSession({ sessionId: s.sessionId, editorUrl: s.editorUrl });
+            setPopup(true);
+            popupRef.current = win;
+            win.location.href = s.editorUrl;
+        } catch (e) {
+            win.close();
+            toast.error(e instanceof Error ? e.message : "Could not open the PearSign editor.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     // A fresh session each time the editor opens (an editor link works once).
     useEffect(() => {
         if (!open) {
             setSession(null);
             setError(null);
+            setPopup(false);
+            popupRef.current = null;
             doneRef.current = false;
             return;
         }
@@ -1118,6 +1167,19 @@ export function PearSignEditorDialog({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {!popup ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                disabled={loading}
+                                onClick={() => void openInNewWindow()}
+                                title="Use this if the editor below stays blank or shows a broken page"
+                            >
+                                <ExternalLink className="mr-1 h-3.5 w-3.5" /> Open in a new window
+                            </Button>
+                        ) : null}
                         {session ? (
                             <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => void check(false)}>
                                 <RefreshCw className="mr-1 h-3.5 w-3.5" /> I sent it — check now
@@ -1147,6 +1209,22 @@ export function PearSignEditorDialog({
                             <p className="max-w-xl text-sm text-slate-700 dark:text-slate-200">{error}</p>
                             <Button type="button" variant="outline" size="sm" onClick={() => cbRef.current.onClose()}>
                                 Back
+                            </Button>
+                        </div>
+                    ) : session && popup ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                            <ExternalLink className="h-7 w-7 text-[var(--brand)]" />
+                            <p className="max-w-xl text-sm text-slate-700 dark:text-slate-200">
+                                The PearSign editor is open in its own window. Edit the fields there and click Send — this
+                                page records the envelope automatically.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => (popupRef.current && !popupRef.current.closed ? popupRef.current.focus() : void openInNewWindow())}
+                            >
+                                <ExternalLink className="mr-1 h-3.5 w-3.5" /> Show the editor window
                             </Button>
                         </div>
                     ) : session ? (

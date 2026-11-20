@@ -4341,6 +4341,7 @@ export class DocusignService {
       return await stagePearSignPackage({
         envelopeDefinition: built.envelopeDefinition as any,
         layoutKeys: built.layoutKeys,
+        typedCojs: (built as { typedCojs?: unknown }).typedCojs as never,
         contractId: options.contractId,
         applicationId: options.applicationId,
         funderProfileId: funderProfile?.id ?? options.funderProfileId ?? null,

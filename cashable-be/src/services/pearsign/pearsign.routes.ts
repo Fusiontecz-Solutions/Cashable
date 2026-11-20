@@ -148,7 +148,8 @@ router.post(
   '/contracts/:contractId/package/editor',
   handle((req) =>
     openPearSignPackageEditor(contractIdParam(req), actorId(req), {
-      origin: req.get('origin') ?? req.body?.origin,
+      origin: req.get('origin'),
+      pageOrigin: req.body?.origin,
       message: req.body?.message,
       allowRepeat: req.body?.allowRepeat,
     }),

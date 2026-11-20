@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { DocumentLayoutPlacement } from './convert-docusign-template-export';
+import { fullUsStateName } from '../../../utils/usStateNames';
 
 /**
  * Confessions of judgment typed out like a filed court document: every CRM value is written into
@@ -76,7 +77,7 @@ export function cojFacts(values: Values) {
     plaintiff: upper(v(values, 'funder_name')) || 'CASHABLE FUND LLC',
     merchant,
     owner,
-    ownerState: upper(v(values, 'owner_state')),
+    ownerState: upper(fullUsStateName(v(values, 'owner_state'))),
     ownerCounty: upper(v(values, 'owner_county')),
     ownerAddress: upper(v(values, 'guarantor_address_full', 'mailing_address_full')),
     businessAddress: upper(v(values, 'business_address_full')),
@@ -121,7 +122,15 @@ class Typesetter {
   y = 0; // distance from the top of the page to the current baseline
   marks: Array<{ kind: 'signature' | 'initial'; page: number; x: number; y: number }> = [];
 
-  constructor(readonly opts: { footer?: (t: Typesetter, pageNo: number) => void }) {}
+  /** Body size / line spacing (shrunk by `scale` when a COJ must keep its page count). */
+  body = BODY;
+  leading = LEADING;
+
+  constructor(readonly opts: { footer?: (t: Typesetter, pageNo: number) => void; scale?: number }) {
+    const k = opts.scale ?? 1;
+    this.body = Math.round(BODY * k * 4) / 4;
+    this.leading = Math.round(LEADING * k * 4) / 4;
+  }
 
   async init() {
     this.doc = await PDFDocument.create();
@@ -147,7 +156,7 @@ class Typesetter {
   draw(text: string, x: number, baseline: number, opts: { bold?: boolean; size?: number } = {}) {
     const t = encodable(text);
     if (!t) return;
-    this.page.drawText(t, { x, y: PAGE_H - baseline, size: opts.size ?? BODY, font: this.font(opts.bold), color: rgb(0, 0, 0) });
+    this.page.drawText(t, { x, y: PAGE_H - baseline, size: opts.size ?? this.body, font: this.font(opts.bold), color: rgb(0, 0, 0) });
   }
 
   line(x1: number, x2: number, baseline: number, thickness = 0.6) {
@@ -170,8 +179,8 @@ class Typesetter {
   ) {
     const left = o.left ?? LEFT;
     const right = o.right ?? RIGHT;
-    const size = o.size ?? BODY;
-    const leading = o.leading ?? LEADING;
+    const size = o.size ?? this.body;
+    const leading = o.leading ?? this.leading;
     const align = o.align ?? 'justify';
     // Words keep their run's weight; a bold run's words stay bold across lines.
     type Word = { text: string; bold?: boolean; w: number; spaceBefore: boolean };
@@ -237,7 +246,7 @@ class Typesetter {
     this.ensure(40);
     this.y += 16;
     this.draw(label, x, this.y);
-    const lx = x + this.width(label, false, BODY) + 2;
+    const lx = x + this.width(label, false, this.body) + 2;
     this.line(lx, lx + width, this.y + 1);
     this.marks.push({ kind: 'signature', page: this.pages.length, x: lx + 4, y: this.y - 20 });
     this.y += 22;
@@ -292,7 +301,7 @@ function caption(
   // Venue.
   const venue = (label: string, value: string, extra = '') => {
     t.draw(label, LEFT - 4, t.y);
-    const x = LEFT - 4 + t.width(label, false, BODY) + 4;
+    const x = LEFT - 4 + t.width(label, false, t.body) + 4;
     t.draw(value, x, t.y, { bold: true });
     t.draw(`)${extra}`, 272, t.y);
     t.y += 22;
@@ -334,9 +343,9 @@ function notaryBlock(t: Typesetter, title: string, body: Run[]) {
 
 // ---------- the four COJs ----------
 
-async function iowa(values: Values) {
+async function iowa(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true) });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true), scale });
   await t.init();
   caption(t, {
     court: ['IOWA DISTRICT COURT', 'COUNTY OF BLACK HAWK'],
@@ -402,9 +411,9 @@ function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null) {
   if (onBehalf) t.paragraph(onBehalf, { left: 240, align: 'left', leading: 14 });
 }
 
-async function nyBusiness(values: Values) {
+async function nyBusiness(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:') });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty}`],
@@ -427,9 +436,9 @@ async function nyBusiness(values: Values) {
   return t;
 }
 
-async function nyGeneral(values: Values) {
+async function nyGeneral(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:') });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty}`],
@@ -464,9 +473,9 @@ async function nyGeneral(values: Values) {
   return t;
 }
 
-async function nyMerchant(values: Values) {
+async function nyMerchant(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:') });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.ownerCounty}`],
@@ -490,12 +499,95 @@ async function nyMerchant(values: Values) {
   return t;
 }
 
-const BUILDERS: Record<CojKind, (values: Values) => Promise<Typesetter>> = {
+const BUILDERS: Record<CojKind, (values: Values, scale?: number) => Promise<Typesetter>> = {
   coj_iowa: iowa,
   coj_ny_business: nyBusiness,
   coj_ny_general: nyGeneral,
   coj_ny_merchant: nyMerchant,
 };
+
+/**
+ * A typed COJ inside a PearSign package: its page range in the merged PDF and the Review
+ * entries (value key → CRM variable) it is rebuilt from whenever a value changes.
+ */
+export type PackageTypedCoj = {
+  kind: CojKind;
+  /** First page in the merged package (1-based). */
+  startPage: number;
+  pageCount: number;
+  inputs: Array<{ key: string; variable: string; label: string }>;
+};
+
+/** The values a COJ prints, in Review order: variable (CRM prefill id) and label. */
+const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
+  coj_iowa: [
+    ['owner1_guarantor_name', 'Owner name'],
+    ['business_name_with_dba', 'Merchant name'],
+    ['owner_state', 'Sworn state'],
+    ['owner_county', 'Sworn county'],
+    ['guarantor_address_full', 'Owner address'],
+    ['purchase_amount', 'Purchased amount (judgment = this + $7,500.00)'],
+    ['agreement_date', 'Agreement date'],
+    ['funder_name', 'Plaintiff'],
+  ],
+  coj_ny_business: [
+    ['owner1_guarantor_name', 'Owner name'],
+    ['business_name_with_dba', 'Merchant name'],
+    ['owner_state', 'Sworn state'],
+    ['owner_county', 'Sworn county'],
+    ['business_county', 'Venue county'],
+    ['business_address_full', 'Business address'],
+    ['purchase_amount', 'Purchased amount'],
+    ['agreement_date', 'Agreement date'],
+    ['funder_name', 'Plaintiff'],
+  ],
+  coj_ny_general: [
+    ['owner1_guarantor_name', 'Owner name'],
+    ['business_name_with_dba', 'Merchant name'],
+    ['owner_state', 'Sworn state'],
+    ['owner_county', 'Sworn county'],
+    ['business_county', 'Venue county'],
+    ['guarantor_address_full', 'Owner address'],
+    ['business_address_full', 'Business address'],
+    ['purchase_amount', 'Purchased amount'],
+    ['agreement_date', 'Agreement date'],
+    ['funder_name', 'Plaintiff'],
+  ],
+  coj_ny_merchant: [
+    ['owner1_guarantor_name', 'Owner name'],
+    ['business_name_with_dba', 'Merchant name'],
+    ['owner_state', 'Sworn state'],
+    ['owner_county', 'Sworn / venue county'],
+    ['guarantor_address_full', 'Owner address'],
+    ['purchase_amount', 'Purchased amount'],
+    ['agreement_date', 'Agreement date'],
+    ['funder_name', 'Plaintiff'],
+  ],
+};
+
+/** Fallback CRM ids per input, matching what cojFacts prints when the main id is empty. */
+const COJ_INPUT_FALLBACKS: Record<string, string[]> = {
+  business_name_with_dba: ['client_legal_name', 'disclosure_merchant_name'],
+  owner1_guarantor_name: ['guaranty_owner1_name', 'client_name'],
+  guarantor_address_full: ['mailing_address_full'],
+  business_county: ['owner_county'],
+  agreement_date: ['signature_date'],
+};
+
+/**
+ * The editable inputs of a typed COJ with the value it would print now (state spelled out,
+ * judgment total derived), for the Review list.
+ */
+export function cojInputs(kind: CojKind, values: Values): Array<{ variable: string; label: string; value: string }> {
+  const f = cojFacts(values);
+  return COJ_INPUTS[kind].map(([variable, label]) => {
+    let value = v(values, variable, ...(COJ_INPUT_FALLBACKS[variable] ?? []));
+    if (variable === 'owner_state') value = f.ownerState;
+    if (variable === 'coj_sum_with_default') value = f.judgment.replace(/^\$/, '');
+    if (variable === 'purchase_amount') value = f.purchase.replace(/^\$/, '');
+    return { variable, label, value };
+  });
+}
 
 /**
  * The typed COJ PDF and its signer spots (Iowa: signature + an initial on every page; the New
@@ -504,8 +596,19 @@ const BUILDERS: Record<CojKind, (values: Values) => Promise<Typesetter>> = {
 export async function renderTypedCoj(
   kind: CojKind,
   values: Values,
+  opts: { pageCount?: number } = {},
 ): Promise<{ pdf: Buffer; placements: DocumentLayoutPlacement[]; pageCount: number }> {
-  const t = await BUILDERS[kind](values);
+  // A COJ already placed in a package keeps its page count (later pages' fields depend on it):
+  // shrink the text until it fits, and pad with an empty page when it got shorter.
+  let t = await BUILDERS[kind](values);
+  const target = opts.pageCount;
+  if (target) {
+    for (const scale of [0.95, 0.9, 0.85, 0.8, 0.75]) {
+      if (t.pages.length <= target) break;
+      t = await BUILDERS[kind](values, scale);
+    }
+    while (t.pages.length < target) t.newPage();
+  }
   const pdf = await t.finish();
   const placements: DocumentLayoutPlacement[] = t.marks.map((m, i) => ({
     id: `typed_${m.kind}_${i + 1}`,

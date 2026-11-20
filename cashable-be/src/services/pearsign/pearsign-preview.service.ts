@@ -50,7 +50,7 @@ export function primeBasePdfCache(url: string | null | undefined, buf: Buffer): 
   pdfCache.set(key, { at: now, buf });
 }
 
-async function loadBasePdf(url: string | null | undefined): Promise<Buffer> {
+export async function loadBasePdf(url: string | null | undefined): Promise<Buffer> {
   const key = String(url || '').trim();
   if (!key) {
     throw new PearSignPreviewError('The PearSign template has no source PDF recorded, so a preview cannot be built.', 404);
@@ -200,9 +200,13 @@ export async function buildPearSignPreviewPdf(input: {
   valueKeyFor?: (fieldName: string) => string;
   /** Review font sizes, keyed like `values`; the box grows to fit, as PearSign requires. */
   styles?: Record<string, PearSignFieldStyle>;
+  /** Size for one box (by field name), when boxes sharing a value key are sized separately. */
+  fieldStyleFor?: (fieldName: string) => PearSignFieldStyle | undefined;
+  /** Base PDF bytes to draw on instead of downloading `sourcePdfUrl` (e.g. with rebuilt COJ pages). */
+  basePdf?: Buffer;
   title: string;
 }): Promise<{ pdf: Buffer; filledFieldCount: number }> {
-  const base = await loadBasePdf(input.sourcePdfUrl);
+  const base = input.basePdf ?? (await loadBasePdf(input.sourcePdfUrl));
   let doc: PDFDocument;
   try {
     doc = await PDFDocument.load(base, { ignoreEncryption: true });
@@ -234,7 +238,7 @@ export async function buildPearSignPreviewPdf(input: {
     const key = input.valueKeyFor ? input.valueKeyFor(f.fieldName) : pearSignValueKey(f.fieldName);
     const v = String(input.values[key] ?? '').trim();
     if (!v) continue;
-    const fontSize = input.styles?.[key]?.fontSize;
+    const fontSize = input.fieldStyleFor?.(f.fieldName)?.fontSize ?? input.styles?.[key]?.fontSize;
     drawValue(page, font, v, pearSignBoxForFont(box, fontSize), fontSize);
     filled++;
   }

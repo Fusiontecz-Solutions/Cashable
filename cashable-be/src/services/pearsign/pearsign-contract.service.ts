@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import type { PackageTypedCoj } from '../docusign/utils/coj-typed-document';
 import prisma from '../../config/prismaClient';
 import uploadService from '../uploadService';
 import { resolveDocumentOwnerNumericUserId } from '../../middleware/authMiddleware';
@@ -151,6 +152,8 @@ export type PearSignContractState = {
     documents: Array<{ index: number; name: string; startPage: number; pageCount: number }>;
     /** Font sizes sent with the package (field key → style). */
     styles?: Record<string, PearSignFieldStyle>;
+    /** Typed COJs, rebuilt from the sent values when the PDF is redrawn. */
+    typedCojs?: PackageTypedCoj[];
   };
   /** Review font sizes, keyed like `overrides`. Any set → the send uses a per-send copy of the template. */
   styles?: Record<string, PearSignFieldStyle>;
@@ -1062,6 +1065,20 @@ export async function voidPearSignContract(contractId: number, opts: { releaseIf
   try {
     await voidPearSignEnvelope(state.envelopeId);
   } catch (e) {
+    // A server error leaves the envelope's state unknown (`committed_incomplete` = the void went
+    // through but the signer notification did not finish): read it back before deciding.
+    if (e instanceof PearSignApiError && e.status >= 500) {
+      const remote = await getPearSignEnvelope(state.envelopeId).catch(() => null);
+      const remoteStatus = String(remote?.status || '').toLowerCase();
+      if (remote && !isActivePearSignStatus(remoteStatus)) {
+        const synced = await syncPearSignContract(contractId);
+        return { state: synced.state, alreadyEnded: remoteStatus };
+      }
+      throw new PearSignContractError(
+        `PearSign had a problem voiding this envelope (${e.message}) and it still shows as ${remoteStatus || 'unknown'}. Click Void again in a minute, or Refresh status.`,
+        502,
+      );
+    }
     if (!(e instanceof PearSignApiError && (e.status === 404 || e.status === 403 || e.status === 400))) throw e;
     // What does PearSign say about this envelope?
     let remote: PearSignEnvelopeDetails | null = null;

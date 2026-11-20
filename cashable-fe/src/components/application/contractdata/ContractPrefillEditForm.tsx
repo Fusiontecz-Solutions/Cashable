@@ -277,6 +277,12 @@ const FIELD_LABELS = {
     achDaysMonFriCheck: "Monday thru Friday (enter X to tick)",
     achDaysMonFriHolidaysCheck: "Mon thru Fri incl. holidays (enter X to tick)",
     achDaysSevenCheck: "Seven days a week (enter X to tick)",
+    authorizationClientBank2Name: "Bank name",
+    authorizationClientBank2Routing: "Routing number",
+    authorizationClientBank2Account: "Account number",
+    authorizationClientBank3Name: "Bank name",
+    authorizationClientBank3Routing: "Routing number",
+    authorizationClientBank3Account: "Account number",
     achAuthorizationReferenceName1: "Name",
     achAuthorizationReferenceNumber1: "Phone",
     achAuthorizationReferenceRelationship1: "Relationship",
@@ -434,7 +440,7 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
             id: "ach_authorization",
             title: "Authorization Agreement — ACH",
             description:
-                "Bank grid (bank, routing, account, tax ID), printed client name, and the “on the following days” ticks (page 12). Mon–Fri is ticked automatically when none is set.",
+                "Bank grid (up to 3 bank accounts: bank, routing, account; business name and tax ID print on every filled row), printed client name, and the “on the following days” ticks (page 12).",
             Icon: Landmark,
             groups: [
                 {
@@ -444,6 +450,22 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
                         "authorizationClientBankRouting",
                         "authorizationClientBankAccount",
                         "authorizationClientTaxId",
+                    ],
+                },
+                {
+                    heading: "Bank account 2 (optional)",
+                    keys: [
+                        "authorizationClientBank2Name",
+                        "authorizationClientBank2Routing",
+                        "authorizationClientBank2Account",
+                    ],
+                },
+                {
+                    heading: "Bank account 3 (optional)",
+                    keys: [
+                        "authorizationClientBank3Name",
+                        "authorizationClientBank3Routing",
+                        "authorizationClientBank3Account",
                     ],
                 },
                 { heading: "Printed name", keys: ["authorizationClientNamePrint"] },
