@@ -10,7 +10,9 @@ import {
   cleanFontSize,
   cleanStyles,
   mergeStyles,
+  pearSignBoxForFont,
   pearSignFitFontSize,
+  pearSignPageFontSizes,
   pearSignHeightForFont,
   isPearSignIndependentKey,
   pearSignIndependentKey,
@@ -154,7 +156,7 @@ describe('font sizes', () => {
   it('grows a box only when it is too short for the size', () => {
     expect(pearSignHeightForFont(14, undefined)).toBe(14);
     expect(pearSignHeightForFont(14, 8)).toBe(14);
-    expect(pearSignHeightForFont(14, 12)).toBe(18);
+    expect(pearSignHeightForFont(14, 12)).toBe(16);
     expect(pearSignHeightForFont(30, 12)).toBe(30);
   });
 });
@@ -172,5 +174,44 @@ describe('value font size (one consistent size per box)', () => {
   it('shrinks only when the value is too wide, never below 6pt', () => {
     expect(pearSignFitFontSize('X'.repeat(40), { width: 160, height: 15 }, measure)).toBe(7.5);
     expect(pearSignFitFontSize('X'.repeat(200), { width: 60, height: 15 }, measure)).toBe(6);
+  });
+});
+
+describe('one value size per page', () => {
+  const measure = (t: string, s: number) => t.length * s * 0.5;
+
+  it('gives every box on a page the same size', () => {
+    const sizes = pearSignPageFontSizes(
+      [
+        { page: 1, width: 400, value: 'SAFE FREIGHT INC' },
+        { page: 1, width: 400, value: '2530 WILSHIRE BLVD 2ND FL, SANTA MONICA, CA, 90403' },
+        { page: 1, width: 238, value: 'Corporation' },
+        { page: 2, width: 100, value: '45' },
+      ],
+      measure,
+    );
+    expect(new Set(sizes.slice(0, 3)).size).toBe(1);
+    expect(sizes[0]).toBe(10);
+    expect(sizes[3]).toBe(10);
+  });
+
+  it('lowers the whole page when one value needs it, never below 8pt; a longer one shrinks alone', () => {
+    const sizes = pearSignPageFontSizes(
+      [
+        { page: 1, width: 400, value: 'SHORT' },
+        { page: 1, width: 100, value: 'X'.repeat(22) }, // fits at 8.5
+        { page: 1, width: 60, value: 'Y'.repeat(30) }, // needs < 8
+      ],
+      measure,
+    );
+    expect(sizes[0]).toBe(8);
+    expect(sizes[1]).toBe(8);
+    expect(sizes[2]).toBeLessThan(8);
+  });
+
+  it('ignores empty boxes and grows short boxes evenly', () => {
+    expect(pearSignPageFontSizes([{ page: 1, width: 10, value: '' }, { page: 1, width: 300, value: 'A' }], measure)).toEqual([10, 10]);
+    expect(pearSignBoxForFont({ y: 100, height: 10 }, 10)).toEqual({ y: 98, height: 14 });
+    expect(pearSignBoxForFont({ y: 100, height: 15 }, 10)).toEqual({ y: 100, height: 15 });
   });
 });

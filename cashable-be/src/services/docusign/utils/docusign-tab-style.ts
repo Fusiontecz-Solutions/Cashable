@@ -118,9 +118,11 @@ export function docuSignTextTabWidthForValue(
       : Number.isFinite(explicit) && explicit > 0
         ? explicit
         : 9;
-  // Tight fit to glyph width only — phones need slightly more room for () - and spaces.
-  const pxPerChar =
-    fontSize * (isFitToTextPrefillVariable(options?.variable) ? 0.62 : 0.55);
+  // Room for the value at the standard 10pt value size: values are mostly upper case, whose
+  // Helvetica glyphs average ~0.66em (the old 9pt × 0.55 estimate was too narrow and made long
+  // values shrink). Phones need slightly more room for () - and spaces.
+  const sizeForWidth = Math.max(fontSize, 10);
+  const pxPerChar = sizeForWidth * (isFitToTextPrefillVariable(options?.variable) ? 0.68 : 0.66);
   const fit = Math.ceil(text.length * pxPerChar) + 1;
   return String(Math.max(8, Math.min(fit, 360)));
 }
@@ -138,7 +140,10 @@ export function resolveDocuSignPrefillTabWidth(options: {
 }): string {
   const configured = parseFloat(String(options.layoutWidth ?? '').trim());
   const text = String(options.value || '').trim();
-  if (!text && Number.isFinite(configured) && configured > 0) {
+  // A layout width is the printed blank: keep it whole. Hugging the value (the old Dropbox Sign
+  // habit) under-sized long upper-case values, so they were shrunk and one page mixed 7pt and
+  // 10pt values. Values now only get smaller when they are truly too long for the blank.
+  if (Number.isFinite(configured) && configured > 0 && (!text || !isFitToTextPrefillVariable(options.variable))) {
     return String(configured);
   }
   const fit = docuSignTextTabWidthForValue(

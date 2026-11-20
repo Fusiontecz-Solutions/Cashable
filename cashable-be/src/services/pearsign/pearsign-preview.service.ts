@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
 import type { PearSignTemplate, PearSignTemplateField } from './pearsign-client';
-import { pearSignHeightForFont, pearSignValueKey, type PearSignFieldStyle } from './pearsign-template-spec';
+import { pearSignBoxForFont, pearSignValueKey, type PearSignFieldStyle } from './pearsign-template-spec';
 
 /**
  * Filled-contract preview (the "Review" step), built before anything is sent.
@@ -235,7 +235,7 @@ export async function buildPearSignPreviewPdf(input: {
     const v = String(input.values[key] ?? '').trim();
     if (!v) continue;
     const fontSize = input.styles?.[key]?.fontSize;
-    drawValue(page, font, v, { ...box, height: pearSignHeightForFont(box.height, fontSize) }, fontSize);
+    drawValue(page, font, v, pearSignBoxForFont(box, fontSize), fontSize);
     filled++;
   }
 

@@ -36,7 +36,7 @@ import {
   isPearSignIndependentKey,
   mergeStyles,
   pearSignBaseKey,
-  pearSignHeightForFont,
+  pearSignBoxForFont,
   pearSignIndependentLabel,
   pearSignValueKey,
   type PearSignFieldStyle,
@@ -532,12 +532,12 @@ async function createStyledContractTemplate(contractId: number, r: ResolvedRevie
       type: f.type as PearSignFieldType,
       required: f.required,
       roleId: f.roleId,
+      // Grown evenly to the font size so the value stays centred on its line.
       position: {
         page: Number(p!.page),
         x: Number(p!.x),
-        y: Number(p!.y),
+        ...pearSignBoxForFont({ y: Number(p!.y), height: Number(p!.height) }, fontSize),
         width: Number(p!.width),
-        height: pearSignHeightForFont(Number(p!.height), fontSize),
       },
       ...(fontSize ? { fontSize } : {}),
     });

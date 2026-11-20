@@ -50,7 +50,12 @@ function textWidthPt(text: string, sizePt: number): number {
 
 function fitText(text: string, box: PearSignFieldBox, fontSize?: number): { size: number; wrap: boolean } {
     const width = Math.max(4, box.width - PAD_PT * 2);
-    if (fontSize) return { size: fontSize, wrap: textWidthPt(text, fontSize) > width };
+    if (fontSize) {
+        // The page size; a value edited longer than its box shrinks just that box (never wraps out).
+        let s = fontSize;
+        while (s > MIN_PT && textWidthPt(text, s) > width) s -= 0.5;
+        return { size: s, wrap: textWidthPt(text, s) > width };
+    }
     // Same rule as the server (pearSignFitFontSize): largest size the box height allows
     // (75% of the box height), capped at 10pt, shrunk in half points only when the value is too wide.
     const start = Math.max(MIN_PT, Math.min(MAX_PT, Math.round(box.height * 0.75 * 2) / 2));
@@ -203,7 +208,8 @@ function PdfPages({
                                                   const fit = text ? fitText(text, { ...b, height }, fontSize) : { size: fontSize ?? MAX_PT, wrap: false };
                                                   const style = {
                                                       left: b.x * scale,
-                                                      top: b.y * scale,
+                                                      // Grown evenly (server: pearSignBoxForFont) so the value stays on its line.
+                                                      top: (b.y - (height - b.height) / 2) * scale,
                                                       width: b.width * scale,
                                                       minHeight: height * scale,
                                                       paddingLeft: PAD_PT * scale,
@@ -387,6 +393,11 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
         }
         return out;
     }, [review?.styles, sizeDraft]);
+    /** What the page draws: the server's one-size-per-page sizes, with Review choices on top. */
+    const drawStyles = useMemo(
+        () => ({ ...(review?.appliedStyles ?? {}), ...styles }),
+        [review?.appliedStyles, styles],
+    );
 
     /** Font size changes save straight away (no typing to debounce). */
     const changeSize = useCallback((key: string, size: number | null) => {
@@ -618,7 +629,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                             url={pdfUrl}
                             boxes={review.fieldLayout}
                             values={live}
-                            styles={styles}
+                            styles={drawStyles}
                             activeKey={activeKey}
                             activeFromPdf={activeFromPdf}
                             editable={!ctl.isActive}

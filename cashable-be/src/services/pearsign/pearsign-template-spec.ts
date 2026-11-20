@@ -117,7 +117,57 @@ export function mergeStyles(
  * (top edge stays put) so the chosen size always fits. Mirrored in the Review modal.
  */
 export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
-  return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;
+  // PearSign's rule: a box must be at least ceil(fontSize / 0.75) tall.
+  return fontSize ? Math.max(height, Math.ceil(fontSize / 0.75)) : height;
+}
+
+/**
+ * A box tall enough for `fontSize` (pearSignHeightForFont), grown evenly above and below so the
+ * value stays centred on the printed line. Mirrored in the Review modal.
+ */
+export function pearSignBoxForFont<T extends { y: number; height: number }>(box: T, fontSize?: number | null): T {
+  const height = pearSignHeightForFont(box.height, fontSize);
+  if (height === box.height) return box;
+  return { ...box, y: Math.max(0, box.y - (height - box.height) / 2), height };
+}
+
+/** Smallest size a whole page may use; a value too long even at this size shrinks on its own. */
+export const PEARSIGN_PAGE_FONT_MIN = 8;
+
+/** Largest size (max PEARSIGN_VALUE_FONT_MAX) at which `text` fits `width`, by width only. */
+export function pearSignWidthFitFontSize(
+  text: string,
+  width: number,
+  measure: (text: string, size: number) => number,
+): number {
+  const room = Math.max(4, width - 4);
+  const t = String(text ?? '').trim();
+  let size = PEARSIGN_VALUE_FONT_MAX;
+  if (!t) return size;
+  while (size > PEARSIGN_VALUE_FONT_MIN && measure(t, size) > room) size -= 0.5;
+  return size;
+}
+
+/**
+ * One value size per page: every CRM-filled box on a page uses the largest size at which all of
+ * that page's values fit their boxes (max 10pt), but never below PEARSIGN_PAGE_FONT_MIN — a value
+ * too long even then shrinks on its own. Boxes grow to the size (pearSignBoxForFont).
+ * Returns the size per field index.
+ */
+export function pearSignPageFontSizes(
+  fields: Array<{ page: number; width: number; value: string }>,
+  measure: (text: string, size: number) => number,
+): number[] {
+  const fits = fields.map((f) => pearSignWidthFitFontSize(f.value, f.width, measure));
+  const pageSize = new Map<number, number>();
+  fields.forEach((f, i) => {
+    if (!String(f.value ?? '').trim()) return; // empty boxes do not pull the page down
+    pageSize.set(f.page, Math.min(pageSize.get(f.page) ?? PEARSIGN_VALUE_FONT_MAX, fits[i]));
+  });
+  return fields.map((f, i) => {
+    const page = Math.max(PEARSIGN_PAGE_FONT_MIN, pageSize.get(f.page) ?? PEARSIGN_VALUE_FONT_MAX);
+    return Math.min(page, fits[i]);
+  });
 }
 
 /** Largest value size a box gets (pt); body text on the forms is 10–11pt. */

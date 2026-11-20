@@ -36,8 +36,8 @@ import {
   cleanStyles,
   isPearSignIndependentKey,
   mergeStyles,
-  pearSignFitFontSize,
-  pearSignHeightForFont,
+  pearSignBoxForFont,
+  pearSignPageFontSizes,
   pearSignIndependentKey,
   pearSignIndependentLabel,
   type PearSignFieldStyle,
@@ -466,7 +466,7 @@ function measureHelvetica(): Promise<PDFFont> {
 
 /**
  * Value size per field key for this package: a size chosen in Review wins; otherwise the
- * consistent fit-to-box size (pearSignFitFontSize). A key used by several boxes takes the
+ * one size per page (pearSignPageFontSizes). A key used by several boxes takes the
  * smallest so the value fits in every one.
  */
 async function effectiveFieldStyles(
@@ -476,16 +476,20 @@ async function effectiveFieldStyles(
   const font = await measureHelvetica();
   const measure = (t: string, s: number) => font.widthOfTextAtSize(t, s);
   const chosen = cleanStyles(pkg.styles);
+  const filled = pkg.fields.filter((f) => !(f.signerFilled || f.type === 'signature' || f.type === 'initials'));
+  // One size per page (pearSignPageFontSizes); a size chosen in Review wins for that field.
+  const sizes = pearSignPageFontSizes(
+    filled.map((f) => ({ page: f.page, width: f.width, value: String(values[f.key] ?? '') })),
+    measure,
+  );
   const out: Record<string, PearSignFieldStyle> = {};
-  for (const f of pkg.fields) {
-    if (f.signerFilled || f.type === 'signature' || f.type === 'initials') continue;
+  filled.forEach((f, i) => {
     if (chosen[f.key]?.fontSize) {
       out[f.key] = chosen[f.key];
-      continue;
+      return;
     }
-    const fit = pearSignFitFontSize(String(values[f.key] ?? ''), f, measure);
-    out[f.key] = { fontSize: Math.min(out[f.key]?.fontSize ?? fit, fit) };
-  }
+    out[f.key] = { fontSize: Math.min(out[f.key]?.fontSize ?? sizes[i], sizes[i]) };
+  });
   return out;
 }
 
@@ -598,6 +602,8 @@ export async function getPearSignPackageReview(contractId: number) {
     blankKeys: fields.filter((f) => !String(values[f.key] ?? '').trim()).map((f) => f.key),
     keepBlankKeys: fields.filter((f) => isPearSignIndependentKey(f.key)).map((f) => f.key),
     styles: cleanStyles(pkg.styles),
+    /** Size each field is drawn and sent at (one size per page; Review choices included). */
+    appliedStyles: await effectiveFieldStyles(pkg, values),
     recipients: pkg.recipients,
     blockers,
     warnings: [] as string[],
@@ -679,7 +685,10 @@ export async function sendPearSignPackage(contractId: number, actorUserId: strin
       type: f.type as PearSignFieldType,
       required: f.required,
       roleId: f.roleId,
-      position: { page: f.page, x: f.x, y: f.y, width: f.width, height: pearSignHeightForFont(f.height, fontSize) },
+      // Box grown evenly to the size so the value stays centred on its line.
+      position: (({ y, height }) => ({ page: f.page, x: f.x, y: Math.round(y * 10) / 10, width: f.width, height }))(
+        pearSignBoxForFont({ y: f.y, height: f.height }, fontSize),
+      ),
       ...(fontSize ? { fontSize, fontFamily: 'helvetica' as const } : {}),
     };
   });

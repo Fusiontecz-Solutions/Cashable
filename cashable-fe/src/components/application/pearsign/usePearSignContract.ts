@@ -34,7 +34,8 @@ export function isPearSignTickBoxKey(key: string): boolean {
 
 /** Same rule as the server (pearSignHeightForFont): a box grows downward to fit its font size. */
 export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
-    return fontSize ? Math.max(height, Math.ceil(fontSize * 1.5)) : height;
+    // PearSign's rule: a box must be at least ceil(fontSize / 0.75) tall (grown evenly; see server).
+    return fontSize ? Math.max(height, Math.ceil(fontSize / 0.75)) : height;
 }
 export type PearSignSignerBox = PearSignFieldBox & { kind: string; roleName: string };
 
@@ -75,6 +76,8 @@ export type PearSignReview = {
     keepBlankKeys?: string[];
     /** Chosen font sizes per field key (unset = auto-fit). Sent to PearSign as the field's fontSize. */
     styles?: Record<string, PearSignFieldStyle>;
+    /** Size each field is drawn and sent at: one size per page (server), Review choices included. */
+    appliedStyles?: Record<string, PearSignFieldStyle>;
     recipients: PearSignRecipient[];
     blockers: string[];
     warnings: string[];
