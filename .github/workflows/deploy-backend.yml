@@ -42,6 +42,38 @@ jobs:
           export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"
           dirname "$(nvm which default)" >> "$GITHUB_PATH"
 
+      # E-signature settings from GitHub (Settings → Secrets and variables → Actions), written into
+      # the server's backend .env. Unset ones leave the .env as it is; the value `unset` removes the
+      # line (e.g. SIGNING_PROVIDER=unset goes back to PearSign). Values are never printed.
+      - name: Apply e-signature settings from GitHub
+        working-directory: /tmp
+        env:
+          S_SIGNING_PROVIDER: ${{ vars.SIGNING_PROVIDER }}
+          S_BOLDSIGN_SANDBOX: ${{ vars.BOLDSIGN_SANDBOX }}
+          S_BOLDSIGN_API_KEY: ${{ secrets.BOLDSIGN_API_KEY }}
+          S_BOLDSIGN_WEBHOOK_SECRET: ${{ secrets.BOLDSIGN_WEBHOOK_SECRET }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const file = process.env.APP_DIR + "/.env";
+            const names = ["SIGNING_PROVIDER", "BOLDSIGN_SANDBOX", "BOLDSIGN_API_KEY", "BOLDSIGN_WEBHOOK_SECRET"];
+            let lines = fs.existsSync(file) ? fs.readFileSync(file, "utf8").split(/\r?\n/) : [];
+            while (lines.length && lines[lines.length - 1] === "") lines.pop();
+            const changed = [];
+            for (const name of names) {
+              const value = String(process.env["S_" + name] || "").trim();
+              if (!value) continue;
+              lines = lines.filter((l) => !new RegExp("^\\s*" + name + "\\s*=").test(l));
+              if (value.toLowerCase() !== "unset") lines.push(name + "=" + value);
+              changed.push(name + (value.toLowerCase() === "unset" ? " (removed)" : ""));
+            }
+            if (changed.length) {
+              while (lines.length && lines[lines.length - 1] === "") lines.pop();
+              fs.writeFileSync(file, lines.join("\n") + "\n");
+            }
+            console.log(changed.length ? "Updated in .env: " + changed.join(", ") : "No e-signature settings set in GitHub; .env unchanged.");
+          '
+
       - name: Copy env files from the live folder
         run: |
           for f in .env .env.local .env.production; do
