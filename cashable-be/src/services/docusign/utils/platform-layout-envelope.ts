@@ -820,8 +820,8 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
       values.business_address_wrap2 = full.slice(cut + 1).trim();
     }
   }
-  // Addendum p16 "Daily amount upon default": on weekly deals the stored
-  // remittance is per week, so the daily default amount is remittance / 5.
+  // Addendum p16 "Daily amount upon default": twice the daily payment. On weekly deals the stored
+  // remittance is per week, so the daily payment is remittance / 5.
   if (!values.addendum_daily_default_amount) {
     const remit = parseFloat(
       String(values.remittance ?? '').replace(/[^0-9.]/g, ''),
@@ -829,7 +829,7 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     if (Number.isFinite(remit) && remit > 0) {
       const weekly = /week/i.test(String(values.frequency ?? ''));
       const daily = weekly ? remit / 5 : remit;
-      values.addendum_daily_default_amount = daily.toLocaleString('en-US', {
+      values.addendum_daily_default_amount = (daily * 2).toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
