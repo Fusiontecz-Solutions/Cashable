@@ -963,12 +963,16 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   for (const key of ['business_address_full', 'mailing_address_full', 'guarantor_address_full'] as const) {
     if (values[key]) values[key] = normalizeUsAddress(values[key]);
   }
-  // ACH bank grid rows 2–3: the business name and tax ID repeat only on a row that has a bank.
+  // ACH bank grid: each row's business name is the one entered for that bank, else the legal name.
+  // Rows 2–3 print a business name and tax ID only when that row has a bank.
+  const legalName = String(values.client_legal_name ?? '');
+  values.authorization_client_bank1_business_name = String(values.authorization_client_bank_business ?? '').trim() || legalName;
   for (const n of [2, 3]) {
     const hasBank = ['name', 'routing', 'account'].some((k) =>
       String(values[`authorization_client_bank${n}_${k}`] ?? '').trim(),
     );
-    values[`authorization_client_bank${n}_business_name`] = hasBank ? String(values.client_legal_name ?? '') : '';
+    const own = String(values[`authorization_client_bank${n}_business`] ?? '').trim();
+    values[`authorization_client_bank${n}_business_name`] = hasBank ? own || legalName : '';
     values[`authorization_client_bank${n}_tax_id`] = hasBank ? String(values.authorization_client_tax_id ?? '') : '';
   }
   // Iowa COJ judgment total: purchased amount + the $7,500 default fee.
@@ -1022,7 +1026,29 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     const cojKind = typedCojKind(layout);
     if (cojKind) {
       try {
-        const cojValues = { ...values, ...(layoutValues[layoutIndex] || {}) };
+        const docValues = layoutValues[layoutIndex] || {};
+        const cojValues: Record<string, string> = { ...values, ...docValues };
+        // The COJ prints the combined name and one-line address: rebuild them when this COJ's
+        // mapping edited the parts (legal name / DBA, owner street / city / ZIP).
+        const has = (k: string) => String(docValues[k] ?? '').trim() !== '';
+        if ((has('client_legal_name') || has('doing_business_as')) && !has('business_name_with_dba')) {
+          const legal = String(cojValues.client_legal_name ?? '').trim();
+          const dba = String(cojValues.doing_business_as ?? '').trim();
+          cojValues.business_name_with_dba = dba && dba.toUpperCase() !== legal.toUpperCase() ? `${legal} DBA ${dba}` : legal;
+        }
+        if (['guarantor_address', 'guarantor_address_city', 'guarantor_address_zip'].some(has) && !has('guarantor_address_full')) {
+          cojValues.guarantor_address_full = normalizeUsAddress(
+            [
+              cojValues.guarantor_address,
+              cojValues.guarantor_address_city,
+              cojValues.guarantor_address_state || cojValues.owner_state,
+              cojValues.guarantor_address_zip,
+            ]
+              .map((p) => String(p ?? '').trim())
+              .filter(Boolean)
+              .join(', '),
+          );
+        }
         const typed = await renderTypedCoj(cojKind, cojValues);
         typedCojs.push({
           layoutIndex: flattenedLayouts.length,

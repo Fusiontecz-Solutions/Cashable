@@ -52,3 +52,17 @@ describe('renderTypedCoj', () => {
     }
   });
 });
+
+describe('additional names', () => {
+  it('follow the merchant everywhere it is named and are listed in the caption', () => {
+    const f = cojFacts({ ...values, coj_additional_names: 'Essence Dental Care; Caroline Larosiliere DDS and Associates, P.A.' });
+    expect(f.extraNames).toEqual(['ESSENCE DENTAL CARE', 'CAROLINE LAROSILIERE DDS AND ASSOCIATES, P.A.']);
+    expect(f.merchant).toBe('ACME DENTAL CARE, P.A. DBA ESSENCE DENTAL, ESSENCE DENTAL CARE, CAROLINE LAROSILIERE DDS AND ASSOCIATES, P.A.');
+  });
+  it('renders every COJ with additional names', async () => {
+    for (const kind of ['coj_iowa', 'coj_ny_business', 'coj_ny_general', 'coj_ny_merchant'] as const) {
+      const out = await renderTypedCoj(kind, { ...values, coj_additional_names: 'Second Entity LLC' });
+      expect(out.pageCount).toBeGreaterThan(0);
+    }
+  });
+});

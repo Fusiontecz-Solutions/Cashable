@@ -43,7 +43,8 @@
   "authorization_client_bank3_business_name",
   "authorization_client_bank3_routing",
   "authorization_client_bank3_account",
-  "authorization_client_bank3_tax_id"
+  "authorization_client_bank3_tax_id",
+  "authorization_client_bank1_business_name"
  ],
  "placements": [
   {
@@ -113,8 +114,8 @@
    "optional": true,
    "width": "122",
    "height": "14",
-   "variable": "client_legal_name",
-   "sourceTabLabel": "client_legal_name"
+   "variable": "authorization_client_bank1_business_name",
+   "sourceTabLabel": "authorization_client_bank1_business_name"
   },
   {
    "id": "p6",

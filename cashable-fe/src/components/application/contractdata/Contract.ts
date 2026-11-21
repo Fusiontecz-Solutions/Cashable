@@ -212,6 +212,10 @@ export interface BuildContractPrefillFieldsArgs {
     authorizationClientBank3Name?: string;
     authorizationClientBank3Routing?: string;
     authorizationClientBank3Account?: string;
+    /** Business name printed on each ACH bank row (empty = the merchant's legal name). */
+    authorizationClientBankBusiness?: string;
+    authorizationClientBank2Business?: string;
+    authorizationClientBank3Business?: string;
     // Optional snake_case aliases for external payload compatibility.
     ach_authorization_bank_portal_website?: string;
     ach_authorization_username?: string;
@@ -440,6 +444,9 @@ const FIELD_IDS = {
     authorizationClientBank3Name: ["authorization_client_bank3_name"],
     authorizationClientBank3Routing: ["authorization_client_bank3_routing"],
     authorizationClientBank3Account: ["authorization_client_bank3_account"],
+    authorizationClientBankBusiness: ["authorization_client_bank_business"],
+    authorizationClientBank2Business: ["authorization_client_bank2_business"],
+    authorizationClientBank3Business: ["authorization_client_bank3_business"],
 
     achAuthorizationReferenceName1: ["ach_authorization_reference_name1"],
     achAuthorizationReferenceNumber1: ["ach_authorization_reference_number_1"],
@@ -753,6 +760,9 @@ export const buildContractPrefillFields = ({
     authorizationClientBank3Name = "",
     authorizationClientBank3Routing = "",
     authorizationClientBank3Account = "",
+    authorizationClientBankBusiness = "",
+    authorizationClientBank2Business = "",
+    authorizationClientBank3Business = "",
     ach_authorization_bank_portal_website = "",
     ach_authorization_username = "",
     ach_authorization_password = "",
@@ -1042,6 +1052,9 @@ export const buildContractPrefillFields = ({
         ...mapIds(FIELD_IDS.authorizationClientBank3Name, "Bank 3 name", authorizationClientBank3Name),
         ...mapIds(FIELD_IDS.authorizationClientBank3Routing, "Bank 3 routing", authorizationClientBank3Routing),
         ...mapIds(FIELD_IDS.authorizationClientBank3Account, "Bank 3 account", authorizationClientBank3Account),
+        ...mapIds(FIELD_IDS.authorizationClientBankBusiness, "Bank 1 business name", authorizationClientBankBusiness),
+        ...mapIds(FIELD_IDS.authorizationClientBank2Business, "Bank 2 business name", authorizationClientBank2Business),
+        ...mapIds(FIELD_IDS.authorizationClientBank3Business, "Bank 3 business name", authorizationClientBank3Business),
         ...mapIds(
             FIELD_IDS.achDaysMonFriHolidaysCheck,
             "ACH Days Mon-Fri incl. holidays",

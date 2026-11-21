@@ -67,13 +67,21 @@ function longDate(raw: string): string {
 
 /** What every COJ prints, resolved from the CRM values once. */
 export function cojFacts(values: Values) {
-  const merchant = upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+  // Additional names (mapping field, separated by ";" or new lines) follow the merchant everywhere.
+  const extraNames = String(values.coj_additional_names ?? '')
+    .split(/[;\r\n]+/)
+    .map((s) => upper(s.replace(/\s+/g, ' ').trim()))
+    .filter(Boolean);
+  const merchant = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames]
+    .filter(Boolean)
+    .join(', ');
   const owner = upper(v(values, 'owner1_guarantor_name', 'guaranty_owner1_name', 'client_name'));
   const purchase = money(v(values, 'purchase_amount'));
   let judgment = money(v(values, 'coj_sum_with_default'));
   if (!judgment && purchase) judgment = money(String(parseFloat(purchase.replace(/[^0-9.]/g, '')) + 7500));
   const date = parseDate(v(values, 'agreement_date', 'signature_date'));
   return {
+    extraNames,
     plaintiff: upper(v(values, 'funder_name')) || 'CASHABLE FUND LLC',
     merchant,
     owner,
@@ -480,7 +488,7 @@ async function nyMerchant(values: Values, scale = 1) {
   caption(t, {
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.ownerCounty}`],
     plaintiff: f.plaintiff,
-    defendants: [B(f.owner)],
+    defendants: [B([f.owner, ...f.extraNames].join(', '))],
     rightTitle: 'Index No.',
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
@@ -529,6 +537,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['purchase_amount', 'Purchased amount (judgment = this + $7,500.00)'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
+    ['coj_additional_names', 'Additional names (separate with ;)'],
   ],
   coj_ny_business: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -540,6 +549,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['purchase_amount', 'Purchased amount'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
+    ['coj_additional_names', 'Additional names (separate with ;)'],
   ],
   coj_ny_general: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -552,6 +562,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['purchase_amount', 'Purchased amount'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
+    ['coj_additional_names', 'Additional names (separate with ;)'],
   ],
   coj_ny_merchant: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -562,6 +573,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['purchase_amount', 'Purchased amount'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
+    ['coj_additional_names', 'Additional names (separate with ;)'],
   ],
 };
 
