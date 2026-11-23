@@ -76,7 +76,7 @@ function SyncPill() {
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className={cn('inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-1', d?.running && 'border-sky-500/40 text-sky-700 dark:text-sky-300')}>
         <Activity className={cn('size-3.5', d?.running && 'animate-pulse')} />
-        {d?.running ? 'Syncing…' : last ? `Data as of ${new Date(last).toLocaleString()}` : 'No data synced yet'}
+        {d?.running ? 'Syncing…' : last ? `Data as of ${new Date(last).toLocaleString("en-US", { timeZone: "America/New_York" })}` : 'No data synced yet'}
         {lastRun?.status === 'failed' ? <span className="text-red-600 dark:text-red-400" title={lastRun.error ?? ''}>· last run failed</span> : null}
       </span>
       {can('reports.sync') ? (

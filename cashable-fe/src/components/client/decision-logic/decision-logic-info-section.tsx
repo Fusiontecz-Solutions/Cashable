@@ -221,7 +221,7 @@ export default function DecisionLogicInfo({ data }: { data: any }) {
             label="As of Date"
             value={
               data?.asOfDate
-                ? new Date(data.asOfDate).toLocaleDateString("en-US", {
+                ? new Date(data.asOfDate).toLocaleDateString("en-US", { timeZone: "America/New_York",
                     year: "numeric",
                     month: "short",
                     day: "numeric",

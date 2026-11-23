@@ -165,9 +165,9 @@ function collectSharedItemsFromMessages(
 
 function formatSharedItemDate(d: Date): string {
     if (Number.isNaN(d.getTime())) return '—';
-    const t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    const t = d.toLocaleTimeString('en-US', { timeZone: "America/New_York", hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
     const day = d.getDate();
-    const month = d.toLocaleDateString('en-US', { month: 'long' });
+    const month = d.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'long' });
     const year = d.getFullYear();
     return `${t}, ${day} ${month} ${year}`;
 }
@@ -245,7 +245,7 @@ function groupMessagesByDate(messages: ChannelMessage[]) {
     const groups: { date: string; messages: ChannelMessage[] }[] = [];
     let currentDate = '';
     for (const msg of messages) {
-        const d = new Date(msg.createdAt).toLocaleDateString('en-US', {
+        const d = new Date(msg.createdAt).toLocaleDateString('en-US', { timeZone: "America/New_York",
             month: 'short',
             day: 'numeric',
         });
@@ -1012,7 +1012,7 @@ const TeamChat = () => {
                                                 )}
                                                 <div className="flex items-center gap-1 text-[10px] self-end -mt-1 opacity-60">
                                                     <span>
-                                                        {new Date(msg.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                                        {new Date(msg.createdAt).toLocaleTimeString('en-US', { timeZone: "America/New_York", hour: 'numeric', minute: '2-digit', hour12: true })}
                                                     </span>
                                                     {renderStatusIcon(msg)}
                                                 </div>

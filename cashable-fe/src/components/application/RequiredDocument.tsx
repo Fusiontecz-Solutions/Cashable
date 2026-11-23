@@ -780,7 +780,7 @@ const RequiredDocument = ({
                                                         </TableCell>
                                                         <TableCell className={`text-sm ${isDark ? "text-gray-400" : "text-muted-foreground"}`}>
                                                             {file.uploadedAt
-                                                                ? new Date(file.uploadedAt).toLocaleDateString("en-US", {
+                                                                ? new Date(file.uploadedAt).toLocaleDateString("en-US", { timeZone: "America/New_York",
                                                                     year: "numeric",
                                                                     month: "short",
                                                                     day: "numeric",

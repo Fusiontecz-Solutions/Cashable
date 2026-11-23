@@ -240,7 +240,7 @@ const DEFAULT_SCORING: ScoringConfig = {
 const nowISO = () => new Date().toISOString();
 const fmtDate = (v: string) => {
   const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 const SERVER_TO_UI_STATUS: Record<string, IsoStatus> = {

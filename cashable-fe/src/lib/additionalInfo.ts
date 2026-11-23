@@ -131,7 +131,7 @@ export function wireMonthLabel(key: string): string {
   const d = new Date(`${key}-01T00:00:00`);
   return Number.isNaN(d.getTime())
     ? key
-    : d.toLocaleString("en-US", { month: "long", year: "numeric" });
+    : d.toLocaleString("en-US", { timeZone: "America/New_York", month: "long", year: "numeric" });
 }
 
 /** Group a side's rows by month, oldest first, undated last. */

@@ -185,7 +185,7 @@ function formatDataMerchDate(raw: string | null | undefined): string | null {
   if (!value || value === "0001-01-01") return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", {
+  return parsed.toLocaleDateString("en-US", { timeZone: "America/New_York",
     year: "numeric",
     month: "short",
     day: "numeric",

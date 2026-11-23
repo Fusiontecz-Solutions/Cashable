@@ -39,7 +39,7 @@
 // function formatDate(dateStr: string | undefined): string {
 //   if (!dateStr) return '—';
 //   try {
-//     return new Date(dateStr).toLocaleDateString(undefined, {
+//     return new Date(dateStr).toLocaleDateString(undefined, { timeZone: "America/New_York",
 //       year: 'numeric',
 //       month: 'short',
 //       day: 'numeric',

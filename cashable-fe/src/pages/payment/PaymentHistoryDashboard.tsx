@@ -1046,7 +1046,7 @@ function mapDisbursementApplicationToRow(
   const updatedRaw = app.updatedAt;
   const date =
     updatedRaw && !Number.isNaN(Date.parse(updatedRaw))
-      ? new Date(updatedRaw).toLocaleDateString("en-US", {
+      ? new Date(updatedRaw).toLocaleDateString("en-US", { timeZone: "America/New_York",
           month: "short",
           day: "numeric",
           year: "numeric",

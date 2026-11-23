@@ -69,12 +69,12 @@ export function toLongLetterDate(value: string): string {
   if (!m) return value;
   const d = new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "long", day: "numeric", year: "numeric" });
 }
 
 /** "October 22, 2026" — used when no letter date is supplied. */
 export function todayLongDate(): string {
-  return new Date().toLocaleDateString("en-US", {
+  return new Date().toLocaleDateString("en-US", { timeZone: "America/New_York",
     month: "long",
     day: "numeric",
     year: "numeric",

@@ -32,12 +32,12 @@ function shiftDate(iso: string, days: number): string {
 function formatDayLabel(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString('en-US', { timeZone: "America/New_York", weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('en-US', { timeZone: "America/New_York", hour: 'numeric', minute: '2-digit' });
 }
 
 const UNDERWRITER_SERIES: SeriesDef[] = [{ key: 'count', label: 'Claimed', format: fmtInt }];

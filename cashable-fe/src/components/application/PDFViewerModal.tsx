@@ -9539,7 +9539,7 @@ const PDFViewerModal = ({
                                                                                             </>
                                                                                         )}
                                                                                         {section.key === "epo" && (
-                                                                                            <span>Date: {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : "—"}</span>
+                                                                                            <span>Date: {row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-US", { timeZone: "America/New_York" }) : "—"}</span>
                                                                                         )}
                                                                                         {(section.key === "owner" || section.key === "guarantor") && (
                                                                                             <>
@@ -10511,7 +10511,7 @@ const PDFViewerModal = ({
                                                     </div>
                                                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                                         {(() => {
-                                                            if (sentAt) return sentAt.toLocaleString();
+                                                            if (sentAt) return sentAt.toLocaleString("en-US", { timeZone: "America/New_York" });
                                                             const doc = pickContractEnvelopeDocument(resolvedContract);
                                                             const docSentAt = doc?.sentAt as string | undefined;
                                                             if (docSentAt) return formatDateTimeUS(String(docSentAt), "—");

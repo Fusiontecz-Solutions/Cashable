@@ -11,7 +11,7 @@ import { DrillDownTable } from '../DrillDownTable';
 import { getReportErrorMessage, reportApi, type StageBucket } from '../reportApi';
 import type { TabProps } from './types';
 
-const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—');
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: '2-digit' }) : '—');
 
 function daysOutToneClass(days: number) {
   if (days >= 14) return 'text-red-600 dark:text-red-400 font-semibold';

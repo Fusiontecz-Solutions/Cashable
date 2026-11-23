@@ -285,7 +285,7 @@ export default function ClearPersonLookup() {
             </span>
             <span className="text-[#6B7280]">{result.provider}</span>
             <span className="text-[#6B7280]">
-              {new Date(result.searchedAt).toLocaleString()}
+              {new Date(result.searchedAt).toLocaleString("en-US", { timeZone: "America/New_York" })}
             </span>
             <span className="rounded bg-[#EFF6FF] px-1.5 py-0.5 text-[10px] font-medium text-[#1D4ED8]">
               Not saved

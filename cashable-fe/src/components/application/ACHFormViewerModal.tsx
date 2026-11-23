@@ -3220,7 +3220,7 @@ export default function ACHFormViewerModal({
                                     </span>
                                     {lastStatusSyncAt ? (
                                         <p className="text-[10px] text-slate-400">
-                                            Last synced {lastStatusSyncAt.toLocaleTimeString()}
+                                            Last synced {lastStatusSyncAt.toLocaleTimeString("en-US", { timeZone: "America/New_York" })}
                                         </p>
                                     ) : null}
                                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-900/60">

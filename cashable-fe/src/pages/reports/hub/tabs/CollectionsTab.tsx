@@ -11,7 +11,7 @@ import { applicationHref } from '../drillDown';
 import { getReportErrorMessage, reportApi, type CollectionsReport, type PaymentKind, type PaymentRow } from '../reportApi';
 import type { TabProps } from './types';
 
-const fmtDate = (v: string | null | undefined) => (v ? new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+const fmtDate = (v: string | null | undefined) => (v ? new Date(v).toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: 'numeric' }) : '—');
 
 function StatusPill({ status, daysOverdue }: { status: string; daysOverdue: number }) {
   const overdue = daysOverdue > 0 && status !== 'paid' && status !== 'waived';

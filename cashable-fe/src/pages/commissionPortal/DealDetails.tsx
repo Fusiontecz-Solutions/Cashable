@@ -1345,7 +1345,7 @@ export default function DealDetails() {
                           <span className="text-muted-foreground">
                             Created:{" "}
                             {deal.date
-                              ? new Date(deal.date).toLocaleDateString("en-US")
+                              ? new Date(deal.date).toLocaleDateString("en-US", { timeZone: "America/New_York" })
                               : "-"}
                           </span>
                         </div>

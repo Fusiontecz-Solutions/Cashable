@@ -62,7 +62,7 @@ function toDisplayMessage(msg: ReduxMessage, currentUserId: string): DisplayMess
     const senderId = String(msg.senderId ?? (msg.sender as MessageSender)?._id ?? (msg.sender as MessageSender)?.id ?? '');
     const isMe = senderId === String(currentUserId);
     const sender = msg.sender as MessageSender | undefined;
-    const time = new Date(msg.createdAt).toLocaleTimeString('en-US', {
+    const time = new Date(msg.createdAt).toLocaleTimeString('en-US', { timeZone: "America/New_York",
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,

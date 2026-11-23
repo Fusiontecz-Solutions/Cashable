@@ -14,7 +14,7 @@ import type { TabProps } from './types';
 
 const AGING_BUCKETS = ['0-3', '4-7', '8-14', '15-30', '31+'] as const;
 
-const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—');
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: '2-digit' }) : '—');
 const titleCase = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : 'Unknown');
 
 function daysToneClass(days: number, slaDays: number) {

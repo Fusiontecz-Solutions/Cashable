@@ -280,7 +280,7 @@ export default function DailyEmailTab(props: TabProps) {
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     {describeTime(formFromSchedule(s))} · {s.recipients.length} recipient{s.recipients.length === 1 ? '' : 's'} · {s.sections.length} section{s.sections.length === 1 ? '' : 's'}
-                    {s.nextRunAt ? ` · next ${new Date(s.nextRunAt).toLocaleString()}` : ''}
+                    {s.nextRunAt ? ` · next ${new Date(s.nextRunAt).toLocaleString("en-US", { timeZone: "America/New_York" })}` : ''}
                   </div>
                 </div>
                 {canEdit ? (

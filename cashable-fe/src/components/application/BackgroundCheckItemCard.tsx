@@ -450,7 +450,7 @@ export default function BackgroundCheckItemCard({
       {isSaved ? (
         <p className="mt-1 text-[10px] text-[#6B7280] dark:text-slate-400">
           Saved{" "}
-          {new Date(savedAt!).toLocaleString("en-US", {
+          {new Date(savedAt!).toLocaleString("en-US", { timeZone: "America/New_York",
             month: "short",
             day: "numeric",
             hour: "numeric",

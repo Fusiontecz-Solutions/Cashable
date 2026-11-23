@@ -293,7 +293,7 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
             const d = new Date(value);
             return Number.isNaN(d.getTime())
                 ? "-"
-                : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+                : d.toLocaleDateString("en-US", { timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric" });
         }
         return value;
     };
@@ -305,7 +305,7 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
             const d = new Date(value);
             return Number.isNaN(d.getTime())
                 ? "-"
-                : d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+                : d.toLocaleDateString("en-US", { timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric" });
         }
         return value;
     };

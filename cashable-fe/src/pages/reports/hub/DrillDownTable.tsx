@@ -23,7 +23,7 @@ export interface DrillQuery {
 
 type Col = { key: string; label: string; align?: 'left' | 'right'; render: (r: ApplicationRow) => React.ReactNode };
 
-const date = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—');
+const date = (s: string | null) => (s ? new Date(s).toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: '2-digit' }) : '—');
 
 const ALL_COLUMNS: Record<string, Col> = {
   book: { key: 'book', label: 'Book', render: (r) => r.bookCode ?? '—' },

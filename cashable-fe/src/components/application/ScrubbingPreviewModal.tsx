@@ -597,7 +597,7 @@ export default function ScrubbingPreviewModal({
 
   const displayDate = useMemo(
     () =>
-      new Date().toLocaleDateString("en-US", {
+      new Date().toLocaleDateString("en-US", { timeZone: "America/New_York",
         month: "2-digit",
         day: "2-digit",
         year: "numeric",

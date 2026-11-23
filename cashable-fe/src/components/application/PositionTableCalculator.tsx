@@ -1248,7 +1248,7 @@ export default function PositionTableCalculator({
         if (!entry.row?.startingDate) return "-";
         const d = new Date(entry.row.startingDate);
         if (Number.isNaN(d.getTime())) return "-";
-        return d.toLocaleString("en-US", { month: "long" });
+        return d.toLocaleString("en-US", { timeZone: "America/New_York", month: "long" });
       })();
       const monthKey = monthLabel.toLowerCase();
       const showMonth = monthKey !== activeMonthKey;

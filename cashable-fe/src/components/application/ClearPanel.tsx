@@ -724,7 +724,7 @@ export default function ClearPanel({
               {businessGroupCount} business · {personGroupCount} owner match
               {personGroupCount === 1 ? "" : "es"}
               {clearMetadata?.searchedAt
-                ? ` · ${new Date(clearMetadata.searchedAt).toLocaleString()}`
+                ? ` · ${new Date(clearMetadata.searchedAt).toLocaleString("en-US", { timeZone: "America/New_York" })}`
                 : ""}
             </p>
           ) : (

@@ -156,18 +156,18 @@ export const formatListDate = (internalDate?: number, dateHeader?: string): stri
   if (!date || Number.isNaN(date.getTime())) return dateHeader || '';
   const now = new Date();
   if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return date.toLocaleTimeString([], { timeZone: "America/New_York", hour: 'numeric', minute: '2-digit' });
   }
   if (date.getFullYear() === now.getFullYear()) {
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString([], { timeZone: "America/New_York", month: 'short', day: 'numeric' });
   }
-  return date.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString([], { timeZone: "America/New_York", year: 'numeric', month: 'short', day: 'numeric' });
 };
 
 export const formatFullDate = (internalDate?: number, dateHeader?: string): string => {
   const date = internalDate ? new Date(Number(internalDate)) : dateHeader ? new Date(dateHeader) : null;
   if (!date || Number.isNaN(date.getTime())) return dateHeader || '';
-  return date.toLocaleString([], {
+  return date.toLocaleString([], { timeZone: "America/New_York",
     weekday: 'short',
     month: 'short',
     day: 'numeric',

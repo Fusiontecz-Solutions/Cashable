@@ -250,7 +250,7 @@ export function mapApplicationToHistoryRow(
             : 'unknown'
     const month =
         created && !Number.isNaN(created.getTime())
-            ? created.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+            ? created.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', year: 'numeric' })
             : '—'
 
     const merchant =

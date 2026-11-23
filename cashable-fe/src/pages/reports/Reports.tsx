@@ -301,7 +301,7 @@ const Reports = () => {
                 weekEnd.setHours(23, 59, 59, 999);
 
                 const periodKey = formatYmd(weekStart);
-                const periodLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                const periodLabel = `${weekStart.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
                 periodData[periodKey] = {
                     period: periodLabel,
@@ -326,7 +326,7 @@ const Reports = () => {
             for (let month = 0; month < 12; month++) {
                 const date = new Date(year, month, 1);
                 const periodKey = `${year}-${String(month + 1).padStart(2, '0')}`;
-                const periodLabel = date.toLocaleDateString('en-US', { month: 'short' });
+                const periodLabel = date.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short' });
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-01`;
                 periodData[periodKey] = {
                     period: periodLabel,
@@ -355,11 +355,11 @@ const Reports = () => {
                 weekEnd.setDate(weekStart.getDate() + 6);
                 // Create a unique key for the week
                 periodKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-                periodLabel = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                periodLabel = `${weekStart.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
             } else if (timePeriod === 'yearly') {
                 // Show all 12 months for yearly view
                 periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                periodLabel = date.toLocaleDateString('en-US', { month: 'short' });
+                periodLabel = date.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short' });
             }
 
             if (!periodData[periodKey]) {
@@ -432,7 +432,7 @@ const Reports = () => {
             row.commission,
             row.dealStatus,
             row.status,
-            new Date(row.date).toLocaleDateString('en-US', {
+            new Date(row.date).toLocaleDateString('en-US', { timeZone: "America/New_York",
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
@@ -644,7 +644,7 @@ const Reports = () => {
                                         const d = new Date(dateKey);
                                         if (!isNaN(d.getTime())) {
                                             const monthShort = d
-                                                .toLocaleDateString('en-US', { month: 'short' })
+                                                .toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short' })
                                                 .toUpperCase();
                                             const day = d.getDate();
                                             return `${monthShort}-${day}`;
@@ -830,7 +830,7 @@ const Reports = () => {
                                             </span>
                                         </td>
                                         <td className="py-2 pr-4 text-foreground">
-                                            {new Date(row.date).toLocaleDateString('en-US', {
+                                            {new Date(row.date).toLocaleDateString('en-US', { timeZone: "America/New_York",
                                                 month: 'short',
                                                 day: 'numeric',
                                                 year: 'numeric',

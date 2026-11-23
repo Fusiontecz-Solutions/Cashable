@@ -283,7 +283,7 @@ export const FundingCall = ({ applicationId, onSaved, onCallStatusChange }: Fund
       applicationStatus: latest.applicationStatus || '',
       remarks: latest.remarks || '',
       followUpDate: latest.followUpDate
-        ? new Date(latest.followUpDate).toLocaleDateString('en-US')
+        ? new Date(latest.followUpDate).toLocaleDateString('en-US', { timeZone: "America/New_York" })
         : '',
     }));
     onCallStatusChange?.(callStatus);

@@ -340,7 +340,7 @@ export default function SchedulesTab(props: TabProps) {
                           <StatusBadge status={s.lastStatus} error={s.lastError} />
                         </td>
                         <td className="px-3 py-2 text-foreground">
-                          {s.nextRunAt ? new Date(s.nextRunAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                          {s.nextRunAt ? new Date(s.nextRunAt).toLocaleString('en-US', { timeZone: "America/New_York", dateStyle: 'medium', timeStyle: 'short' }) : '—'}
                         </td>
                         <td className="px-3 py-2">
                           {allowed ? (

@@ -827,7 +827,7 @@ function buildDefaultValues(
     Number.isFinite(balanceDue) && balanceDue >= 0
       ? balanceDue
       : Math.max(0, totalRepay - paid);
-  const today = new Date().toLocaleDateString("en-US", {
+  const today = new Date().toLocaleDateString("en-US", { timeZone: "America/New_York",
     month: "long",
     day: "numeric",
     year: "numeric",

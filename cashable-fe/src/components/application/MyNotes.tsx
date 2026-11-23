@@ -166,7 +166,7 @@ const MyNotes = ({
     const formatDate = (dateString?: string): string => {
         if (!dateString) return "";
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
+        return date.toLocaleDateString("en-US", { timeZone: "America/New_York",
             day: "numeric",
             month: "long",
             year: "numeric"
@@ -177,7 +177,7 @@ const MyNotes = ({
     const formatTime = (dateString?: string): string => {
         if (!dateString) return "";
         const date = new Date(dateString);
-        return date.toLocaleTimeString("en-US", {
+        return date.toLocaleTimeString("en-US", { timeZone: "America/New_York",
             hour: "numeric",
             minute: "2-digit",
             hour12: true

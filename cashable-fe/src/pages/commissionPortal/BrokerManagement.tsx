@@ -66,7 +66,7 @@ function formatDate(value?: string): string {
     if (!value) return '—'
     const parsed = new Date(value)
     if (Number.isNaN(parsed.getTime())) return value
-    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return parsed.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 /** Raw pipeline state from API — same priority as dashboard deal bucketing (`statsCurrentState` before workflow-mapped `currentState`). */

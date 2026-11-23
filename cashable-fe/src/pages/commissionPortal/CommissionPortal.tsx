@@ -95,7 +95,7 @@ function formatCommissionTrendTooltipLabel(
 
     const now = new Date()
     const y = now.getFullYear()
-    const monthLong = now.toLocaleDateString('en-US', { month: 'long' })
+    const monthLong = now.toLocaleDateString('en-US', { timeZone: "America/New_York", month: 'long' })
 
     if (view === 'monthly') {
         const day = Number(raw)

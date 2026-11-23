@@ -131,7 +131,7 @@ const TABLE_PAGE_SIZE = 10;
 function formatDate(iso: string | undefined): string {
     if (!iso) return '—';
     const d = new Date(iso);
-    return Number.isFinite(d.getTime()) ? d.toLocaleDateString() : '—';
+    return Number.isFinite(d.getTime()) ? d.toLocaleDateString("en-US", { timeZone: "America/New_York" }) : '—';
 }
 
 export default function SyndicatorFunding() {

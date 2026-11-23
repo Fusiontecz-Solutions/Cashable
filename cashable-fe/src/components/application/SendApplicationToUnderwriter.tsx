@@ -52,7 +52,7 @@ export default function SendApplicationToUnderwriter({
     const approvedAtRaw = (applicationData as { approvedAt?: string | null })?.approvedAt;
     const approvedAtLabel =
         approvedAtRaw && !Number.isNaN(Date.parse(approvedAtRaw))
-            ? new Date(approvedAtRaw).toLocaleString(undefined, {
+            ? new Date(approvedAtRaw).toLocaleString(undefined, { timeZone: "America/New_York",
                   dateStyle: "medium",
                   timeStyle: "short",
               })

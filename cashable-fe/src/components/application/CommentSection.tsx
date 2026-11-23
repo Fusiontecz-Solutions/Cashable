@@ -431,7 +431,7 @@ const CommentSection = ({
     const formatTime = (dateString?: string) => {
         if (!dateString) return "";
         const date = new Date(dateString);
-        return date.toLocaleTimeString("en-US", {
+        return date.toLocaleTimeString("en-US", { timeZone: "America/New_York",
             hour: "numeric",
             minute: "2-digit",
             hour12: true
