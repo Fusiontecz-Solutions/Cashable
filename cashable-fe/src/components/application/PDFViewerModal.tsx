@@ -11255,7 +11255,8 @@ const PDFViewerModal = ({
                                     >
                                         {pearSign.busy === "sync" ? "Refreshing…" : "Refresh status"}
                                     </Button>
-                                    {pearSign.isActive ? (
+                                    {/* "Void Contract" below already voids it: one Void button. */}
+                                    {pearSign.isActive && !canCancelSentContract ? (
                                         <Button
                                             type="button"
                                             variant="outline"
