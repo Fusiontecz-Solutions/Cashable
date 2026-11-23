@@ -1552,6 +1552,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "coj_sum_with_default", label: "Judgment total (repayment + $7,500)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_date", label: "COJ date (under the signature)" },
         { id: "coj_bold", label: "Bold text" },
         { id: "coj_line_spacing", label: "Line spacing" },
     ],
@@ -1568,6 +1569,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_date", label: "COJ date (under the signature)" },
         { id: "coj_bold", label: "Bold text" },
         { id: "coj_line_spacing", label: "Line spacing" },
     ],
@@ -1582,6 +1584,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_date", label: "COJ date (under the signature)" },
         { id: "coj_bold", label: "Bold text" },
         { id: "coj_line_spacing", label: "Line spacing" },
     ],
@@ -1595,6 +1598,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_date", label: "COJ date (under the signature)" },
         { id: "coj_bold", label: "Bold text" },
         { id: "coj_line_spacing", label: "Line spacing" },
     ],
@@ -1908,6 +1912,7 @@ function addendumComputed(
                       })
                     : "",
             agreement_date: toUsDateOnly(pick("agreementDate", "contractDate")),
+            coj_date: toUsDateOnly(pick("agreementDate", "contractDate")),
         };
         const docKey = kind.slice("cashable:".length);
         return (CASHABLE_PLATFORM_DOC_FIELDS[docKey] ?? [])

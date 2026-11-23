@@ -140,6 +140,12 @@ export function cojFacts(values: Values) {
     purchase,
     judgment,
     agreementDate: longDate(v(values, 'agreement_date', 'signature_date')),
+    /** "Date:" under the signature block (COJ mapping / Review "COJ date"; default the agreement date). */
+    cojDate: (() => {
+      const raw = v(values, 'coj_date', 'agreement_date', 'signature_date').trim();
+      const d = parseDate(raw);
+      return d ? `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}` : raw;
+    })(),
     dayOrdinal: date ? ordinal(date.getDate()) : '',
     month: date ? MONTHS[date.getMonth()] : '',
     year: date ? String(date.getFullYear()) : '',
@@ -512,10 +518,14 @@ async function iowa(values: Values, scale = 1) {
   t.paragraph([f.V('owner', f.owner), R(', individually, and on behalf of')], { left: LEFT - 4, align: 'left', leading: 14 });
   // Signature block: the merchant line is never bold, names joined with "AND".
   t.paragraph([R(f.merchantAnd)], { left: LEFT - 4, align: 'left', leading: 14 });
+  if (f.cojDate) {
+    t.y += 8;
+    t.paragraph([R('Date: '), f.V('date', f.cojDate)], { left: LEFT - 4, align: 'left', leading: 14 });
+  }
   return t;
 }
 
-function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, ownerBold = true) {
+function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, ownerBold = true, date: Run | null = null) {
   t.ensure(120);
   t.y += 34;
   t.line(240, RIGHT, t.y);
@@ -528,6 +538,10 @@ function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, owner
   t.draw('NAME OF DEPONENT', 240, t.y, { size: 9 });
   t.y += 20;
   if (onBehalf) t.paragraph(onBehalf, { left: 240, align: 'left', leading: 14 });
+  if (date?.text) {
+    t.y += 8;
+    t.paragraph([R('Date: '), date], { left: 240, align: 'left', leading: 14 });
+  }
 }
 
 async function nyBusiness(values: Values, scale = 1) {
@@ -551,7 +565,7 @@ async function nyBusiness(values: Values, scale = 1) {
   ]);
   indented(t, [...f.M(), R(' is located at '), f.V('business_address', f.businessAddress), R('. Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), f.V('county', f.businessCounty), R('.')]);
   indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), f.V('date', f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Judgment Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
-  nySignature(t, f.owner, [R('on behalf of '), ...f.M(), R('.')], f.isBold('owner'));
+  nySignature(t, f.owner, [R('on behalf of '), ...f.M(), R('.')], f.isBold('owner'), f.V('date', f.cojDate));
   notaryBlock(t, 'JURAT', [R('Sworn to before me this ________ day of ____________________, ________.')]);
   return t;
 }
@@ -585,7 +599,7 @@ async function nyGeneral(values: Values, scale = 1) {
     f.V('date', f.agreementDate),
     R(', executed by the parties (hereinafter, the “Merchant Agreement”) and Debtors/Defendants’ breach thereof. This Affidavit is made in connection with the Merchant Agreement and is solely for the purchase of commercial or business commodities. This Affidavit may be filed ex parte by Plaintiff, without further notice. Agreed-upon interest, reasonable attorneys’ fees, costs and disbursements are to be included as agreed-upon by Debtors/Defendants, under the secured Merchant Agreement, of which supporting documents include a Personal Guarantee of Performance.'),
   ]);
-  nySignature(t, f.owner, [R('individually, and on behalf of '), ...f.M(), R('.')], f.isBold('owner'));
+  nySignature(t, f.owner, [R('individually, and on behalf of '), ...f.M(), R('.')], f.isBold('owner'), f.V('date', f.cojDate));
   notaryBlock(t, 'NOTARY ACKNOWLEDGMENT', [
     R('On the ________ day of ____________________, in the year ________, before me, the undersigned Notary Public in and for said state, personally appeared '),
     f.V('owner', f.owner),
@@ -616,7 +630,7 @@ async function nyMerchant(values: Values, scale = 1) {
   indented(t, [f.V('owner', f.owner), R(' resides at '), f.V('owner_address', f.ownerAddress), R('.')]);
   indented(t, [R('Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), f.V('county', f.ownerCounty), R('.')]);
   indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), f.V('date', f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
-  nySignature(t, f.owner, null, f.isBold('owner'));
+  nySignature(t, f.owner, null, f.isBold('owner'), f.V('date', f.cojDate));
   notaryBlock(t, 'JURAT', [R('Sworn to before me this ________ day of ____________________, ________.')]);
   return t;
 }
@@ -652,6 +666,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
   ],
@@ -666,6 +681,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
   ],
@@ -681,6 +697,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
   ],
@@ -694,6 +711,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
   ],
@@ -719,6 +737,7 @@ export function cojInputs(kind: CojKind, values: Values): Array<{ variable: stri
     if (variable === 'owner_state') value = f.ownerState;
     if (variable === 'coj_sum_with_default') value = f.judgment.replace(/^\$/, '');
     if (variable === 'coj_repayment_amount') value = f.purchase.replace(/^\$/, '');
+    if (variable === 'coj_date') value = f.cojDate;
     if (variable === 'coj_line_spacing') value = COJ_LINE_SPACINGS.find(([k]) => k === String(values.coj_line_spacing ?? '').trim().toLowerCase())?.[0] ?? 'normal';
     if (variable === 'coj_bold') value = [...cojBoldGroups(values.coj_bold)].join(',') || 'none';
     return { variable, label, value };
