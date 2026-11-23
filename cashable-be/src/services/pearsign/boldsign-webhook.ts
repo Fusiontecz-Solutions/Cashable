@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import express, { type Request, type Response } from 'express';
 import { boldSignDetailsFromPayload, toBoldSignEnvelopeId } from './boldsign-client';
 import { findContractIdByPearSignEnvelopeId, syncPearSignContract } from './pearsign-contract.service';
+import { recoverBoldSignEditorSend } from './pearsign-package.service';
 
 /**
  * BoldSign webhook receiver — PUBLIC (no JWT), mounted at /api/v1/boldsign/webhook.
@@ -72,7 +73,22 @@ async function handleBoldSignWebhook(req: Request, res: Response): Promise<void>
   }
   const envelopeId = toBoldSignEnvelopeId(documentId);
   try {
-    const contractId = await findContractIdByPearSignEnvelopeId(envelopeId);
+    let contractId = await findContractIdByPearSignEnvelopeId(envelopeId);
+    if (!contractId) {
+      // Sent from BoldSign's editor but never recorded by the CRM (tab closed early): the CRM
+      // tags every document with its contract — record it now (checked against BoldSign).
+      const tagged = Number(req.body?.data?.metaData?.contractId ?? req.body?.data?.document?.metaData?.contractId);
+      if (Number.isFinite(tagged) && tagged > 0) {
+        const out = await recoverBoldSignEditorSend(tagged, envelopeId).catch((err) => {
+          console.warn(`[BoldSign webhook] ${event}: could not record document ${documentId} on contract ${tagged}:`, (err as Error)?.message);
+          return null;
+        });
+        if (out?.status === 'sent') {
+          console.log(`[BoldSign webhook] recorded editor send ${documentId} on contract ${tagged}`);
+          contractId = tagged;
+        }
+      }
+    }
     if (!contractId) {
       console.warn(`[BoldSign webhook] ${event}: no contract for document ${documentId}`);
       return;

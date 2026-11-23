@@ -1,6 +1,7 @@
 import { isPearSignConfigured } from '../services/pearsign/pearsign-client';
 import { isBoldSignConfigured } from '../services/pearsign/boldsign-client';
 import { listActivePearSignContractIds, syncPearSignContract } from '../services/pearsign/pearsign-contract.service';
+import { listPendingBoldSignEditorSessions, recoverBoldSignEditorSend } from '../services/pearsign/pearsign-package.service';
 
 /**
  * Polls PearSign for contracts still out for signature so a deal moves to Contract
@@ -18,6 +19,20 @@ async function tick() {
   if (running) return;
   running = true;
   try {
+    // BoldSign editors opened but never recorded as sent (tab closed before it told the CRM):
+    // record the ones BoldSign has sent, so their status and Signed email are not lost.
+    if (isBoldSignConfigured()) {
+      for (const { contractId, envelopeId } of await listPendingBoldSignEditorSessions().catch(() => [])) {
+        try {
+          const out = await recoverBoldSignEditorSend(contractId, envelopeId);
+          if (out.status === 'sent' && !('alreadyRecorded' in out && out.alreadyRecorded)) {
+            console.log(`[BoldSign] recorded editor send ${envelopeId} on contract ${contractId}`);
+          }
+        } catch (err) {
+          console.warn(`[BoldSign] editor send check failed for contract ${contractId}:`, (err as Error)?.message);
+        }
+      }
+    }
     const ids = await listActivePearSignContractIds();
     for (const id of ids) {
       try {

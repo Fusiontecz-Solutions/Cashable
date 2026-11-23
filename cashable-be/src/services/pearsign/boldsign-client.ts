@@ -230,6 +230,8 @@ function createEmbeddedSend(input: BoldSignSendInput & { redirectUrl?: string; l
 
 export type BoldSignDocumentProperties = {
   documentId: string;
+  /** Set by the CRM on every send: { contractId, source: 'cashable-crm' }. */
+  metaData?: Record<string, string> | null;
   messageTitle?: string;
   status: 'InProgress' | 'Completed' | 'Declined' | 'Expired' | 'Revoked' | 'Draft' | 'Scheduled' | string;
   createdDate?: number;

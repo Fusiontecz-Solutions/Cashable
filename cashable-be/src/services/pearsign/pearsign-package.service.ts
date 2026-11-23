@@ -35,6 +35,7 @@ import {
   readState,
   writeState,
   sendStatusNoticeOnce,
+  syncPearSignContract,
   type PearSignContractState,
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
@@ -43,6 +44,7 @@ import { renderTypedCoj, type CojKind, type PackageTypedCoj } from '../docusign/
 import {
   BOLDSIGN_PX_PER_PT,
   boldSignCreateEmbeddedSend,
+  boldSignDetailsFromPayload,
   boldSignDocumentProperties,
   boldSignSandbox,
   boldSignSendDocument,
@@ -827,10 +829,11 @@ export async function buildPearSignPackagePreview(contractId: number, body: { va
 type PreparedPackageSend = Awaited<ReturnType<typeof preparePackageSend>>;
 
 /** Everything a send needs, checked: values, the merged PDF and the PearSign fields. */
-async function preparePackageSend(contractId: number, body: { message?: string }) {
+async function preparePackageSend(contractId: number, body: { message?: string; recordingSentDocument?: boolean }) {
   const { contract, pkg, state } = await requirePackage(contractId);
   if (!contract.applicationId) throw new PearSignContractError('Contract has no application.');
-  if (state?.envelopeId && isActivePearSignStatus(state.status)) {
+  // Recording a document BoldSign already sent (from its editor): it replaces any older one.
+  if (!body.recordingSentDocument && state?.envelopeId && isActivePearSignStatus(state.status)) {
     throw new PearSignContractError('This contract already has a PearSign envelope out for signature. Void it first.', 409);
   }
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1407,18 +1410,23 @@ async function finishBoldSignPackageEditor(
   actorUserId: string | null,
   record: EditorSessionRecord,
   envelopeId: string,
+  opts: { requireContractTag?: boolean } = {},
 ) {
   const contract = await loadContract(contractId);
   const current = readState(contract.contractPrefillOverrides);
   if (current?.envelopeId === envelopeId) return { status: 'sent', state: current, alreadyRecorded: true };
   const props = await boldSignDocumentProperties(envelopeId.replace(/^bs-/i, ''));
+  // Recovering a send the CRM missed: only a document the CRM created for this contract.
+  if (opts.requireContractTag && String(props.metaData?.contractId ?? '') !== String(contractId)) {
+    return { status: 'not_ours', state: current };
+  }
   const status = String(props.status || '').toLowerCase();
   if (status === 'draft' || status === 'scheduled') return { status: 'open', state: current };
   if (status === 'revoked' || status === 'expired') {
     await writeEditorSession(contractId, null);
     return { status: status === 'expired' ? 'expired' : 'cancelled', state: current };
   }
-  const prep = await preparePackageSend(contractId, { message: record.message });
+  const prep = await preparePackageSend(contractId, { message: record.message, recordingSentDocument: true });
   // Fields may have been moved in BoldSign's editor: the PDF comes from BoldSign, not a CRM redraw.
   const { next } = await recordPackageSent(contractId, actorUserId ?? record.createdByUserId, prep, {
     envelopeId,
@@ -1432,7 +1440,41 @@ async function finishBoldSignPackageEditor(
   });
   await writeEditorSession(contractId, null);
   console.info('[BoldSign] editor send recorded', { contractId, envelopeId });
-  return { status: 'sent', state: next, documents: prep.pkg.documents.map((d) => d.name) };
+  return { status: 'sent', state: next, documents: prep.pkg.documents.map((d) => d.name), props };
+}
+
+/**
+ * Record a BoldSign document the CRM created for this contract (tagged contractId) but never
+ * recorded as sent — the editor tab closed before telling the CRM, say. Used by the webhook (an
+ * unknown document) and the status job (an editor left open). Safe to call again.
+ */
+export async function recoverBoldSignEditorSend(contractId: number, envelopeId: string) {
+  const contract = await loadContract(contractId);
+  const record: EditorSessionRecord = readEditorSession(contract.contractPrefillOverrides) ?? {
+    sessionId: envelopeId,
+    createdAt: new Date().toISOString(),
+    createdByUserId: null,
+    message: '',
+  };
+  const out = await finishBoldSignPackageEditor(contractId, null, { ...record, sessionId: envelopeId }, envelopeId, { requireContractTag: true });
+  // Just recorded: take its current status now (it may be signed already) — no extra API call.
+  if (out.status === 'sent' && 'props' in out && out.props) {
+    const details = boldSignDetailsFromPayload(envelopeId, out.props);
+    if (details) await syncPearSignContract(contractId, { details });
+  }
+  return out;
+}
+
+/** Contracts with a BoldSign editor opened in the last 3 days (2+ minutes ago) and not recorded. */
+export async function listPendingBoldSignEditorSessions(): Promise<Array<{ contractId: number; envelopeId: string }>> {
+  const rows = await prisma.$queryRaw<Array<{ id: number; session: string | null }>>`
+    SELECT id, "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'sessionId' AS session
+    FROM "Contract"
+    WHERE "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'sessionId' LIKE 'bs-%'
+      AND coalesce(("contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'createdAt')::timestamptz, 'epoch'::timestamptz)
+          BETWEEN now() - interval '3 days' AND now() - interval '2 minutes'
+  `;
+  return rows.filter((r) => r.session).map((r) => ({ contractId: Number(r.id), envelopeId: String(r.session) }));
 }
 
 export async function finishPearSignPackageEditor(
