@@ -172,6 +172,43 @@ export function TemplateMappingPrefillEditDialog({
         allowAchAliasFallback,
     ]);
 
+    /**
+     * What each field would be from the deal alone (main prefill + CRM), without this document's
+     * saved edits. Save keeps only fields that differ from it, so later prefill changes still
+     * reach this document.
+     */
+    const dealValues = useMemo(() => {
+        if (!row) return {} as Record<string, string>;
+        const rows = getDocumentTemplatePrefillFieldRowsForEditor({
+            templateId: row.template?.templateId ?? null,
+            templateName: row.template?.name ?? null,
+            templateType: row.template?.type ?? row.documentType ?? null,
+            templateLayoutKey: row.template?.layoutKey ?? null,
+            templateState: row.template?.state ?? null,
+            templateFrequency: row.template?.frequency ?? null,
+            fallbackState:
+                String((resolvedContract as { state?: unknown } | null)?.state ?? "").trim() || null,
+            fallbackFrequency:
+                String(
+                    (resolvedContract as { disclosureFrequency?: unknown } | null)
+                        ?.disclosureFrequency ?? "",
+                ).trim() || null,
+            documentType: row.documentType ?? null,
+            contract: resolvedContract,
+            application: applicationData as Record<string, unknown> | null,
+            offerDecision,
+            contractRecords,
+            agreementDate,
+            mainPrefillOverrides: effectiveMainPrefillOverrides ?? undefined,
+            savedOverridesForMapping: {},
+            bankDetail: contractRecords?.bankDetail ?? null,
+        });
+        return Object.fromEntries(rows.map((r) => [r.id, String(r.value ?? "")]));
+    }, [row, resolvedContract, applicationData, offerDecision, contractRecords, agreementDate, effectiveMainPrefillOverrides]);
+    const sameAsDeal = (id: string, value: unknown) =>
+        String(value ?? "").trim().toUpperCase() === String(dealValues[id] ?? "").trim().toUpperCase();
+    const changedFromDeal = editorRows.filter((r) => r.id in dealValues && !sameAsDeal(r.id, fieldValues[r.id])).map((r) => r.id);
+
     useEffect(() => {
         if (!open || !row) {
             hydratedSessionKeyRef.current = null;
@@ -207,7 +244,10 @@ export function TemplateMappingPrefillEditDialog({
             const existingBlob = parseDocumentTemplatePrefillByMappingId(rawOverrides);
             const envelopeBlob = parseDocumentTemplateEnvelopeByMappingId(rawOverrides);
 
-            const tabValues = { ...fieldValues };
+            // Only what was changed for this document; everything else keeps following the deal.
+            const tabValues = Object.fromEntries(
+                Object.entries(fieldValues).filter(([k, v]) => !(k in dealValues) || !sameAsDeal(k, v)),
+            );
             // Balance Transfer Remaining RTR must map to its own Dropbox Sign data label —
             // never seed from purchase_price / payback.
             const remainingBalance = String(
@@ -387,6 +427,29 @@ export function TemplateMappingPrefillEditDialog({
                                 <span className="font-mono text-xs">ach_authorization</span>.
                             </p>
                         ) : (
+                            <>
+                            {changedFromDeal.filter((id) => !isCojBoldKey(id)).length ? (
+                                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+                                    <span>
+                                        {changedFromDeal.filter((id) => !isCojBoldKey(id)).length} field(s) here differ from the deal prefill, so prefill changes do not reach them.
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs"
+                                        onClick={() =>
+                                            setFieldValues((prev) => {
+                                                const next = { ...prev };
+                                                for (const id of changedFromDeal) if (!isCojBoldKey(id)) next[id] = dealValues[id] ?? "";
+                                                return next;
+                                            })
+                                        }
+                                    >
+                                        Use deal values for all
+                                    </Button>
+                                </div>
+                            ) : null}
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {editorRows.map((r) => (
                                     <div key={r.id} className="space-y-1.5">
@@ -434,9 +497,22 @@ export function TemplateMappingPrefillEditDialog({
                                             }
                                         />
                                         )}
+                                        {changedFromDeal.includes(r.id) && !isCojBoldKey(r.id) ? (
+                                            <p className="flex flex-wrap items-center gap-1 text-[11px] text-sky-700 dark:text-sky-300">
+                                                Only for this document · deal: {dealValues[r.id] || "(blank)"}
+                                                <button
+                                                    type="button"
+                                                    className="font-medium text-[var(--brand)] hover:underline"
+                                                    onClick={() => setFieldValues((prev) => ({ ...prev, [r.id]: dealValues[r.id] ?? "" }))}
+                                                >
+                                                    Use deal value
+                                                </button>
+                                            </p>
+                                        ) : null}
                                     </div>
                                 ))}
                             </div>
+                            </>
                         )}
                     </div>
                 </div>
