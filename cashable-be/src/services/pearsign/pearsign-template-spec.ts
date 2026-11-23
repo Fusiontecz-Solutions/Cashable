@@ -131,6 +131,9 @@ export function pearSignBoxForFont<T extends { y: number; height: number }>(box:
   return { ...box, y: Math.max(0, box.y - (height - box.height) / 2), height };
 }
 
+/** Value size on state disclosure pages (pt): their body text is 12pt. */
+export const PEARSIGN_DISCLOSURE_FONT = 12;
+
 /** Smallest size a whole page may use; a value too long even at this size shrinks on its own. */
 export const PEARSIGN_PAGE_FONT_MIN = 8;
 
@@ -139,10 +142,11 @@ export function pearSignWidthFitFontSize(
   text: string,
   width: number,
   measure: (text: string, size: number) => number,
+  max: number = PEARSIGN_VALUE_FONT_MAX,
 ): number {
   const room = Math.max(4, width - 4);
   const t = String(text ?? '').trim();
-  let size = PEARSIGN_VALUE_FONT_MAX;
+  let size = max;
   if (!t) return size;
   while (size > PEARSIGN_VALUE_FONT_MIN && measure(t, size) > room) size -= 0.5;
   return size;

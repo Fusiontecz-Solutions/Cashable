@@ -58,6 +58,8 @@ import {
   mergeStyles,
   pearSignBoxForFont,
   pearSignPageFontSizes,
+  pearSignWidthFitFontSize,
+  PEARSIGN_DISCLOSURE_FONT,
   pearSignIndependentKey,
   pearSignIndependentLabel,
   type PearSignFieldStyle,
@@ -564,8 +566,27 @@ async function effectiveFieldStyles(
  * the one size of its page. Unlike effectiveFieldStyles a key's boxes are sized independently, so
  * a long value squeezed into a narrow box on one page never shrinks the same value on another.
  */
+/**
+ * Pages of the state disclosures in the package: their values print at 12pt like the form text
+ * (a value too long for its box shrinks on its own), not the smaller contract size.
+ */
+export function isDisclosureDocument(d: { name: string; layoutKey?: string | null }): boolean {
+  const key = String(d.layoutKey ?? '').toLowerCase();
+  if (/(^|_)(contract|ach|addendum|coj|guaranty|security|deposit|prepay|balance)(_|$)/.test(key) || /^coj_|_contract$|^ach_/.test(key)) return false;
+  return /disclos/i.test(d.name) || /(^|_)(daily|weekly)(_|$)/.test(key);
+}
+
+function disclosurePageSet(pkg: Pick<DrawablePackage, 'documents'>): Set<number> {
+  const pages = new Set<number>();
+  for (const d of pkg.documents ?? []) {
+    if (!isDisclosureDocument(d)) continue;
+    for (let p = d.startPage; p < d.startPage + d.pageCount; p++) pages.add(p);
+  }
+  return pages;
+}
+
 async function fieldFontSizes(
-  pkg: Pick<DrawablePackage, 'fields' | 'styles'>,
+  pkg: Pick<DrawablePackage, 'fields' | 'styles' | 'documents'>,
   values: Record<string, string>,
 ): Promise<Map<string, number>> {
   const font = await measureHelvetica();
@@ -576,7 +597,12 @@ async function fieldFontSizes(
     filled.map((f) => ({ page: f.page, width: f.width, value: String(values[f.key] ?? '') })),
     measure,
   );
-  return new Map(filled.map((f, i) => [f.name, chosen[f.key]?.fontSize ?? sizes[i]]));
+  const disclosure = disclosurePageSet(pkg);
+  const sizeFor = (f: (typeof filled)[number], i: number) =>
+    disclosure.has(f.page)
+      ? pearSignWidthFitFontSize(String(values[f.key] ?? ''), f.width, measure, PEARSIGN_DISCLOSURE_FONT)
+      : sizes[i];
+  return new Map(filled.map((f, i) => [f.name, chosen[f.key]?.fontSize ?? sizeFor(f, i)]));
 }
 
 function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string>): Record<string, string> {
@@ -595,6 +621,7 @@ type DrawablePackage = {
   recipients: Array<{ roleId: string; roleName: string }>;
   styles?: Record<string, PearSignFieldStyle>;
   typedCojs?: PackageTypedCoj[];
+  documents?: Array<Pick<PearSignPackageDocument, 'name' | 'startPage' | 'pageCount'> & { layoutKey?: string | null }>;
 };
 
 /**
