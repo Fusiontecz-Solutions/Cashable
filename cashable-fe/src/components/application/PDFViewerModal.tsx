@@ -300,6 +300,7 @@ import {
     mergeContractPrefillWithSignerOverrides,
     mergeApplicationDataIntoSignerRoles,
     mergeLivePartiesIntoSavedSignerOverrides,
+    stampSignerPartyEmails,
     parseBoldSignTemplateRolesFromRecipientsPayload,
     parseContractSignerOverridesFromPrefill,
     CONTRACT_SIGNER_OVERRIDES_KEY,
@@ -9970,13 +9971,16 @@ const PDFViewerModal = ({
                                                                 recipientEditorRows.every((r) => !r.role.trim())
                                                             }
                                                             onClick={async () => {
-                                                                const rows = recipientEditorRows
-                                                                    .filter((r) => r.role.trim())
-                                                                    .map((r) => ({
-                                                                        role: r.role.trim(),
-                                                                        name: r.name.trim(),
-                                                                        email: r.email.trim(),
-                                                                    }));
+                                                                const rows = stampSignerPartyEmails(
+                                                                    recipientEditorRows
+                                                                        .filter((r) => r.role.trim())
+                                                                        .map((r) => ({
+                                                                            role: r.role.trim(),
+                                                                            name: r.name.trim(),
+                                                                            email: r.email.trim(),
+                                                                        })),
+                                                                    applicationSignerRowsForMerge,
+                                                                );
                                                                 const roles =
                                                                     buildDocuSignRolesFromEditorRows(rows);
                                                                 if (!roles.length) {

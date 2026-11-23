@@ -127,6 +127,11 @@ export type ContractSignerOverrideRow = {
     role: string;
     name: string;
     email: string;
+    /**
+     * The deal's (application) email this row started from when the signers were saved. When the
+     * row's email differs from it, it was set by hand in Contract Signers and is always kept.
+     */
+    partyEmail?: string;
 };
 
 /** Persisted on `Contract.contractPrefillOverrides` (excluded from main prefill form). */
@@ -146,7 +151,8 @@ export function parseContractSignerOverridesFromPrefill(
             const email = String(r.email ?? "").trim();
             const name = String(r.name ?? "").trim();
             if (!role || !email) return null;
-            return { role, name, email };
+            const partyEmail = String(r.partyEmail ?? "").trim();
+            return partyEmail ? { role, name, email, partyEmail } : { role, name, email };
         })
         .filter((r): r is ContractSignerOverrideRow => r != null);
     return parsed.length ? parsed : null;
@@ -176,9 +182,20 @@ export function mergeLivePartiesIntoSavedSignerOverrides(
     if (!parties?.length) return saved;
 
     const claimed = new Set<number>();
+    const lower = (s: unknown) => String(s ?? "").trim().toLowerCase();
     return saved.map((row) => {
         if (!isOwnerLikeSignerRoleLabel(row.role)) return row;
-        const email = String(row.email || "").trim().toLowerCase();
+        const email = lower(row.email);
+        // Set by hand in Contract Signers (differs from the deal email it started from, or — for
+        // rows saved before that was recorded — matches no deal email): always kept as typed.
+        const typedByHand = row.partyEmail
+            ? email !== "" && email !== lower(row.partyEmail)
+            : email !== "" && !parties.some((p) => lower(p.email) === email);
+        if (typedByHand) {
+            const own = parties.findIndex((_, i) => !claimed.has(i));
+            if (own >= 0) claimed.add(own);
+            return row;
+        }
         let partyIndex = -1;
         if (email) {
             partyIndex = parties.findIndex(
@@ -201,7 +218,38 @@ export function mergeLivePartiesIntoSavedSignerOverrides(
             ...row,
             name: nextName || row.name,
             email: nextEmail || row.email,
+            ...(nextEmail ? { partyEmail: nextEmail } : {}),
         };
+    });
+}
+
+/**
+ * Before saving Contract Signers: record, per owner row, the deal email it corresponds to, so an
+ * email changed here is never replaced by the deal's, while untouched rows keep following the deal.
+ */
+export function stampSignerPartyEmails(
+    rows: ContractSignerOverrideRow[],
+    parties: ContractSignerOverrideRow[] | null | undefined,
+): ContractSignerOverrideRow[] {
+    if (!parties?.length) return rows;
+    const lower = (s: unknown) => String(s ?? "").trim().toLowerCase();
+    const claimed = new Set<number>();
+    // Rows still on a deal email first, then the rest by position.
+    const match = rows.map((row) => {
+        if (!isOwnerLikeSignerRoleLabel(row.role)) return -1;
+        const i = parties.findIndex((p, k) => !claimed.has(k) && lower(p.email) !== "" && lower(p.email) === lower(row.email));
+        if (i >= 0) claimed.add(i);
+        return i;
+    });
+    return rows.map((row, n) => {
+        if (!isOwnerLikeSignerRoleLabel(row.role)) return row;
+        let i = match[n];
+        if (i < 0) {
+            i = parties.findIndex((_, k) => !claimed.has(k));
+            if (i >= 0) claimed.add(i);
+        }
+        const partyEmail = i >= 0 ? String(parties[i].email ?? "").trim() : "";
+        return partyEmail ? { ...row, partyEmail } : row;
     });
 }
 
