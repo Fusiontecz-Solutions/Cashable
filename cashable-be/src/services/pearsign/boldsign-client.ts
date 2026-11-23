@@ -131,15 +131,40 @@ export type BoldSignSendInput = {
   disableEmails?: boolean;
   metaData?: Record<string, string>;
   downloadFileName?: string;
+  /** Name BoldSign shows for the PDF (instead of "document-1.pdf"). */
+  fileName?: string;
+  /** CC recipients: BoldSign copies them on the document's emails (never signers or reviewers). */
+  cc?: string[];
 };
+
+/** Unique, valid CC emails that are not also signers. */
+export function boldSignCcList(cc: string[] | undefined, signers: Array<{ emailAddress: string }>): Array<{ emailAddress: string }> {
+  const taken = new Set(signers.map((s) => String(s.emailAddress || '').trim().toLowerCase()));
+  const out: Array<{ emailAddress: string }> = [];
+  for (const raw of cc ?? []) {
+    const e = String(raw || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || taken.has(e)) continue;
+    taken.add(e);
+    out.push({ emailAddress: e });
+  }
+  return out;
+}
 
 function sendBody(input: BoldSignSendInput) {
   const brandId = String(process.env.BOLDSIGN_BRAND_ID || '').trim();
   return {
     title: input.title.slice(0, 256),
     message: (input.message || '').slice(0, 5000),
-    files: input.pdfBase64.map((b64) => `data:application/pdf;base64,${b64}`),
+    files: input.pdfBase64.map((b64, i) => {
+      const base64 = `data:application/pdf;base64,${b64}`;
+      const name = i === 0 ? String(input.fileName || '').trim() : '';
+      return name ? { base64, fileName: name.slice(0, 200) } : base64;
+    }),
     signers: input.signers.map((s) => ({ signerType: 'Signer', ...s })),
+    ...(() => {
+      const cc = boldSignCcList(input.cc, input.signers);
+      return cc.length ? { cc } : {};
+    })(),
     enableSigningOrder: input.enableSigningOrder ?? input.signers.length > 1,
     expiryDays: input.expiryDays ?? 30,
     disableEmails: input.disableEmails ?? false,

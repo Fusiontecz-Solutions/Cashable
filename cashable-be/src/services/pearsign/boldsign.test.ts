@@ -96,3 +96,18 @@ describe('ACH debit-day tick boxes in BoldSign', () => {
     expect(signer.formFields[0]).toMatchObject({ value: 'X', isReadOnly: true });
   });
 });
+
+describe('BoldSign CC and file name', () => {
+  it('CRM CC emails go to BoldSign as CC (never a signer twice, no duplicates)', () => {
+    const { boldSignCcList } = jest.requireActual('./boldsign-client');
+    expect(
+      boldSignCcList(['Office@cashablefunding.com', 'office@cashablefunding.com', 'jane@example.com', 'bad', ' ariel@cashablefunding.com '], [{ emailAddress: 'jane@example.com' }]),
+    ).toEqual([{ emailAddress: 'office@cashablefunding.com' }, { emailAddress: 'ariel@cashablefunding.com' }]);
+  });
+  it('names the PDF "CASHABLE FUND LLC: <Merchant>"', () => {
+    const { boldSignPackageFileName } = jest.requireActual('./pearsign-package.service');
+    expect(boldSignPackageFileName({ pkg: { title: 'X — Contract' }, values: { client_legal_name: 'YOUR AUTHORIZED REP INC' } })).toBe(
+      'CASHABLE FUND LLC꞉ YOUR AUTHORIZED REP INC.pdf',
+    );
+  });
+});

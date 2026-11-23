@@ -1,3 +1,4 @@
+import { contractPdfFileName } from '../../utils/contractPdfFileName';
 import type { Prisma } from '@prisma/client';
 import { PDFDocument, StandardFonts, type PDFFont } from 'pdf-lib';
 import prisma from '../../config/prismaClient';
@@ -1005,6 +1006,13 @@ export function boldSignSignersFor(
   }));
 }
 
+/** "CASHABLE FUND LLC: <Merchant>.pdf", like every contract PDF the CRM hands out. */
+export function boldSignPackageFileName(prep: { pkg: { title: string }; values: Record<string, string> }): string {
+  const merchant =
+    String(prep.values.client_legal_name || '').trim() || String(prep.pkg.title || '').split(' — ')[0].trim();
+  return contractPdfFileName(merchant);
+}
+
 /** BoldSign send: one document from the reviewed package, BoldSign emails each owner in order. */
 async function sendBoldSignPackage(
   contractId: number,
@@ -1018,6 +1026,8 @@ async function sendBoldSignPackage(
       title: pkg.title,
       message,
       pdfBase64: [pdf.toString('base64')],
+      fileName: boldSignPackageFileName(prep),
+      cc: pkg.ccEmails,
       signers: boldSignSignersFor(prep),
       metaData: { contractId: String(contractId), source: 'cashable-crm' },
     }));
@@ -1343,6 +1353,8 @@ async function openBoldSignPackageEditor(
       title: prep.pkg.title,
       message: prep.message,
       pdfBase64: [prep.pdf.toString('base64')],
+      fileName: boldSignPackageFileName(prep),
+      cc: prep.pkg.ccEmails,
       signers: boldSignSignersFor(prep),
       metaData: { contractId: String(contractId), source: 'cashable-crm' },
     });
