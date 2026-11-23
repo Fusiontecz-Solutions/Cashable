@@ -643,6 +643,27 @@ function usesWoodmereStyleNonTexasContractLayout(layoutKey: string | undefined):
   return false;
 }
 
+const WEEKDAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+/**
+ * The ACH debit day on daily deals: 3 business days after `now`'s date in Eastern time (weekends skipped):
+ * Monday → THURSDAY, Tuesday → FRIDAY, Wednesday → MONDAY, Thursday → TUESDAY, Friday → WEDNESDAY.
+ */
+export function achDebitDayName(now: Date = new Date()): string {
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(now)
+    .split('-')
+    .map(Number);
+  const d = new Date(Date.UTC(ymd[0], ymd[1] - 1, ymd[2]));
+  let added = 0;
+  while (added < 3) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) added++;
+  }
+  return WEEKDAY_NAMES[d.getUTCDay()];
+}
+
 /** Contract page 1 — merchant may confirm/enter phone at signing (optional, stays editable). */
 // ach_following_days: ACH "On The Following days" note — prefilled for weekly
 // deals; otherwise an empty optional field the signer may fill.
@@ -1170,6 +1191,15 @@ export function expandPrefillValues(
       out.ach_following_days =
         '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $';
     }
+  }
+
+  // The "On the following days" day box: on DAILY deals, the first debit day — 3 business days
+  // after today (Eastern time) — unless the team typed one. Weekly deals leave it for the team.
+  if (
+    String(out.frequency || '').trim().toLowerCase().startsWith('dai') &&
+    !String(out.ach_following_days_day || '').trim()
+  ) {
+    out.ach_following_days_day = achDebitDayName();
   }
 
   // ACH "On the following days" checkboxes (ach_days_*_check): the forms print the
