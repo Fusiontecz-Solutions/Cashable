@@ -975,9 +975,9 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     values[`authorization_client_bank${n}_business_name`] = hasBank ? own || legalName : '';
     values[`authorization_client_bank${n}_tax_id`] = hasBank ? String(values.authorization_client_tax_id ?? '') : '';
   }
-  // Iowa COJ judgment total: purchased amount + the $7,500 default fee.
+  // Iowa COJ judgment total: repayment (RTR / purchase price) + the $7,500 default fee.
   if (!values.coj_sum_with_default) {
-    const rawAmount = String(values.purchase_amount ?? '').replace(/[^0-9.]/g, '');
+    const rawAmount = String(values.purchase_price || values.purchase_amount || '').replace(/[^0-9.]/g, '');
     const amount = parseFloat(rawAmount);
     if (Number.isFinite(amount) && amount > 0) {
       values.coj_sum_with_default = (amount + 7500).toLocaleString('en-US', {
