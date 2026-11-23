@@ -81,3 +81,18 @@ describe('boldSignSignersFor', () => {
     for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9_]+$/);
   });
 });
+
+describe('ACH debit-day tick boxes in BoldSign', () => {
+  it('sends a ticked box as read-only "X" and leaves an unticked one off', () => {
+    const [signer] = boldSignSignersFor({
+      pkg: { recipients: [{ roleId: 'signer-1', roleName: 'Owner 1', name: 'Jane', email: 'jane@example.com' }] } as never,
+      createFields: [
+        { fieldName: 'd1_ach_days_mon_fri_check_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 60, y: 500, width: 14, height: 14 } },
+        { fieldName: 'd1_ach_days_seven_check_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 300, y: 500, width: 14, height: 14 } },
+      ],
+      fieldValues: { d1_ach_days_mon_fri_check_p12: 'X' },
+    });
+    expect(signer.formFields).toHaveLength(1);
+    expect(signer.formFields[0]).toMatchObject({ value: 'X', isReadOnly: true });
+  });
+});

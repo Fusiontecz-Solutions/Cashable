@@ -122,6 +122,9 @@ type LegacySnakeCasePrefillKey =
 type ContractPrefillFormFieldKey = Exclude<keyof BuildContractPrefillFieldsArgs, LegacySnakeCasePrefillKey>;
 
 /** Field labels aligned with Deal Review + Offer decision (section title provides context). */
+/** ACH debit-day tick boxes: a checkbox here, "X" on the contract. */
+const ACH_DAY_TICK_KEYS = new Set<string>(["achDaysMonFriCheck", "achDaysMonFriHolidaysCheck", "achDaysSevenCheck"]);
+
 const FIELD_LABELS = {
     customerName: "Customer / primary name",
     entityType: "Type of entity",
@@ -275,9 +278,9 @@ const FIELD_LABELS = {
     mailingAddressState: "State",
     mailingAddressZip: "ZIP",
     achAuthorizationEmergencyContact: "Emergency contact (name and phone)",
-    achDaysMonFriCheck: "Monday thru Friday (enter X to tick)",
-    achDaysMonFriHolidaysCheck: "Mon thru Fri incl. holidays (enter X to tick)",
-    achDaysSevenCheck: "Seven days a week (enter X to tick)",
+    achDaysMonFriCheck: "Monday thru Friday",
+    achDaysMonFriHolidaysCheck: "Monday thru Friday including holidays",
+    achDaysSevenCheck: "Seven days a week",
     authorizationClientBank2Name: "Bank name",
     authorizationClientBank2Routing: "Routing number",
     authorizationClientBank2Account: "Account number",
@@ -2840,6 +2843,25 @@ export function ContractPrefillEditForm({
                                                                         ) : null}
                                                                     </div>
                                                                 </>
+                                                            ) : ACH_DAY_TICK_KEYS.has(key) ? (
+                                                                // ACH "On the following days": ticked here before sending;
+                                                                // prints "X", and the signer cannot change it.
+                                                                <label
+                                                                    htmlFor={`prefill-${key}`}
+                                                                    className="flex h-8 cursor-pointer items-center gap-2 rounded-md border border-input px-2.5 text-sm"
+                                                                >
+                                                                    <input
+                                                                        id={`prefill-${key}`}
+                                                                        type="checkbox"
+                                                                        className="h-4 w-4 accent-[var(--brand)]"
+                                                                        checked={String(values[key] ?? "").trim() !== ""}
+                                                                        onChange={(e) => setField(key, e.target.checked ? "X" : "")}
+                                                                        disabled={readOnly}
+                                                                    />
+                                                                    <span className="text-slate-600 dark:text-slate-300">
+                                                                        {String(values[key] ?? "").trim() ? "Ticked" : "Not ticked"}
+                                                                    </span>
+                                                                </label>
                                                             ) : key === "entityType" ? (
                                                                 <Select
                                                                     value={values[key] ?? ""}

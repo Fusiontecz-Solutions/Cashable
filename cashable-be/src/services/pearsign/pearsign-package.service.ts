@@ -933,6 +933,9 @@ export function boldSignSignersFor(
     signerOrder: i + 1,
     formFields: prep.createFields
       .filter((f) => f.roleId === r.roleId)
+      // ACH debit-day tick boxes are set by the team (Verify Prefill): an unticked one is left off,
+      // so the signer cannot tick it; a ticked one goes out as a read-only "X".
+      .filter((f) => !(f.type === 'text' && /ach_days_\w*check/i.test(f.fieldName) && !prep.fieldValues[f.fieldName]))
       .map((f): BoldSignFormField => {
         const p = f.position;
         const bounds = { x: px(p.x), y: px(p.y), width: px(p.width), height: px(p.height) };
