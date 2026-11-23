@@ -136,3 +136,15 @@ describe('BoldSign reviewers and always-CC', () => {
     ]);
   });
 });
+
+describe('contract values print in capitals', () => {
+  const { contractValueCase } = jest.requireActual('./pearsign-package.service');
+  it('capitalises values, keeps emails, links and encrypted values as typed', () => {
+    expect(contractValueCase('November 23, 2026')).toBe('NOVEMBER 23, 2026');
+    expect(contractValueCase('Corporation')).toBe('CORPORATION');
+    expect(contractValueCase('Thursday')).toBe('THURSDAY');
+    expect(contractValueCase('Jane.Doe@Example.com')).toBe('Jane.Doe@Example.com');
+    expect(contractValueCase('https://Example.com/x')).toBe('https://Example.com/x');
+    expect(contractValueCase('enc:v1:AbC')).toBe('enc:v1:AbC');
+  });
+});

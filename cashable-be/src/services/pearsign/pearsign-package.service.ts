@@ -612,12 +612,25 @@ async function fieldFontSizes(
   return new Map(filled.map((f, i) => [f.name, chosen[f.key]?.fontSize ?? sizeFor(f, i)]));
 }
 
+/**
+ * Every value filled into the contract boxes prints in capitals ("November" → "NOVEMBER").
+ * Kept as typed: email addresses, links and encrypted values. COJ inputs are not boxes: the COJ
+ * typesetter decides their case itself.
+ */
+export function contractValueCase(value: string): string {
+  const v = String(value ?? '');
+  if (!v || v.includes('@') || /^(https?:|www\.|enc:v1:)/i.test(v.trim())) return v;
+  return v.toUpperCase();
+}
+
 function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string>): Record<string, string> {
   const out = { ...pkg.crmValues, ...pkg.overrides };
   for (const [k, v] of Object.entries(extra ?? {})) {
     if (String(v).trim() || isPearSignIndependentKey(k)) out[k] = String(v);
     else out[k] = pkg.crmValues[k] ?? '';
   }
+  const boxKeys = new Set(pkg.fields.map((f) => f.key));
+  for (const k of Object.keys(out)) if (boxKeys.has(k)) out[k] = contractValueCase(out[k]);
   return out;
 }
 
