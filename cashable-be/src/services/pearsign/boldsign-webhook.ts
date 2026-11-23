@@ -49,9 +49,15 @@ async function handleBoldSignWebhook(req: Request, res: Response): Promise<void>
   const event = String(req.body?.event?.eventType || req.header('x-boldsign-event') || 'unknown');
   const check = verifySignature(req);
   if (!check.ok) {
-    console.warn(`[BoldSign webhook] rejected ${event}: ${check.reason}`);
-    res.status(401).json({ success: false, message: 'Invalid webhook signature' });
-    return;
+    // An unverified event is never trusted: its status is ignored and, if it names one of our
+    // documents, the CRM re-reads that document from BoldSign (throttled). So a wrong secret only
+    // costs an API call, instead of the CRM missing "Completed" and its signed-copy email.
+    console.warn(`[BoldSign webhook] ${event}: ${check.reason} — re-reading the document from BoldSign instead`);
+    const documentId = documentIdFrom(req.body);
+    if (!documentId) {
+      res.status(401).json({ success: false, message: 'Invalid webhook signature' });
+      return;
+    }
   }
   // Acknowledge fast; BoldSign retries slow or failed deliveries.
   res.status(200).json({ success: true, received: event });

@@ -813,6 +813,19 @@ async function announceStatus(
   const claim = `${envelopeId}:${group}`;
   if (statusNoticeClaimed.has(claim)) return;
   statusNoticeClaimed.add(claim);
+  // The Signed update carries the signed contract: get it first. If it is not ready yet (BoldSign is
+  // still finishing it, or the hourly API limit), nothing is sent and the next sync tries again —
+  // after SIGNED_PDF_GIVE_UP_MS the update goes out without it rather than never.
+  let pdf: Buffer | null = null;
+  if (group === 'signed') {
+    pdf = await signedPdfWithRetry(envelopeId);
+    const completedMs = Date.parse(String(state.completedAt || '')) || Date.now();
+    if (!pdf && Date.now() - completedMs < SIGNED_PDF_GIVE_UP_MS) {
+      statusNoticeClaimed.delete(claim);
+      console.warn(`[PearSign] signed PDF for ${envelopeId} not ready — the Signed email will be retried`);
+      return;
+    }
+  }
   const claimed = await prisma.$executeRaw`
     UPDATE "Contract"
     SET "contractPrefillOverrides" = jsonb_set(coalesce("contractPrefillOverrides", '{}'::jsonb), ARRAY[${STATUS_NOTICE_KEY}]::text[], to_jsonb(${claim}::text), true)
@@ -833,15 +846,6 @@ async function announceStatus(
   }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
 
   if (!EMAILED_NOTICE_GROUPS.has(group)) return;
-  // The Signed update carries the signed contract.
-  let pdf: Buffer | null = null;
-  if (group === 'signed') {
-    try {
-      pdf = await downloadPearSignEnvelopePdf(envelopeId, 'latest');
-    } catch (err) {
-      console.warn('[PearSign] signed PDF for the status email unavailable:', (err as Error)?.message);
-    }
-  }
   const threads = await readTeamThreads(contractId, envelopeId);
   const result = await notifyPearSignStatusChange({
     contractId,
@@ -861,6 +865,36 @@ async function announceStatus(
       console.warn('[PearSign] could not save the team email thread', (err as Error)?.message),
     );
   }
+}
+
+/** After this long without the signed PDF, the Signed update is emailed without it. */
+const SIGNED_PDF_GIVE_UP_MS = 6 * 60 * 60 * 1000;
+/** A completed contract still owed its Signed email / archive is retried only this long after completing. */
+const SIGNED_RETRY_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+const SIGNED_PDF_RETRY_DELAYS_MS = [0, 15_000, 45_000];
+
+/** The signed PDF, retried briefly (BoldSign may still be finishing it when "Completed" arrives); null if unavailable. */
+async function signedPdfWithRetry(envelopeId: string): Promise<Buffer | null> {
+  for (const wait of SIGNED_PDF_RETRY_DELAYS_MS) {
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    try {
+      const pdf = await downloadPearSignEnvelopePdf(envelopeId, 'latest');
+      if (pdf?.length) return pdf;
+    } catch (err) {
+      console.warn(`[PearSign] signed PDF for ${envelopeId} unavailable:`, (err as Error)?.message);
+      if (/limit|429/i.test(String((err as Error)?.message))) break; // waiting seconds won't help
+    }
+  }
+  return null;
+}
+
+/** Completed recently but its Signed email not sent yet (or its signed copy not archived). */
+export function owedSignedFollowUp(overrides: unknown, state: PearSignContractState): boolean {
+  if (String(state.status || '').toLowerCase() !== 'completed' || !state.envelopeId) return false;
+  const completedMs = Date.parse(String(state.completedAt || ''));
+  if (!completedMs || Date.now() - completedMs > SIGNED_RETRY_WINDOW_MS) return false;
+  const sent = (overrides as Record<string, unknown> | null | undefined)?.[STATUS_NOTICE_KEY];
+  return sent !== `${state.envelopeId}:signed` || !state.signedPdfUrl;
 }
 
 async function readTeamThreads(contractId: number, envelopeId: string): Promise<ContractUpdateThreads> {
@@ -899,6 +933,9 @@ async function sendSignedNoticeOnce(
   if (!envelopeId || !state.crmCcMail || !(state.ccEmails ?? []).length) return;
   if (String(state.status || '').toLowerCase() !== 'completed') return;
   if (signedNoticeClaimed.has(envelopeId)) return;
+  // Wait for the signed copy (retried on the next sync), unless it has been missing for hours.
+  const completedMs = Date.parse(String(state.completedAt || '')) || Date.now();
+  if (!signedPdf?.length && Date.now() - completedMs < SIGNED_PDF_GIVE_UP_MS) return;
   signedNoticeClaimed.add(envelopeId);
   const claimed = await prisma.$executeRaw`
     UPDATE "Contract"
@@ -978,9 +1015,15 @@ export async function syncPearSignContract(contractId: number, opts: { details?:
   if (boldSign && !opts.details) {
     const current = String(state.status || '').toLowerCase();
     const finished = ['completed', 'voided', 'declined', 'expired'].includes(current);
-    const needsArchive = current === 'completed' && !state.signedPdfUrl; // still to fetch the signed copy
-    const recent = Date.now() - (Date.parse(String(state.lastSyncedAt || '')) || 0) < BOLDSIGN_MIN_SYNC_MS;
-    if (!needsArchive && (finished || recent)) return { state, changed: false };
+    // Signed but still owed its signed copy / Signed email: no BoldSign status call is needed for that.
+    if (current === 'completed') {
+      if (owedSignedFollowUp(contract.contractPrefillOverrides, state)) {
+        opts = { ...opts, details: { envelopeId: state.envelopeId, title: state.title || '', status: 'completed', createdAt: '', completedAt: state.completedAt ?? null, recipients: [] } };
+      } else return { state, changed: false };
+    } else {
+      const recent = Date.now() - (Date.parse(String(state.lastSyncedAt || '')) || 0) < BOLDSIGN_MIN_SYNC_MS;
+      if (finished || recent) return { state, changed: false };
+    }
   }
   // Webhook events can arrive out of order: a status from a payload never moves the contract back
   // (a late "Viewed" after "Completed" is ignored).
@@ -999,7 +1042,7 @@ export async function syncPearSignContract(contractId: number, opts: { details?:
   const next: PearSignContractState = {
     ...state,
     status,
-    completedAt: env.completedAt ?? state.completedAt ?? null,
+    completedAt: env.completedAt ?? state.completedAt ?? (status === 'completed' ? new Date().toISOString() : null),
     customerSignedAt,
     lastSyncedAt: new Date().toISOString(),
   };
@@ -1009,7 +1052,8 @@ export async function syncPearSignContract(contractId: number, opts: { details?:
   let signedPdf: Buffer | null = null;
   if (status === 'completed' && !state.signedPdfUrl) {
     try {
-      const pdf = await downloadPearSignEnvelopePdf(state.envelopeId, 'latest');
+      const pdf = await signedPdfWithRetry(state.envelopeId);
+      if (!pdf) throw new Error('signed PDF not ready yet — will retry');
       signedPdf = pdf;
       const up = await uploadService.uploadBuffer(pdf, 'ih-crm/signed-contracts', `pearsign_${state.envelopeId}.pdf`, {
         forcePdf: true,
@@ -1061,8 +1105,9 @@ export async function syncPearSignContract(contractId: number, opts: { details?:
       console.error('[PearSign] signed-copy CC email failed', err),
     );
     // "Contract Update: <Merchant> - <Status>" to the Cashable team (once per envelope + status).
-    if (status !== String(state.status || '').toLowerCase()) {
-      await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName, next, state.status, env.recipients).catch((err) =>
+    // A Signed email held back for its PDF is retried on later syncs.
+    if (status !== String(state.status || '').toLowerCase() || owedSignedFollowUp(contract.contractPrefillOverrides, next)) {
+      await sendStatusNoticeOnce(contractId, contract.applicationId, contract.funderName, next, state.status, env.recipients?.length ? env.recipients : undefined).catch((err) =>
         console.error('[PearSign] status update email failed', err),
       );
     }
@@ -1235,12 +1280,27 @@ export async function listActivePearSignContractIds(): Promise<number[]> {
   const rows = await prisma.$queryRaw<Array<{ id: number }>>`
     SELECT id FROM "Contract"
     WHERE "contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'envelopeId' IS NOT NULL
-      AND lower(coalesce("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'status', 'sent'))
+      AND (
+        lower(coalesce("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'status', 'sent'))
           IN ('sent', 'in_signing', 'viewed', 'signed', 'partially_signed')
+        -- signed in the last 2 days but its signed copy / Signed email is still owed (retried)
+        OR (
+          lower("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'status') = 'completed'
+          AND coalesce(("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'completedAt')::timestamptz, 'epoch'::timestamptz)
+              > now() - interval '2 days'
+          AND (
+            coalesce("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'signedPdfUrl', '') = ''
+            OR coalesce("contractPrefillOverrides" ->> ${STATUS_NOTICE_KEY}, '')
+               <> (("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'envelopeId') || ':signed')
+          )
+        )
+      )
       AND NOT (
         ("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'envelopeId') LIKE 'bs-%'
         AND coalesce(("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'lastSyncedAt')::timestamptz, 'epoch'::timestamptz)
-            > now() - make_interval(mins => ${boldSignMinutes}::int)
+            > now() - make_interval(mins => CASE
+                WHEN lower("contractPrefillOverrides" -> ${PEARSIGN_STATE_KEY} ->> 'status') = 'completed' THEN 10
+                ELSE ${boldSignMinutes}::int END)
       )
   `;
   return rows.map((x) => Number(x.id));
