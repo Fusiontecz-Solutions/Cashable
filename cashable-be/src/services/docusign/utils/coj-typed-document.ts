@@ -80,7 +80,12 @@ export function cojFacts(values: Values) {
   let judgment = money(v(values, 'coj_sum_with_default'));
   if (!judgment && purchase) judgment = money(String(parseFloat(purchase.replace(/[^0-9.]/g, '')) + 7500));
   const date = parseDate(v(values, 'agreement_date', 'signature_date'));
+  const bold = cojBoldGroups(values.coj_bold);
+  /** A CRM value in the text: bold unless its group was switched off. */
+  const V = (group: CojBoldGroup, text: string): Run => ({ text, bold: bold.has(group) });
   return {
+    V,
+    isBold: (group: CojBoldGroup) => bold.has(group),
     extraNames,
     plaintiff: upper(v(values, 'funder_name')) || 'CASHABLE FUND LLC',
     merchant,
@@ -97,6 +102,29 @@ export function cojFacts(values: Values) {
     month: date ? MONTHS[date.getMonth()] : '',
     year: date ? String(date.getFullYear()) : '',
   };
+}
+
+// ---------- bold ----------
+
+/** Value groups whose bold print can be switched off per COJ (Review → "Bold text"). */
+export const COJ_BOLD_GROUPS = [
+  ['plaintiff', 'Plaintiff'],
+  ['merchant', 'Merchant name(s)'],
+  ['owner', 'Owner name'],
+  ['address', 'Addresses'],
+  ['place', 'State / County'],
+  ['amount', 'Amounts'],
+  ['date', 'Dates'],
+] as const;
+export type CojBoldGroup = (typeof COJ_BOLD_GROUPS)[number][0];
+/** Every group bold (the filed-court look), the default. */
+export const COJ_BOLD_ALL = COJ_BOLD_GROUPS.map(([g]) => g).join(',');
+
+/** "merchant,owner" → those groups bold; empty/unset → all bold; "none" → none. */
+export function cojBoldGroups(raw: unknown): Set<string> {
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (!s) return new Set(COJ_BOLD_GROUPS.map(([g]) => g));
+  return new Set(s.split(/[\s,;]+/).filter((g) => COJ_BOLD_GROUPS.some(([k]) => k === g)));
 }
 
 // ---------- tiny typesetter ----------
@@ -281,8 +309,11 @@ function caption(
     venueState: string;
     venueCounty: string;
     ss?: boolean;
+    /** Which value groups print bold (Review → "Bold text"); all when unset. */
+    isBold?: (group: CojBoldGroup) => boolean;
   },
 ) {
+  const bold = (g: CojBoldGroup) => o.isBold?.(g) ?? true;
   t.y = 70;
   for (const line of o.court) {
     t.paragraph([B(line)], { align: 'center', leading: 14 });
@@ -296,7 +327,7 @@ function caption(
   t.draw('CONFESSION OF JUDGMENT', 336, top + 60, { bold: true });
   // Left column.
   t.y = top + 22;
-  t.paragraph([B(o.plaintiff)], { left: LEFT, right: boxRight - 6, align: 'left', leading: 14 });
+  t.paragraph([{ text: o.plaintiff, bold: bold('plaintiff') }], { left: LEFT, right: boxRight - 6, align: 'left', leading: 14 });
   t.y += 6;
   t.draw('Plaintiff,', 166, t.y);
   t.y += 26;
@@ -310,7 +341,7 @@ function caption(
   const venue = (label: string, value: string, extra = '') => {
     t.draw(label, LEFT - 4, t.y);
     const x = LEFT - 4 + t.width(label, false, t.body) + 4;
-    t.draw(value, x, t.y, { bold: true });
+    t.draw(value, x, t.y, { bold: bold('place') });
     t.draw(`)${extra}`, 272, t.y);
     t.y += 22;
   };
@@ -356,62 +387,63 @@ async function iowa(values: Values, scale = 1) {
   const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true), scale });
   await t.init();
   caption(t, {
+    isBold: f.isBold,
     court: ['IOWA DISTRICT COURT', 'COUNTY OF BLACK HAWK'],
     plaintiff: f.plaintiff,
-    defendants: [B(f.merchant), R(' and '), B(f.owner)],
+    defendants: [f.V('merchant', f.merchant), R(' and '), f.V('owner', f.owner)],
     rightTitle: 'Civil Case No.',
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
   t.paragraph([R(`${f.owner}, being duly sworn, deposes and says:`)], { align: 'left', gapAfter: 4 });
-  numbered(t, 1, [R('I am a principal, owner, and an officer of '), B(f.merchant), R(' (“Merchant Defendant”), and as such, I have the authority to act on behalf of Merchant Defendant.')]);
-  numbered(t, 2, [R('I reside at '), B(f.ownerAddress), R(', in the County of '), B(f.ownerCounty), R('.')]);
+  numbered(t, 1, [R('I am a principal, owner, and an officer of '), f.V('merchant', f.merchant), R(' (“Merchant Defendant”), and as such, I have the authority to act on behalf of Merchant Defendant.')]);
+  numbered(t, 2, [R('I reside at '), f.V('address', f.ownerAddress), R(', in the County of '), f.V('place', f.ownerCounty), R('.')]);
   numbered(t, 3, [R('I, individually, and on behalf of Merchant Defendant consent to the jurisdiction of this Court.')]);
   numbered(t, 4, [
     R('Merchant Defendant hereby confesses judgment and authorizes entry of judgment in favor of Plaintiff and against Defendants in the District Court in and for Black Hawk County in the State of Iowa, in the sum of '),
-    B(f.judgment),
+    f.V('amount', f.judgment),
     R(' which consists of the purchased amount of '),
-    B(f.purchase),
+    f.V('amount', f.purchase),
     R(' plus a $7,500.00 default fee as stipulated in the Merchant Cash Advance Agreement.'),
   ]);
   numbered(t, 5, [
     R('In addition, I hereby confess judgment, individually and personally, jointly and severally, and authorize entry of judgment in favor of Plaintiff, against myself and against me personally in the District Court in and for Black Hawk County in the State of Iowa in the sum of '),
-    B(f.judgment),
+    f.V('amount', f.judgment),
     R(' which consists of the purchased amount of '),
-    B(f.purchase),
+    f.V('amount', f.purchase),
     R(' plus a $7,500.00 default fee as stipulated in the Merchant Cash Advance Agreement. Judgment in the amount of '),
-    B(f.judgment),
+    f.V('amount', f.judgment),
     R(' may be entered as of the date of execution and evidenced by filing with the State of Iowa.'),
   ]);
   numbered(t, 6, [R('Furthermore, I, individually, and on behalf of Merchant Defendant acknowledge and provide informed consent for the entry of judgment in favor of Plaintiff and against Defendants. I understand there are material risks involved when confessing judgment and that I am waiving certain legal rights and remedies available to myself and to Merchant Defendant. Knowing the risks, I still confess judgment on behalf of myself, and on behalf of Merchant Defendant.')]);
   numbered(t, 7, [
     R('This confession of judgment is for a debt due to Plaintiff arising from Defendants’ failure to pay to Plaintiff, Merchant Defendant’s accounts receivable, which were purchased by Plaintiff pursuant to the Merchant Cash Advance Agreement, and for Defendants’ breach of the Merchant Cash Advance Agreement, plus agreed-upon interest, costs and disbursements, as agreed-upon by Merchant Defendant and myself, under the secured Merchant Cash Advance Agreement, dated '),
-    B(f.agreementDate),
+    f.V('date', f.agreementDate),
     R('.'),
   ]);
   numbered(t, 8, [R('Merchant Defendant and I hereby agree that the execution and delivery of this Affidavit of Confession of Judgment and any entry of judgment thereon shall be without prejudice to any and all rights of Plaintiff, who reserves all of its rights and remedies against Defendants.')]);
   numbered(t, 9, [R('If for any reason entry of judgment in the above-specified amount or execution on the same is outside the jurisdiction of this Court, Merchant Defendant and I hereby consent to the personal jurisdiction, entry of judgment, and execution thereon in any State or Federal Court of the United States of America.')]);
   numbered(t, 10, [
     R('I have been authorized by Merchant Defendant to sign this Affidavit of Confession of Judgment on this '),
-    B(f.dayOrdinal),
+    f.V('date', f.dayOrdinal),
     R(' day of '),
-    B(f.month),
+    f.V('date', f.month),
     R(`, ${f.year}. I certify under penalty of perjury and pursuant to the laws of the State of Iowa that the preceding is true and correct.`),
   ]);
   t.signatureLine('By:', LEFT - 4, 230);
-  t.paragraph([B(f.owner), R(', individually, and on behalf of')], { left: LEFT - 4, align: 'left', leading: 14 });
-  t.paragraph([B(f.merchant)], { left: LEFT - 4, align: 'left', leading: 14 });
+  t.paragraph([f.V('owner', f.owner), R(', individually, and on behalf of')], { left: LEFT - 4, align: 'left', leading: 14 });
+  t.paragraph([f.V('merchant', f.merchant)], { left: LEFT - 4, align: 'left', leading: 14 });
   return t;
 }
 
-function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null) {
+function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, ownerBold = true) {
   t.ensure(120);
   t.y += 34;
   t.line(240, RIGHT, t.y);
   t.y += 12;
   t.draw('BY (SIGNATURE)', 240, t.y, { size: 9 });
   t.y += 24;
-  t.draw(owner, 240, t.y, { bold: true });
+  t.draw(owner, 240, t.y, { bold: ownerBold });
   t.line(240, RIGHT, t.y + 3);
   t.y += 12;
   t.draw('NAME OF DEPONENT', 240, t.y, { size: 9 });
@@ -424,22 +456,23 @@ async function nyBusiness(values: Values, scale = 1) {
   const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
+    isBold: f.isBold,
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty}`],
     plaintiff: f.plaintiff,
-    defendants: [B(f.merchant)],
+    defendants: [f.V('merchant', f.merchant)],
     rightTitle: 'Index No.',
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
-  indented(t, [B(f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner, Officer or an authorized representative of '), B(f.merchant), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of the Defendant herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner, Officer or an authorized representative of '), f.V('merchant', f.merchant), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of the Defendant herein.')]);
   indented(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein and authorizes entry of judgment against them as the Judgment Debtor/Defendant in the sum of (a) '),
-    B(f.purchase),
+    f.V('amount', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 9% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and an additional sum for (d) legal fees to Plaintiff calculated at 33% of the total of all of the aforesaid sums. Such amount shall be set forth in an affidavit under oath by an authorized representative of Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [B(f.merchant), R(' is located at '), B(f.businessAddress), R('. Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), B(f.businessCounty), R('.')]);
-  indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), B(f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Judgment Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
-  nySignature(t, f.owner, [R('on behalf of '), B(f.merchant), R('.')]);
+  indented(t, [f.V('merchant', f.merchant), R(' is located at '), f.V('address', f.businessAddress), R('. Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), f.V('place', f.businessCounty), R('.')]);
+  indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), f.V('date', f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Judgment Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
+  nySignature(t, f.owner, [R('on behalf of '), f.V('merchant', f.merchant), R('.')], f.isBold('owner'));
   notaryBlock(t, 'JURAT', [R('Sworn to before me this ________ day of ____________________, ________.')]);
   return t;
 }
@@ -449,33 +482,34 @@ async function nyGeneral(values: Values, scale = 1) {
   const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
+    isBold: f.isBold,
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty}`],
     plaintiff: f.plaintiff,
-    defendants: [B(f.merchant), R(' and '), B(f.owner)],
+    defendants: [f.V('merchant', f.merchant), R(' and '), f.V('owner', f.owner)],
     rightTitle: 'Index No.',
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
     ss: true,
   });
-  indented(t, [B(f.owner), R(', being duly sworn, hereby deposes and says: that Deponent is the Owner of Defendant '), B(f.merchant), R(' and that he/she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself/herself and on behalf of all of the Defendants herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says: that Deponent is the Owner of Defendant '), f.V('merchant', f.merchant), R(' and that he/she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself/herself and on behalf of all of the Defendants herein.')]);
   indented(t, [
     R('The Defendants (referred to hereinafter jointly and severally as the “Judgment Debtors/Defendants”) all jointly and severally hereby Confess Judgment herein, and authorize entry of judgment against them as the Judgment Debtors/Defendants in the sum of (a) '),
-    B(f.purchase),
+    f.V('amount', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 16% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and an additional sum for (d) legal fees to Plaintiff calculated at 33% of the total of all of the aforesaid sums. Such amount shall be set forth in an affidavit under oath by Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [B(f.owner), R(' resides at '), B(f.ownerAddress), R(' and '), B(f.merchant), R(' is/are located at '), B(f.businessAddress), R('.')]);
-  indented(t, [R('Judgment Debtors/Defendants authorize entry of Judgment and confess Judgment against each and every one of them in the Supreme Court of the State of New York, County of '), B(f.businessCounty), R('.')]);
+  indented(t, [f.V('owner', f.owner), R(' resides at '), f.V('address', f.ownerAddress), R(' and '), f.V('merchant', f.merchant), R(' is/are located at '), f.V('address', f.businessAddress), R('.')]);
+  indented(t, [R('Judgment Debtors/Defendants authorize entry of Judgment and confess Judgment against each and every one of them in the Supreme Court of the State of New York, County of '), f.V('place', f.businessCounty), R('.')]);
   indented(t, [
     R('This confession of judgment is for a debt due to Plaintiff arising from '),
-    B(f.merchant),
+    f.V('merchant', f.merchant),
     R('’s accounts-receivable, which were purchased by Plaintiff pursuant to the Merchant Agreement, dated '),
-    B(f.agreementDate),
+    f.V('date', f.agreementDate),
     R(', executed by the parties (hereinafter, the “Merchant Agreement”) and Debtors/Defendants’ breach thereof. This Affidavit is made in connection with the Merchant Agreement and is solely for the purchase of commercial or business commodities. This Affidavit may be filed ex parte by Plaintiff, without further notice. Agreed-upon interest, reasonable attorneys’ fees, costs and disbursements are to be included as agreed-upon by Debtors/Defendants, under the secured Merchant Agreement, of which supporting documents include a Personal Guarantee of Performance.'),
   ]);
-  nySignature(t, f.owner, [R('individually, and on behalf of '), B(f.merchant), R('.')]);
+  nySignature(t, f.owner, [R('individually, and on behalf of '), f.V('merchant', f.merchant), R('.')], f.isBold('owner'));
   notaryBlock(t, 'NOTARY ACKNOWLEDGMENT', [
     R('On the ________ day of ____________________, in the year ________, before me, the undersigned Notary Public in and for said state, personally appeared '),
-    B(f.owner),
+    f.V('owner', f.owner),
     R(', personally known to me or proved to me on the basis of satisfactory evidence to be the individual whose name is subscribed to the within instrument and acknowledged to me that he/she executed the same in his/her capacity, and that by his/her signature on the instrument, the individual, or the person upon behalf of which the individual acted, executed the instrument.'),
   ]);
   return t;
@@ -486,23 +520,24 @@ async function nyMerchant(values: Values, scale = 1) {
   const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
   await t.init();
   caption(t, {
+    isBold: f.isBold,
     court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.ownerCounty}`],
     plaintiff: f.plaintiff,
-    defendants: [B([f.owner, ...f.extraNames].join(', '))],
+    defendants: [f.V('owner', [f.owner, ...f.extraNames].join(', '))],
     rightTitle: 'Index No.',
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
-  indented(t, [B(f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner or an Officer of '), B(f.merchant), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself or herself and on behalf of all of the Defendants herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner or an Officer of '), f.V('merchant', f.merchant), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself or herself and on behalf of all of the Defendants herein.')]);
   indented(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein, and authorizes entry of judgment against him or her as the Judgment Debtor/Defendant in the sum of (a) '),
-    B(f.purchase),
+    f.V('amount', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 9% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and an additional sum for (d) legal fees to Plaintiff calculated at 33% of the total of all of the aforesaid sums. Such amount shall be set forth in an affidavit under oath by an authorized representative of Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [B(f.owner), R(' resides at '), B(f.ownerAddress), R('.')]);
-  indented(t, [R('Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), B(f.ownerCounty), R('.')]);
-  indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), B(f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
-  nySignature(t, f.owner, null);
+  indented(t, [f.V('owner', f.owner), R(' resides at '), f.V('address', f.ownerAddress), R('.')]);
+  indented(t, [R('Judgment Debtor/Defendant authorizes entry of Judgment and confesses Judgment in the Supreme Court of the State of New York, County of '), f.V('place', f.ownerCounty), R('.')]);
+  indented(t, [R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '), f.V('date', f.agreementDate), R(' (hereinafter, the “Merchant Agreement”) and Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement, which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.')]);
+  nySignature(t, f.owner, null, f.isBold('owner'));
   notaryBlock(t, 'JURAT', [R('Sworn to before me this ________ day of ____________________, ________.')]);
   return t;
 }
@@ -538,6 +573,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_bold', 'Bold text'],
   ],
   coj_ny_business: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -550,6 +586,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_bold', 'Bold text'],
   ],
   coj_ny_general: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -563,6 +600,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_bold', 'Bold text'],
   ],
   coj_ny_merchant: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -574,6 +612,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_bold', 'Bold text'],
   ],
 };
 
@@ -597,6 +636,7 @@ export function cojInputs(kind: CojKind, values: Values): Array<{ variable: stri
     if (variable === 'owner_state') value = f.ownerState;
     if (variable === 'coj_sum_with_default') value = f.judgment.replace(/^\$/, '');
     if (variable === 'purchase_amount') value = f.purchase.replace(/^\$/, '');
+    if (variable === 'coj_bold') value = [...cojBoldGroups(values.coj_bold)].join(',') || 'none';
     return { variable, label, value };
   });
 }

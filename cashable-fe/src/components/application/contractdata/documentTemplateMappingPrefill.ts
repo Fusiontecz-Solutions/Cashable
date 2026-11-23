@@ -1552,6 +1552,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "coj_sum_with_default", label: "Judgment total (purchased + $7,500)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_bold", label: "Bold text" },
     ],
     coj_ny_general: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1566,6 +1567,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "purchase_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_bold", label: "Bold text" },
     ],
     coj_ny_business: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1578,6 +1580,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "purchase_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_bold", label: "Bold text" },
     ],
     coj_ny_merchant: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1589,6 +1592,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "purchase_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
+        { id: "coj_bold", label: "Bold text" },
     ],
     deposit_control: [
         { id: "agreement_date", label: "Agreement / FRPA date" },

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isBoldSignActive, isSigningEditorAvailable, signingProviderName } from "@/lib/signingProvider";
+import { COJ_BOLD_GROUPS, cojBoldSet, isCojBoldKey, toggleCojBold } from "@/lib/cojBold";
 import { toast } from "react-toastify";
 import { AlertTriangle, Check, CheckCircle2, Download, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
@@ -729,7 +730,35 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 </span>
                                                             ) : null}
                                                         </span>
-                                                        {isPearSignTickBoxKey(f.key) ? (
+                                                        {isCojBoldKey(f.key) ? (
+                                                            <span className="flex flex-wrap items-center gap-1 py-0.5" role="group" aria-label="Values printed in bold">
+                                                                {COJ_BOLD_GROUPS.map(([g, label]) => {
+                                                                    const on = cojBoldSet(value).has(g);
+                                                                    return (
+                                                                        <button
+                                                                            key={g}
+                                                                            type="button"
+                                                                            aria-pressed={on}
+                                                                            disabled={ctl.isActive}
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                setActiveFromPdf(false);
+                                                                                setActiveKey(f.key);
+                                                                                change(f.key, toggleCojBold(value, g));
+                                                                            }}
+                                                                            className={`rounded-md border px-2 py-1 text-[11px] disabled:opacity-50 ${
+                                                                                on
+                                                                                    ? "border-[var(--brand)] bg-[var(--brand)]/10 font-bold text-slate-900 dark:text-slate-100"
+                                                                                    : "border-slate-300 bg-white font-normal text-slate-500 dark:border-slate-700 dark:bg-slate-900"
+                                                                            }`}
+                                                                            title={on ? `${label}: bold — click for regular` : `${label}: regular — click for bold`}
+                                                                        >
+                                                                            {label}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </span>
+                                                        ) : isPearSignTickBoxKey(f.key) ? (
                                                             <span className="flex h-8 items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
                                                                 <input
                                                                     type="checkbox"

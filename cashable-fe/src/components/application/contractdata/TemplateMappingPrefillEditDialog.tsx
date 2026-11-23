@@ -44,6 +44,7 @@ import {
     usesCoordinateLayoutTemplate,
 } from "./documentTemplateMappingPrefill";
 import { stripAchAuthorizationKeysFromRecord } from "./documentPrefillScope";
+import { COJ_BOLD_GROUPS, cojBoldSet, isCojBoldKey, toggleCojBold } from "@/lib/cojBold";
 
 export type TemplateMappingPrefillEditRow = {
     id: string;
@@ -392,7 +393,31 @@ export function TemplateMappingPrefillEditDialog({
                                         <Label htmlFor={`tmpl-field-${r.id}`} className="text-xs font-medium">
                                             {r.label}
                                         </Label>
-                                        {isUsCurrencyEditField(r.id, r.label) ? (
+                                        {isCojBoldKey(r.id) ? (
+                                            <div className="flex flex-wrap gap-1" role="group" aria-label="Values printed in bold">
+                                                {COJ_BOLD_GROUPS.map(([g, label]) => {
+                                                    const on = cojBoldSet(fieldValues[r.id]).has(g);
+                                                    return (
+                                                        <button
+                                                            key={g}
+                                                            type="button"
+                                                            aria-pressed={on}
+                                                            onClick={() =>
+                                                                setFieldValues((prev) => ({ ...prev, [r.id]: toggleCojBold(prev[r.id], g) }))
+                                                            }
+                                                            className={`rounded-md border px-2 py-1 text-xs ${
+                                                                on
+                                                                    ? "border-[var(--brand)] bg-[var(--brand)]/10 font-bold text-slate-900 dark:text-slate-100"
+                                                                    : "border-slate-300 bg-white font-normal text-slate-500 dark:border-slate-700 dark:bg-slate-900"
+                                                            }`}
+                                                            title={on ? `${label}: bold — click for regular` : `${label}: regular — click for bold`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : isUsCurrencyEditField(r.id, r.label) ? (
                                             <UsCurrencyInput
                                                 id={`tmpl-field-${r.id}`}
                                                 value={fieldValues[r.id] ?? ""}
