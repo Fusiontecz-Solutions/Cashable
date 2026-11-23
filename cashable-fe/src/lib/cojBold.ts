@@ -1,22 +1,40 @@
 /** Typed COJ "Bold text": which CRM value groups print bold (same groups as the server). */
 export const COJ_BOLD_GROUPS = [
     ["plaintiff", "Plaintiff"],
-    ["merchant", "Merchant name(s)"],
+    ["merchant", "Business name"],
+    ["additional", "Additional names"],
     ["owner", "Owner name"],
-    ["address", "Addresses"],
-    ["place", "State / County"],
-    ["amount", "Amounts"],
+    ["owner_address", "Owner address"],
+    ["business_address", "Business address"],
+    ["state", "State"],
+    ["county", "County"],
+    ["purchase", "Purchased amount"],
+    ["judgment", "Judgment total"],
     ["date", "Dates"],
 ] as const;
+
+/** Groups of the first version of this setting, still accepted in saved values. */
+const LEGACY: Record<string, string[]> = {
+    address: ["owner_address", "business_address"],
+    place: ["state", "county"],
+    amount: ["purchase", "judgment"],
+};
+const NEW_ONLY = new Set(["additional", "owner_address", "business_address", "state", "county", "purchase", "judgment"]);
 
 /** Review key of a COJ's bold setting, e.g. d3__coj1__coj_bold. */
 export const isCojBoldKey = (key: string): boolean => /__coj\d+__coj_bold$/.test(key) || key === "coj_bold";
 
-/** "merchant,amount" → those groups; empty → all (the default look); "none" → none. */
+/** "merchant,judgment" → those groups; empty → all (the default look); "none" → none. */
 export function cojBoldSet(raw: unknown): Set<string> {
     const s = String(raw ?? "").trim().toLowerCase();
     if (!s) return new Set(COJ_BOLD_GROUPS.map(([g]) => g));
-    return new Set(s.split(/[\s,;]+/).filter((g) => COJ_BOLD_GROUPS.some(([k]) => k === g)));
+    const ids = s.split(/[\s,;]+/).filter(Boolean);
+    // Saved by the first version (7 groups): "merchant" covered the additional names too.
+    const legacy = ids.some((g) => g in LEGACY) || (ids.includes("merchant") && !ids.some((g) => NEW_ONLY.has(g)));
+    const out = new Set<string>();
+    for (const g of ids) for (const x of LEGACY[g] ?? [g]) if (COJ_BOLD_GROUPS.some(([k]) => k === x)) out.add(x);
+    if (legacy && out.has("merchant")) out.add("additional");
+    return out;
 }
 
 /** Toggle one group; returns the stored value ("none" when nothing is bold). */
