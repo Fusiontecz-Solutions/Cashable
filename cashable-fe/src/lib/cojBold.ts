@@ -44,3 +44,13 @@ export function toggleCojBold(raw: unknown, group: string): string {
     else next.add(group);
     return COJ_BOLD_GROUPS.map(([k]) => k).filter((k) => next.has(k)).join(",") || "none";
 }
+
+/** Typed COJ "Line spacing" (same choices as the server). */
+export const COJ_LINE_SPACINGS = [
+    ["normal", "Normal"],
+    ["more", "More (+15%)"],
+    ["wide", "Wide (+30%)"],
+    ["double", "Double"],
+] as const;
+
+export const isCojLineSpacingKey = (key: string): boolean => /__coj\d+__coj_line_spacing$/.test(key) || key === "coj_line_spacing";

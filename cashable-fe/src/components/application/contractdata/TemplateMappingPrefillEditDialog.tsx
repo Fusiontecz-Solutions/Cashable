@@ -44,7 +44,7 @@ import {
     usesCoordinateLayoutTemplate,
 } from "./documentTemplateMappingPrefill";
 import { stripAchAuthorizationKeysFromRecord } from "./documentPrefillScope";
-import { COJ_BOLD_GROUPS, cojBoldSet, isCojBoldKey, toggleCojBold } from "@/lib/cojBold";
+import { COJ_BOLD_GROUPS, COJ_LINE_SPACINGS, cojBoldSet, isCojBoldKey, isCojLineSpacingKey, toggleCojBold } from "@/lib/cojBold";
 
 export type TemplateMappingPrefillEditRow = {
     id: string;
@@ -456,7 +456,19 @@ export function TemplateMappingPrefillEditDialog({
                                         <Label htmlFor={`tmpl-field-${r.id}`} className="text-xs font-medium">
                                             {r.label}
                                         </Label>
-                                        {isCojBoldKey(r.id) ? (
+                                        {isCojLineSpacingKey(r.id) ? (
+                                            <select
+                                                value={fieldValues[r.id] || "normal"}
+                                                onChange={(e) => setFieldValues((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                                className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                                            >
+                                                {COJ_LINE_SPACINGS.map(([k, label]) => (
+                                                    <option key={k} value={k}>
+                                                        {label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : isCojBoldKey(r.id) ? (
                                             <div className="flex flex-wrap gap-1" role="group" aria-label="Values printed in bold">
                                                 {COJ_BOLD_GROUPS.map(([g, label]) => {
                                                     const on = cojBoldSet(fieldValues[r.id]).has(g);

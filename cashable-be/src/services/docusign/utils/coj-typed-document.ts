@@ -27,10 +27,27 @@ export function typedCojKind(layout: { key?: string; pdf?: { fileName?: string }
 
 type Values = Record<string, string | undefined>;
 
+const NBSP = '\u00A0';
+
+/**
+ * A CRM value as typed, keeping extra spaces: "REP,   PEOPLEFIRST" prints with the wider gap.
+ * Line breaks become spaces; one leading/trailing space is dropped; every space beyond the first
+ * in a run (and any further leading ones) becomes a non-breaking space glued to the next word,
+ * so justification never squeezes or stretches it away.
+ */
+export function cojKeepSpaces(raw: unknown): string {
+  return String(raw ?? '')
+    .replace(/[\t\r\n]+/g, ' ')
+    .replace(/^ /, '')
+    .replace(/ +$/, '')
+    .replace(/^ +/, (m) => NBSP.repeat(m.length))
+    .replace(/ {2,}/g, (m) => ' ' + NBSP.repeat(m.length - 1));
+}
+
 const v = (values: Values, ...keys: string[]) => {
   for (const k of keys) {
-    const s = String(values[k] ?? '').replace(/\s+/g, ' ').trim();
-    if (s) return s;
+    const s = cojKeepSpaces(values[k]);
+    if (s.trim()) return s;
   }
   return '';
 };
@@ -70,7 +87,8 @@ export function cojFacts(values: Values) {
   // Additional names (mapping field, separated by ";" or new lines) follow the merchant everywhere.
   const extraNames = String(values.coj_additional_names ?? '')
     .split(/[;\r\n]+/)
-    .map((s) => upper(s.replace(/\s+/g, ' ').trim()))
+    .map((s) => upper(cojKeepSpaces(s)))
+    .filter((s) => s.trim())
     .filter(Boolean);
   const merchant = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames]
     .filter(Boolean)
@@ -153,6 +171,21 @@ export function cojBoldGroups(raw: unknown): Set<string> {
   return out;
 }
 
+// ---------- line spacing ----------
+
+/** Line spacing choices for the COJ paragraphs (Review / mapping → "Line spacing"). */
+export const COJ_LINE_SPACINGS = [
+  ['normal', 'Normal', 1],
+  ['more', 'More (+15%)', 1.15],
+  ['wide', 'Wide (+30%)', 1.3],
+  ['double', 'Double', 1.6],
+] as const;
+
+export function cojLineSpacingFactor(raw: unknown): number {
+  const s = String(raw ?? '').trim().toLowerCase();
+  return COJ_LINE_SPACINGS.find(([k]) => k === s)?.[2] ?? 1;
+}
+
 // ---------- tiny typesetter ----------
 
 type Run = { text: string; bold?: boolean };
@@ -188,10 +221,10 @@ class Typesetter {
   body = BODY;
   leading = LEADING;
 
-  constructor(readonly opts: { footer?: (t: Typesetter, pageNo: number) => void; scale?: number }) {
+  constructor(readonly opts: { footer?: (t: Typesetter, pageNo: number) => void; scale?: number; spacing?: number }) {
     const k = opts.scale ?? 1;
     this.body = Math.round(BODY * k * 4) / 4;
-    this.leading = Math.round(LEADING * k * 4) / 4;
+    this.leading = Math.round(LEADING * k * (opts.spacing ?? 1) * 4) / 4;
   }
 
   async init() {
@@ -253,10 +286,12 @@ class Typesetter {
       let text = encodable(run.text);
       // "…ASSOCIATES, P.A." + "." → one period.
       if (ri > 0 && /\.\s*$/.test(runs[ri - 1].text) && text.startsWith('.')) text = text.slice(1);
-      const parts = text.split(/(\s+)/);
+      // Only ordinary spaces separate words; a non-breaking space (an extra typed space) stays
+      // with its word so the gap prints as typed.
+      const parts = text.split(/([ \t\r\n]+)/);
       for (const part of parts) {
         if (!part) continue;
-        if (/^\s+$/.test(part)) {
+        if (/^[ \t\r\n]+$/.test(part)) {
           pendingSpace = true;
           continue;
         }
@@ -411,7 +446,7 @@ function notaryBlock(t: Typesetter, title: string, body: Run[]) {
 
 async function iowa(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true), scale });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -480,7 +515,7 @@ function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, owner
 
 async function nyBusiness(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -506,7 +541,7 @@ async function nyBusiness(values: Values, scale = 1) {
 
 async function nyGeneral(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -544,7 +579,7 @@ async function nyGeneral(values: Values, scale = 1) {
 
 async function nyMerchant(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -601,6 +636,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
     ['coj_bold', 'Bold text'],
+    ['coj_line_spacing', 'Line spacing'],
   ],
   coj_ny_business: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -614,6 +650,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
     ['coj_bold', 'Bold text'],
+    ['coj_line_spacing', 'Line spacing'],
   ],
   coj_ny_general: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -628,6 +665,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
     ['coj_bold', 'Bold text'],
+    ['coj_line_spacing', 'Line spacing'],
   ],
   coj_ny_merchant: [
     ['owner1_guarantor_name', 'Owner name'],
@@ -640,6 +678,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
     ['coj_bold', 'Bold text'],
+    ['coj_line_spacing', 'Line spacing'],
   ],
 };
 
@@ -663,6 +702,7 @@ export function cojInputs(kind: CojKind, values: Values): Array<{ variable: stri
     if (variable === 'owner_state') value = f.ownerState;
     if (variable === 'coj_sum_with_default') value = f.judgment.replace(/^\$/, '');
     if (variable === 'purchase_amount') value = f.purchase.replace(/^\$/, '');
+    if (variable === 'coj_line_spacing') value = COJ_LINE_SPACINGS.find(([k]) => k === String(values.coj_line_spacing ?? '').trim().toLowerCase())?.[0] ?? 'normal';
     if (variable === 'coj_bold') value = [...cojBoldGroups(values.coj_bold)].join(',') || 'none';
     return { variable, label, value };
   });

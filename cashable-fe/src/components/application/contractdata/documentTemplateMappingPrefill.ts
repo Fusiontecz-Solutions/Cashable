@@ -1553,6 +1553,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
+        { id: "coj_line_spacing", label: "Line spacing" },
     ],
     coj_ny_general: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1568,6 +1569,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
+        { id: "coj_line_spacing", label: "Line spacing" },
     ],
     coj_ny_business: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1581,6 +1583,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
+        { id: "coj_line_spacing", label: "Line spacing" },
     ],
     coj_ny_merchant: [
         { id: "funder_name", label: "Plaintiff (funding entity)" },
@@ -1593,6 +1596,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
+        { id: "coj_line_spacing", label: "Line spacing" },
     ],
     deposit_control: [
         { id: "agreement_date", label: "Agreement / FRPA date" },

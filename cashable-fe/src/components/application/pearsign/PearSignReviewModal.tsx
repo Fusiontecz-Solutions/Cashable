@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isBoldSignActive, isSigningEditorAvailable, signingProviderName } from "@/lib/signingProvider";
-import { COJ_BOLD_GROUPS, cojBoldSet, isCojBoldKey, toggleCojBold } from "@/lib/cojBold";
+import { COJ_BOLD_GROUPS, COJ_LINE_SPACINGS, cojBoldSet, isCojBoldKey, isCojLineSpacingKey, toggleCojBold } from "@/lib/cojBold";
 import { toast } from "react-toastify";
 import { AlertTriangle, Check, CheckCircle2, Download, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
@@ -730,7 +730,24 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 </span>
                                                             ) : null}
                                                         </span>
-                                                        {isCojBoldKey(f.key) ? (
+                                                        {isCojLineSpacingKey(f.key) ? (
+                                                            <select
+                                                                value={String(value || "normal")}
+                                                                disabled={ctl.isActive}
+                                                                onFocus={() => {
+                                                                    setActiveFromPdf(false);
+                                                                    setActiveKey(f.key);
+                                                                }}
+                                                                onChange={(e) => change(f.key, e.target.value)}
+                                                                className="h-8 w-full rounded-md border border-slate-300 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-900"
+                                                            >
+                                                                {COJ_LINE_SPACINGS.map(([k, label]) => (
+                                                                    <option key={k} value={k}>
+                                                                        {label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        ) : isCojBoldKey(f.key) ? (
                                                             <span className="flex flex-wrap items-center gap-1 py-0.5" role="group" aria-label="Values printed in bold">
                                                                 {COJ_BOLD_GROUPS.map(([g, label]) => {
                                                                     const on = cojBoldSet(value).has(g);
