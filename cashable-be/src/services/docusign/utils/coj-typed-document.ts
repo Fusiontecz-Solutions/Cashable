@@ -115,6 +115,11 @@ export function cojFacts(values: Values) {
     extraNames,
     plaintiff: upper(v(values, 'funder_name')) || 'CASHABLE FUND LLC',
     merchant,
+    /** "A, B AND C": business name then the additional names, for the signature block. */
+    merchantAnd: (() => {
+      const names = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames].filter((n) => n.trim());
+      return names.length > 1 ? `${names.slice(0, -1).join(', ')} AND ${names[names.length - 1]}` : names.join('');
+    })(),
     owner,
     ownerState: upper(fullUsStateName(v(values, 'owner_state'))),
     ownerCounty: upper(v(values, 'owner_county')),
@@ -494,7 +499,8 @@ async function iowa(values: Values, scale = 1) {
   ]);
   t.signatureLine('By:', LEFT - 4, 230);
   t.paragraph([f.V('owner', f.owner), R(', individually, and on behalf of')], { left: LEFT - 4, align: 'left', leading: 14 });
-  t.paragraph([...f.M()], { left: LEFT - 4, align: 'left', leading: 14 });
+  // Signature block: the merchant line is never bold, names joined with "AND".
+  t.paragraph([R(f.merchantAnd)], { left: LEFT - 4, align: 'left', leading: 14 });
   return t;
 }
 
