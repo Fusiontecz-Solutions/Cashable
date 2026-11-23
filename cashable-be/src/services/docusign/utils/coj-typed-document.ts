@@ -94,9 +94,20 @@ export function cojFacts(values: Values) {
     .filter(Boolean)
     .join(', ');
   const owner = upper(v(values, 'owner1_guarantor_name', 'guaranty_owner1_name', 'client_name'));
-  const purchase = money(v(values, 'purchase_amount'));
+  // COJs confess the REPAYMENT (RTR / purchase price, e.g. $34,100.00), never the funded amount
+  // ($22,000.00). The funded amount is only a last resort when no repayment is known.
+  const purchase =
+    money(v(values, 'coj_repayment_amount', 'purchase_price', 'total_repayment_amount', 'disclosure_total_payment')) ||
+    money(v(values, 'purchase_amount'));
+  const num = (s: string) => parseFloat(String(s || '').replace(/[^0-9.]/g, ''));
+  // Judgment = repayment + $7,500. A saved total that was derived from the funded amount
+  // (funded + 7,500, the old rule) is ignored; any other typed total is kept.
   let judgment = money(v(values, 'coj_sum_with_default'));
-  if (!judgment && purchase) judgment = money(String(parseFloat(purchase.replace(/[^0-9.]/g, '')) + 7500));
+  const funded = num(v(values, 'purchase_amount'));
+  if (judgment && Number.isFinite(funded) && Math.abs(num(judgment) - (funded + 7500)) < 0.01 && Math.abs(num(purchase) - funded) >= 0.01) {
+    judgment = '';
+  }
+  if (!judgment && purchase) judgment = money(String(num(purchase) + 7500));
   const date = parseDate(v(values, 'agreement_date', 'signature_date'));
   const bold = cojBoldGroups(values.coj_bold);
   /** A CRM value in the text: bold unless its group was switched off. */
@@ -637,7 +648,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['owner_state', 'Sworn state'],
     ['owner_county', 'Sworn county'],
     ['guarantor_address_full', 'Owner address'],
-    ['purchase_amount', 'Purchased amount (judgment = this + $7,500.00)'],
+    ['coj_repayment_amount', 'Repayment amount / RTR (judgment = this + $7,500.00)'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
@@ -651,7 +662,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['owner_county', 'Sworn county'],
     ['business_county', 'Venue county'],
     ['business_address_full', 'Business address'],
-    ['purchase_amount', 'Purchased amount'],
+    ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
@@ -666,7 +677,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['business_county', 'Venue county'],
     ['guarantor_address_full', 'Owner address'],
     ['business_address_full', 'Business address'],
-    ['purchase_amount', 'Purchased amount'],
+    ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
@@ -679,7 +690,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['owner_state', 'Sworn state'],
     ['owner_county', 'Sworn / venue county'],
     ['guarantor_address_full', 'Owner address'],
-    ['purchase_amount', 'Purchased amount'],
+    ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
     ['coj_additional_names', 'Additional names (separate with ;)'],
@@ -707,7 +718,7 @@ export function cojInputs(kind: CojKind, values: Values): Array<{ variable: stri
     let value = v(values, variable, ...(COJ_INPUT_FALLBACKS[variable] ?? []));
     if (variable === 'owner_state') value = f.ownerState;
     if (variable === 'coj_sum_with_default') value = f.judgment.replace(/^\$/, '');
-    if (variable === 'purchase_amount') value = f.purchase.replace(/^\$/, '');
+    if (variable === 'coj_repayment_amount') value = f.purchase.replace(/^\$/, '');
     if (variable === 'coj_line_spacing') value = COJ_LINE_SPACINGS.find(([k]) => k === String(values.coj_line_spacing ?? '').trim().toLowerCase())?.[0] ?? 'normal';
     if (variable === 'coj_bold') value = [...cojBoldGroups(values.coj_bold)].join(',') || 'none';
     return { variable, label, value };

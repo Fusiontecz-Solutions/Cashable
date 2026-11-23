@@ -1548,8 +1548,8 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "guarantor_address", label: "Owner street" },
         { id: "guarantor_address_city", label: "Owner city" },
         { id: "guarantor_address_zip", label: "Owner zip" },
-        { id: "purchase_amount", label: "Purchased amount" },
-        { id: "coj_sum_with_default", label: "Judgment total (purchased + $7,500)" },
+        { id: "coj_repayment_amount", label: "Repayment amount / RTR" },
+        { id: "coj_sum_with_default", label: "Judgment total (repayment + $7,500)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
@@ -1565,7 +1565,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "owner_county", label: "Owner county (venue)" },
         { id: "guarantor_address_full", label: "Owner address (one line)" },
         { id: "business_address_full", label: "Business address (one line)" },
-        { id: "purchase_amount", label: "Judgment amount ($RTR)" },
+        { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
@@ -1579,7 +1579,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "owner_county", label: "Sworn county" },
         { id: "owner1_guarantor_name", label: "Deponent name" },
         { id: "business_address_full", label: "Business address (one line)" },
-        { id: "purchase_amount", label: "Judgment amount ($RTR)" },
+        { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
@@ -1592,7 +1592,7 @@ const CASHABLE_PLATFORM_DOC_FIELDS: Record<string, Array<{ id: string; label: st
         { id: "owner_state", label: "Sworn state" },
         { id: "owner_county", label: "Owner county" },
         { id: "guarantor_address_full", label: "Owner address (one line)" },
-        { id: "purchase_amount", label: "Judgment amount ($RTR)" },
+        { id: "coj_repayment_amount", label: "Judgment amount ($RTR)" },
         { id: "agreement_date", label: "Agreement date" },
         { id: "coj_additional_names", label: "Additional names (separate with ;)" },
         { id: "coj_bold", label: "Bold text" },
@@ -1871,7 +1871,9 @@ function addendumComputed(
         const ownState = pick("guarantorAddressState", "businessAddressContractState") || bizState;
         const ownZip = pick("guarantorAddressZip", "businessAddressContractZip") || bizZip;
         const purchaseAmount = pick("purchaseAmount");
-        const purchaseNum = parseFloat(purchaseAmount.replace(/[^0-9.]/g, ""));
+        // COJ amounts are the repayment (RTR / purchase price), not the funded amount.
+        const repaymentAmount = pick("purchasePrice") || purchaseAmount;
+        const purchaseNum = parseFloat(repaymentAmount.replace(/[^0-9.]/g, ""));
 
         const defaults: Record<string, string> = {
             client_legal_name: legalName,
@@ -1897,6 +1899,7 @@ function addendumComputed(
             guarantor_email: pick("guarantorEmail", "clientEmail"),
             funder_name: pick("funderName"),
             purchase_amount: purchaseAmount,
+            coj_repayment_amount: repaymentAmount,
             coj_sum_with_default:
                 Number.isFinite(purchaseNum) && purchaseNum > 0
                     ? (purchaseNum + 7500).toLocaleString("en-US", {
