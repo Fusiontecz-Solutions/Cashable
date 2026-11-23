@@ -360,6 +360,7 @@ function caption(
   t.draw('-against-', 166, t.y);
   t.y += 28;
   t.paragraph(o.defendants, { left: LEFT, right: boxRight - 6, align: 'left', leading: 14 });
+  t.y += 14; // one blank line between the defendant names and "Defendants."
   t.draw('Defendants.', 236, t.y);
   t.line(LEFT - 4, boxRight, t.y + 6);
   t.y += 26;
