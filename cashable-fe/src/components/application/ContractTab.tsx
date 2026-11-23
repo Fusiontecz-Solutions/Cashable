@@ -2448,6 +2448,7 @@ export default function ContractTab({
     const runDocuSignEnvelope = async (
         sendPayload: {
             ccEmails: string[];
+            reviewerEmails?: string[];
             /** CRM document-template row id for optional addendum PDF. */
             addendumDocumentRef?: string | null;
             /** @deprecated use addendumDocumentRef */
@@ -3418,6 +3419,7 @@ export default function ContractTab({
                 showPreviewButton: true,
                 showNavigationButtons: true,
                 ccEmails: effectiveCcEmails,
+                ...(sendPayload.reviewerEmails?.length ? { reviewerEmails: sendPayload.reviewerEmails } : {}),
                 autoSend: options.autoSend,
                 title: docuSignEmailSubject,
                 documentName: envelopeDocumentName,
@@ -3704,6 +3706,7 @@ export default function ContractTab({
 
     const prepareDocuSignDraft = async (payload: {
         ccEmails: string[];
+        reviewerEmails?: string[];
         addendumDocumentRef?: string | null;
         addendumBoldSignTemplateId?: string | null;
         addendumDocuments?: Array<{ mappingId: string; documentRef: string }>;

@@ -434,6 +434,8 @@ interface PDFViewerModalProps {
     /** Create Dropbox Sign draft (prefill, do not email signers). */
     onPrepareDocuSignDraft?: (payload: {
         ccEmails: string[];
+        /** BoldSign Reviewers (review before the merchant signs). */
+        reviewerEmails?: string[];
         addendumDocumentRef?: string | null;
         addendumBoldSignTemplateId?: string | null;
         /** Ordered addendum mapping instances; duplicate templates are allowed. */
@@ -1226,6 +1228,17 @@ const PDFViewerModal = ({
     // Funder/default CC chips removed for THIS send only (profile unchanged).
     const [removedDefaultCcChips, setRemovedDefaultCcChips] = useState<string[]>([]);
     const [ccEmailDraft, setCcEmailDraft] = useState("");
+    /** BoldSign Reviewers for this send: they review before the merchant gets it to sign. */
+    const [reviewerEmails, setReviewerEmails] = useState<string[]>([]);
+    const addPdfReviewerFromDraft = () => {
+        const raw = ccEmailDraft.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)) {
+            toast.error("Enter a valid email address.");
+            return;
+        }
+        setReviewerEmails((prev) => (prev.includes(raw) ? prev : [...prev, raw]));
+        setCcEmailDraft("");
+    };
     const [envelopeEmailSubject, setEnvelopeEmailSubject] = useState("");
     const envelopeEmailSubjectDirtyRef = useRef(false);
     const [isSending, setIsSending] = useState(false);
@@ -4028,7 +4041,8 @@ const PDFViewerModal = ({
                     ? resolveDisclosureTemplateRefForDocuSignMerge()
                     : null;
                 const prepared = await onPrepareDocuSignDraft({
-                    ccEmails: toSend,
+                    ccEmails: toSend.filter((e) => !reviewerEmails.includes(e.trim().toLowerCase())),
+                    ...(reviewerEmails.length ? { reviewerEmails } : {}),
                     addendumDocuments,
                     disclosureDocumentRef,
                     disclosurePosition: disclosureFirstInSend ? "first" : "last",
@@ -11028,6 +11042,25 @@ const PDFViewerModal = ({
                                         </button>
                                     </span>
                                     ))}
+                                {reviewerEmails.map((email) => (
+                                    <span
+                                        key={`reviewer-${email}`}
+                                        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                                        title="Reviewer: reviews before the merchant gets it to sign"
+                                    >
+                                        <span className="rounded bg-amber-200 px-1 text-[9px] font-bold uppercase dark:bg-amber-800">Reviewer</span>
+                                        <span className="max-w-[220px] truncate">{email}</span>
+                                        <button
+                                            type="button"
+                                            className="shrink-0 rounded p-0.5 text-amber-700 hover:text-red-600 disabled:pointer-events-none disabled:opacity-40"
+                                            aria-label={`Remove reviewer ${email}`}
+                                            disabled={canCancelSentContract || isCancellingContract}
+                                            onClick={() => setReviewerEmails((prev) => prev.filter((e) => e !== email))}
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    </span>
+                                ))}
                                 {ccEmails.map((email) => (
                                     <span
                                         key={email}
@@ -11079,6 +11112,17 @@ const PDFViewerModal = ({
                                     onClick={addPdfCcFromDraft}
                                 >
                                     Add CC
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-200"
+                                    disabled={canCancelSentContract || isCancellingContract}
+                                    onClick={addPdfReviewerFromDraft}
+                                    title="Reviewer: reviews before the merchant gets it to sign"
+                                >
+                                    Add Reviewer
                                 </Button>
                             </div>
                         </div>

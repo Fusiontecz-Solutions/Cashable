@@ -116,7 +116,7 @@ export type BoldSignSigner = {
   name: string;
   emailAddress: string;
   signerOrder?: number;
-  signerType?: 'Signer';
+  signerType?: 'Signer' | 'Reviewer';
   formFields: BoldSignFormField[];
 };
 

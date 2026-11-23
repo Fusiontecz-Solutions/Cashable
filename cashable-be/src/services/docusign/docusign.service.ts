@@ -4173,6 +4173,7 @@ export class DocusignService {
       roles: SignerRoleInput[];
       prefillFields?: PrefillField[];
       ccEmails?: string[];
+      reviewerEmails?: string[];
       applicationId?: string;
       contractId?: number;
       skipApplicationEnvelopeLink?: boolean;
@@ -4347,6 +4348,7 @@ export class DocusignService {
         funderProfileId: funderProfile?.id ?? options.funderProfileId ?? null,
         funderName,
         ccEmails: normalizedCreateCc,
+        reviewerEmails: options.reviewerEmails ?? [],
         actorUserId: userId,
       });
     }
@@ -4534,6 +4536,8 @@ export class DocusignService {
       redirectUrl?: string;
       applicationId?: string;
       ccEmails?: string[];
+      /** BoldSign Reviewers: review before the merchant signs. */
+      reviewerEmails?: string[];
       title?: string;
       message?: string;
       documentName?: string;
@@ -4649,6 +4653,7 @@ export class DocusignService {
       skipApplicationEnvelopeLink: options.skipApplicationEnvelopeLink,
       standaloneLinkKind: resolvedStandaloneLinkKind,
       ccEmails: options.ccEmails,
+      reviewerEmails: options.reviewerEmails,
       title: options.title,
       message: options.message,
       documentName: options.documentName,

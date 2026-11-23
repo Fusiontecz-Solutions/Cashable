@@ -75,6 +75,8 @@ export type BoldSignMergeAndSendPayload = {
   forceNewEnvelope?: boolean;
   /** Non-signers who receive a copy when the merged document is sent from BoldSign. */
   ccEmails?: string[];
+  /** BoldSign Reviewers: they review (approve) before the merchant gets it to sign. */
+  reviewerEmails?: string[];
   /** When false, creates a draft envelope only (no signing emails). */
   autoSend?: boolean;
   /** Dropbox Sign envelope email subject (`emailSubject`). */

@@ -126,6 +126,8 @@ export type PearSignStagedPackage = {
   documents: PearSignPackageDocument[];
   recipients: Array<{ roleId: string; roleName: string; name: string; email: string }>;
   ccEmails: string[];
+  /** BoldSign Reviewers (CRM "Reviewers"): they review before the merchant signs. */
+  reviewerEmails?: string[];
   fields: PearSignPackageField[];
   /** CRM values per key, as the Dropbox Sign envelope would print them. */
   crmValues: Record<string, string>;
@@ -407,6 +409,7 @@ export async function stagePearSignPackage(input: {
   funderProfileId?: string | null;
   funderName?: string | null;
   ccEmails?: string[];
+  reviewerEmails?: string[];
   actorUserId?: string | number | null;
 }) {
   if (signingProvider() === 'boldsign' ? !isBoldSignConfigured() : !isPearSignConfigured()) {
@@ -467,6 +470,7 @@ export async function stagePearSignPackage(input: {
     documents,
     recipients,
     ccEmails: [...new Set((input.ccEmails || []).map((e) => String(e).trim().toLowerCase()).filter(Boolean))],
+    reviewerEmails: [...new Set((input.reviewerEmails || []).map((e) => String(e).trim().toLowerCase()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))],
     fields,
     crmValues,
     // Re-staging: a Review edit is kept only while the CRM value it replaced is unchanged —
@@ -1006,6 +1010,30 @@ export function boldSignSignersFor(
   }));
 }
 
+/** Always copied on every BoldSign contract (env BOLDSIGN_ALWAYS_CC overrides, comma-separated). */
+const BOLDSIGN_ALWAYS_CC_DEFAULT = ['office@cashablefunding.com', 'ariel@cashablefunding.com'];
+export function boldSignAlwaysCc(): string[] {
+  const raw = String(process.env.BOLDSIGN_ALWAYS_CC ?? '').trim();
+  return raw ? raw.split(/[,;\s]+/).filter(Boolean) : BOLDSIGN_ALWAYS_CC_DEFAULT;
+}
+
+/** CC list for BoldSign: office@ + ariel@ always, then the CRM CCs (a Reviewer is not also CC'd). */
+export function boldSignCcFor(pkg: { ccEmails?: string[]; reviewerEmails?: string[] }): string[] {
+  const reviewers = new Set((pkg.reviewerEmails ?? []).map((e) => e.toLowerCase()));
+  return [...boldSignAlwaysCc(), ...(pkg.ccEmails ?? [])].filter((e) => !reviewers.has(String(e).trim().toLowerCase()));
+}
+
+/** Reviewers go first in the signing order (they review before the merchant signs); signers follow. */
+export function withBoldSignReviewers(signers: BoldSignSigner[], reviewerEmails: string[] | undefined): BoldSignSigner[] {
+  const signerEmails = new Set(signers.map((s) => s.emailAddress.toLowerCase()));
+  const reviewers = (reviewerEmails ?? []).filter((e) => !signerEmails.has(e.toLowerCase()));
+  if (!reviewers.length) return signers;
+  return [
+    ...reviewers.map((e, i) => ({ name: e.split('@')[0], emailAddress: e, signerOrder: i + 1, signerType: 'Reviewer' as const, formFields: [] })),
+    ...signers.map((s) => ({ ...s, signerOrder: (s.signerOrder ?? 1) + reviewers.length })),
+  ];
+}
+
 /** "CASHABLE FUND LLC: <Merchant>.pdf", like every contract PDF the CRM hands out. */
 export function boldSignPackageFileName(prep: { pkg: { title: string }; values: Record<string, string> }): string {
   const merchant =
@@ -1027,8 +1055,8 @@ async function sendBoldSignPackage(
       message,
       pdfBase64: [pdf.toString('base64')],
       fileName: boldSignPackageFileName(prep),
-      cc: pkg.ccEmails,
-      signers: boldSignSignersFor(prep),
+      cc: boldSignCcFor(pkg),
+      signers: withBoldSignReviewers(boldSignSignersFor(prep), prep.pkg.reviewerEmails),
       metaData: { contractId: String(contractId), source: 'cashable-crm' },
     }));
   } catch (e) {
@@ -1354,8 +1382,8 @@ async function openBoldSignPackageEditor(
       message: prep.message,
       pdfBase64: [prep.pdf.toString('base64')],
       fileName: boldSignPackageFileName(prep),
-      cc: prep.pkg.ccEmails,
-      signers: boldSignSignersFor(prep),
+      cc: boldSignCcFor(prep.pkg),
+      signers: withBoldSignReviewers(boldSignSignersFor(prep), prep.pkg.reviewerEmails),
       metaData: { contractId: String(contractId), source: 'cashable-crm' },
     });
   } catch (e) {

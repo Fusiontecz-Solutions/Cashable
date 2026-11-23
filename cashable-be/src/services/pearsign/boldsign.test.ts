@@ -111,3 +111,28 @@ describe('BoldSign CC and file name', () => {
     );
   });
 });
+
+describe('BoldSign reviewers and always-CC', () => {
+  const { withBoldSignReviewers, boldSignCcFor } = jest.requireActual('./pearsign-package.service');
+  it('reviewers go first; signers follow in their order', () => {
+    const out = withBoldSignReviewers(
+      [
+        { name: 'Jane', emailAddress: 'jane@example.com', signerOrder: 1, formFields: [] },
+        { name: 'Bob', emailAddress: 'bob@example.com', signerOrder: 2, formFields: [] },
+      ],
+      ['larry@cashablefunding.com', 'jane@example.com'],
+    );
+    expect(out.map((s: { emailAddress: string; signerOrder: number; signerType?: string }) => [s.emailAddress, s.signerOrder, s.signerType ?? 'Signer'])).toEqual([
+      ['larry@cashablefunding.com', 1, 'Reviewer'],
+      ['jane@example.com', 2, 'Signer'],
+      ['bob@example.com', 3, 'Signer'],
+    ]);
+  });
+  it('office@ and ariel@ are always CC (a reviewer is not CC too)', () => {
+    expect(boldSignCcFor({ ccEmails: ['x@example.com', 'larry@cashablefunding.com'], reviewerEmails: ['larry@cashablefunding.com'] })).toEqual([
+      'office@cashablefunding.com',
+      'ariel@cashablefunding.com',
+      'x@example.com',
+    ]);
+  });
+});
