@@ -368,6 +368,26 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
 }
 
 
+/**
+ * Review edits to keep when a package is staged again. An edit survives only if its key still
+ * exists and the CRM value it replaced has not changed since (a prefill change always wins).
+ */
+export function carryReviewOverrides(
+  prev: Pick<PearSignStagedPackage, 'overrides' | 'crmValues'> | null | undefined,
+  crmValues: Record<string, string>,
+  keyExists: (key: string) => boolean,
+): Record<string, string> {
+  const norm = (v: unknown) => String(v ?? '').trim();
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(prev?.overrides ?? {})) {
+    if (!keyExists(k)) continue;
+    if (norm(prev?.crmValues?.[k]) !== norm(crmValues[k])) continue; // CRM changed: CRM wins
+    if (norm(v) === norm(crmValues[k])) continue; // edit now equals the CRM value: nothing to keep
+    out[k] = v;
+  }
+  return out;
+}
+
 export async function stagePearSignPackage(input: {
   envelopeDefinition: EnvelopeDefinition;
   layoutKeys?: string[];
@@ -446,10 +466,9 @@ export async function stagePearSignPackage(input: {
     ccEmails: [...new Set((input.ccEmails || []).map((e) => String(e).trim().toLowerCase()).filter(Boolean))],
     fields,
     crmValues,
-    // Keep Review edits for keys that still exist (re-staging after a CRM change).
-    overrides: Object.fromEntries(
-      Object.entries(prevPackage?.overrides ?? {}).filter(([k]) => cojKeys.has(k) || fields.some((f) => f.key === k)),
-    ),
+    // Re-staging: a Review edit is kept only while the CRM value it replaced is unchanged —
+    // anything changed in the CRM since then is what gets sent.
+    overrides: carryReviewOverrides(prevPackage, crmValues, (k) => cojKeys.has(k) || fields.some((f) => f.key === k)),
     typedCojs,
     styles: Object.fromEntries(
       Object.entries(cleanStyles(prevPackage?.styles)).filter(([k]) => fields.some((f) => f.key === k)),
