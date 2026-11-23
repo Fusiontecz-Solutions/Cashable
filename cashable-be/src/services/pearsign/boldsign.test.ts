@@ -68,7 +68,7 @@ describe('boldSignSignersFor', () => {
       ['bob@example.com', 2, 1],
     ]);
     const [name, blank, sig, date] = signers[0].formFields;
-    expect(name).toMatchObject({ fieldType: 'TextBox', value: 'GREEN GODDESS LLC', isReadOnly: true, fontSize: 10, font: 'Helvetica', pageNumber: 1 });
+    expect(name).toMatchObject({ fieldType: 'TextBox', value: 'GREEN GODDESS LLC', isReadOnly: true, fontSize: 13, font: 'Helvetica', pageNumber: 1 });
     expect(name.bounds).toEqual({ x: 100, y: 200, width: 200, height: 20 });
     expect(blank).toMatchObject({ fieldType: 'TextBox', isReadOnly: false });
     expect(blank.value).toBeUndefined();

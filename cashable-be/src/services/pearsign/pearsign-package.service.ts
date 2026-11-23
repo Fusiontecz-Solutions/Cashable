@@ -968,7 +968,8 @@ export function boldSignSignersFor(
           ...base,
           fieldType: 'TextBox',
           font: 'Helvetica',
-          ...(f.fontSize ? { fontSize: f.fontSize } : {}),
+          // BoldSign sizes are in 96-DPI pixels like its bounds: a 10pt value is 13px.
+          ...(f.fontSize ? { fontSize: Math.round(f.fontSize * BOLDSIGN_PX_PER_PT) } : {}),
           ...(value
             ? { value, isReadOnly: true, isRequired: false }
             : { isReadOnly: false, isRequired: f.required }),
