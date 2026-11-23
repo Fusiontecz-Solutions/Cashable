@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signingProviderName } from "@/lib/signingProvider";
+import { contractPdfFileName } from "@/lib/contractPdfFileName";
 import { axiosGet, axiosPost, axiosPut } from "@/redux/axios";
 
 /**
@@ -451,8 +452,49 @@ export function usePearSignContract(opts: {
         }
     }, [contractId]);
 
+    /**
+     * Save the staged package (contract + addendums + disclosures, CRM values filled in) before it
+     * is sent. Changes made later inside the signing service's editor are not in this copy.
+     */
+    const downloadPackagePdf = useCallback(async () => {
+        if (!contractId) throw new Error("Save the contract before downloading it.");
+        setBusy("download");
+        try {
+            const res = await axiosPost(
+                `/pearsign/contracts/${contractId}/package/preview`,
+                { drawValues: true, download: true },
+                { responseType: "blob" },
+            );
+            const blob = res?.data as Blob;
+            if (!blob?.size || (blob.type && !blob.type.includes("pdf"))) throw new Error("The contract came back empty.");
+            const disposition = String((res?.headers as Record<string, unknown> | undefined)?.["content-disposition"] ?? "");
+            const star = disposition.match(/filename*s*=s*UTF-8''([^;]+)/i);
+            let fileName = contractPdfFileName(String(review?.values?.client_legal_name ?? ""));
+            if (star?.[1]) {
+                try {
+                    fileName = decodeURIComponent(star[1].trim());
+                } catch {
+                    /* keep the default name */
+                }
+            }
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        } catch (e) {
+            throw new Error(await blobErrorMessage(e, "Could not download the contract."));
+        } finally {
+            setBusy(null);
+        }
+    }, [contractId, review]);
+
     return {
         available,
+        downloadPackagePdf,
         state,
         review,
         busy,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isBoldSignActive, isSigningEditorAvailable, signingProviderName } from "@/lib/signingProvider";
 import { toast } from "react-toastify";
-import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Download, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -951,6 +951,22 @@ export function PearSignSendDialog({
                             <Button type="button" variant="outline" disabled={sending} onClick={onCancel}>
                                 Cancel
                             </Button>
+                            {ctl.mode === "package" ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-9"
+                                disabled={ctl.busy === "download" || sending}
+                                onClick={() =>
+                                    void ctl.downloadPackagePdf().catch((e: unknown) => toast.error((e as Error)?.message || "Could not download the contract."))
+                                }
+                                title="Save the contract as it will be sent (CRM values filled in). Changes made in the editor are not included."
+                            >
+                                {ctl.busy === "download" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                                Download contract
+                            </Button>
+                            ) : null}
                             {canEdit ? (
                                 <Button
                                     type="button"
@@ -1211,6 +1227,20 @@ export function PearSignEditorDialog({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                disabled={ctl.busy === "download"}
+                                onClick={() =>
+                                    void ctl.downloadPackagePdf().catch((e: unknown) => toast.error((e as Error)?.message || "Could not download the contract."))
+                                }
+                                title="Save the contract as it will be sent (CRM values filled in). Changes made in the editor are not included."
+                            >
+                                {ctl.busy === "download" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1 h-3.5 w-3.5" />}
+                                Download contract
+                            </Button>
                         {!popup ? (
                             <Button
                                 type="button"

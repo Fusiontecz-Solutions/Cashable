@@ -15,6 +15,7 @@ import {
   voidPearSignContract,
 } from './pearsign-contract.service';
 import { PearSignPreviewError } from './pearsign-preview.service';
+import { contractPdfFileName } from '../../utils/contractPdfFileName';
 import {
   buildPearSignPackagePreview,
   getPearSignPackageReview,
@@ -129,9 +130,16 @@ router.put(
 router.post(
   '/contracts/:contractId/package/preview',
   handle(async (req, res) => {
-    const { pdf, fileName, filledFieldCount } = await buildPearSignPackagePreview(contractIdParam(req), req.body ?? {});
+    const { pdf, fileName, filledFieldCount, merchantName } = await buildPearSignPackagePreview(contractIdParam(req), req.body ?? {});
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    if (req.body?.download === true) {
+      // Download before sending: "CASHABLE FUND LLC: <Merchant>.pdf", like every contract PDF.
+      const name = contractPdfFileName(merchantName);
+      const ascii = name.replace(/[^ -~]+/g, '-').replace(/"/g, '');
+      res.setHeader('Content-Disposition', `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`);
+    } else {
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    }
     res.setHeader('X-Filled-Field-Count', String(filledFieldCount));
     res.setHeader('Cache-Control', 'no-store');
     res.send(pdf);

@@ -767,7 +767,8 @@ export async function buildPearSignPackagePreview(contractId: number, body: { va
   const values = body.drawValues === false ? {} : real;
   const { pdf, filledFieldCount } = await drawPearSignPackage(pkg, values, `${pkg.title} (preview)`, real);
   const fileName = `${slug(pkg.title, 80)}_preview.pdf`;
-  return { pdf, filledFieldCount, fileName };
+  const merchantName = String(real.client_legal_name || '').trim() || String(pkg.title || '').split(' — ')[0].trim();
+  return { pdf, filledFieldCount, fileName, merchantName };
 }
 
 // ---------- send ----------
