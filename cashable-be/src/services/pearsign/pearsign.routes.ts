@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from 'express';
 import { authenticateToken } from '../../middleware/authMiddleware';
 import { PearSignApiError } from './pearsign-client';
-import { boldSignSandbox, signingProvider } from './boldsign-client';
+import { boldSignEmbeddedAvailable, boldSignSandbox, signingProvider } from './boldsign-client';
 import {
   PearSignContractError,
   buildPearSignReviewPreview,
@@ -168,7 +168,13 @@ router.get(
   '/provider',
   handle(async () => {
     const provider = signingProvider();
-    return { provider, name: provider === 'boldsign' ? 'BoldSign' : 'PearSign', sandbox: provider === 'boldsign' && boldSignSandbox() };
+    return {
+      provider,
+      name: provider === 'boldsign' ? 'BoldSign' : 'PearSign',
+      sandbox: provider === 'boldsign' && boldSignSandbox(),
+      // BoldSign's editor needs a plan with embedded requests; without it the CRM reviews and sends itself.
+      embeddedEditor: provider !== 'boldsign' || boldSignEmbeddedAvailable(),
+    };
   }),
 );
 

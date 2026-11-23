@@ -157,7 +157,7 @@ import {
     PearSignSendDialog,
     openSigningEditorInTab,
 } from "./pearsign/PearSignReviewModal";
-import { isBoldSignActive } from "@/lib/signingProvider";
+import { isBoldSignActive, isEditorPlanRefusal, isSigningEditorAvailable, markSigningEditorUnavailable } from "@/lib/signingProvider";
 import { cn, formatDate, formatDateTimeUS } from "@/lib/utils";
 import { findApplicationFileForDocumentRequest } from "@/lib/documentRequestMatch";
 import { normalizeRoleKey } from "@/lib/sessionRole";
@@ -3881,7 +3881,7 @@ const PDFViewerModal = ({
         const pearSignMode = true;
         // BoldSign: Review & send opens BoldSign's own editor in a new tab (values filled in);
         // the CRM watches for Send there. PearSign keeps the CRM review.
-        const directEditor = isBoldSignActive();
+        const directEditor = isBoldSignActive() && isSigningEditorAvailable();
         const packageIncludesMainContract =
             !canSendWithoutContract || includeMainContractInSendRef.current;
         const outForSignatureBeforeSend = getPrimaryContractEnvelopeView(
@@ -4055,8 +4055,19 @@ const PDFViewerModal = ({
                         throw new Error(`The ${signingProviderName()} package could not be prepared.`);
                     }
                     if (directEditor) {
-                        setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
-                        return;
+                        try {
+                            setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
+                            return;
+                        } catch (err) {
+                            // Plan without BoldSign's editor: review in the CRM and send from there instead.
+                            if (!isEditorPlanRefusal(err)) throw err;
+                            markSigningEditorUnavailable();
+                            try {
+                                docuSignTab?.close();
+                            } catch {
+                                /* ignore */
+                            }
+                        }
                     }
                     await openPearSignPackageReviewRef.current();
                     return;

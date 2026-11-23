@@ -139,7 +139,7 @@ import {
     PearSignSendDialog,
     openSigningEditorInTab,
 } from "./pearsign/PearSignReviewModal";
-import { isBoldSignActive } from "@/lib/signingProvider";
+import { isBoldSignActive, isEditorPlanRefusal, isSigningEditorAvailable, markSigningEditorUnavailable } from "@/lib/signingProvider";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -2286,7 +2286,7 @@ export default function ACHFormViewerModal({
 
         // PearSign: the review opens inside the CRM. BoldSign: its own editor opens in a new tab
         // (opened here, inside the click, so pop-up blockers allow it).
-        const directEditor = isBoldSignActive();
+        const directEditor = isBoldSignActive() && isSigningEditorAvailable();
         const docuSignTab = directEditor ? window.open("about:blank", "_blank") : null;
         try {
             if (docuSignTab) {
@@ -2402,8 +2402,19 @@ export default function ACHFormViewerModal({
             ).trim();
             if (draftProvider === "pearsign") {
                 if (directEditor) {
-                    setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
-                    return;
+                    try {
+                        setSigningEditorTab(await openSigningEditorInTab(pearSign, docuSignTab));
+                        return;
+                    } catch (err) {
+                        // Plan without BoldSign's editor: review in the CRM and send from there instead.
+                        if (!isEditorPlanRefusal(err)) throw err;
+                        markSigningEditorUnavailable();
+                        try {
+                            docuSignTab?.close();
+                        } catch {
+                            /* ignore */
+                        }
+                    }
                 }
                 // Package staged on the server → review it in the CRM, then send from there.
                 await pearSign.openPackageReview();

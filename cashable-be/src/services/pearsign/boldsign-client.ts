@@ -162,9 +162,31 @@ export async function boldSignSendDocument(input: BoldSignSendInput): Promise<{ 
  * A draft opened in BoldSign's own editor (prepare page): fields can be moved, resized or added,
  * and the document is sent when the user clicks Send there. The link works in an iframe or tab.
  */
+/** Set once BoldSign refuses the embedded editor for this account's plan (until the server restarts). */
+let embeddedRefusedByPlan = false;
+
+/**
+ * Whether BoldSign's embedded editor (prepare page) can be used. Off with BOLDSIGN_EMBEDDED=false,
+ * or after the plan refused it — the CRM then reviews in its own screen and sends directly.
+ */
+export function boldSignEmbeddedAvailable(): boolean {
+  return String(process.env.BOLDSIGN_EMBEDDED ?? '').trim().toLowerCase() !== 'false' && !embeddedRefusedByPlan;
+}
+
+export const isBoldSignPlanRefusal = (err: unknown) => /does not provide access|not available (in|on) your plan|upgrade your plan/i.test(String((err as Error)?.message ?? ''));
+
 export async function boldSignCreateEmbeddedSend(
   input: BoldSignSendInput & { redirectUrl?: string; linkValidTill?: Date },
 ): Promise<{ documentId: string; sendUrl: string }> {
+  try {
+    return await createEmbeddedSend(input);
+  } catch (err) {
+    if (isBoldSignPlanRefusal(err)) embeddedRefusedByPlan = true;
+    throw err;
+  }
+}
+
+function createEmbeddedSend(input: BoldSignSendInput & { redirectUrl?: string; linkValidTill?: Date }) {
   return request<{ documentId: string; sendUrl: string }>('POST', '/v1/document/createEmbeddedRequestUrl', {
     data: {
       ...sendBody(input),

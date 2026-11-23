@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isBoldSignActive, signingProviderName } from "@/lib/signingProvider";
+import { isBoldSignActive, isSigningEditorAvailable, signingProviderName } from "@/lib/signingProvider";
 import { toast } from "react-toastify";
 import { AlertTriangle, Check, CheckCircle2, Eye, ExternalLink, Loader2, PencilRuler, RefreshCw, RotateCcw, Search, Send, Users, X, ZoomIn, ZoomOut } from "lucide-react";
 import { Document, Page } from "react-pdf";
@@ -861,7 +861,7 @@ export function PearSignSendDialog({
     const review = ctl.review;
     const sending = ctl.busy === "send";
     const [editorOpen, setEditorOpen] = useState(false);
-    const canEdit = ctl.mode === "package" && Boolean(onEditorSent);
+    const canEdit = ctl.mode === "package" && Boolean(onEditorSent) && isSigningEditorAvailable();
     const filled = review ? review.fields.filter((f) => String(review.values[f.key] ?? "").trim()).length : 0;
     const blank = review ? review.fields.length - filled : 0;
     return (
