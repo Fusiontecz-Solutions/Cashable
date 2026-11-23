@@ -2760,6 +2760,8 @@ const PDFViewerModal = ({
     /** Same visibility as the primary Create / Send button, only once an envelope exists. */
     const showCreateInNewEnvelopeButton = useMemo(() => {
         if (!onPrepareDocuSignDraft || !String(linkedEnvelopeId || "").trim()) return false;
+        // BoldSign: every send is a new document already (same as Send new contract / Review & send).
+        if (isBoldSignActive()) return false;
         if ((canSendNewContract && activeStep === "sent") || showResendContractOnSentStep) {
             return true;
         }
