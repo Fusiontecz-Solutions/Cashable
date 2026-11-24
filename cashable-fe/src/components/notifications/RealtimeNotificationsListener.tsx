@@ -6,6 +6,7 @@ import {
     prependNotification,
     type Notification,
 } from "@/redux/slices/notificationSlice";
+import { isContractSigningNotification, showDesktopNotification } from "@/lib/desktopNotifications";
 
 /**
  * Real-time notifications bridge.
@@ -43,6 +44,15 @@ const RealtimeNotificationsListener = () => {
             if (!incoming || !incoming._id) return;
 
             dispatch(prependNotification(incoming));
+            // Contract signing updates also pop up on the desktop (when allowed in the bell).
+            if (isContractSigningNotification(incoming.type, event?.meta?.realtimeKind)) {
+                showDesktopNotification({
+                    id: incoming._id,
+                    title: incoming.title,
+                    body: incoming.message,
+                    url: event?.meta?.actionUrl ?? null,
+                });
+            }
         };
 
         socket.on("notification:new", handleNotification);

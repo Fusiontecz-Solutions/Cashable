@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
+import { desktopNotificationPermission, enableDesktopNotifications } from "@/lib/desktopNotifications";
 import {
     getNotifications,
     markAllNotificationsAsRead,
@@ -34,6 +35,8 @@ const NotificationDropdown = () => {
     const actions = useNotificationActions();
     const [open, setOpen] = useState(false);
     const [tab, setTab] = useState<string>("all");
+    /** Desktop pop-ups for contract updates (browser permission). */
+    const [desktopAlerts, setDesktopAlerts] = useState(() => desktopNotificationPermission());
 
     const { data: loginData } = useSelector((state: RootState) => state.login);
     const userRole = loginData?.user?.role || localStorage.getItem("role") || "";
@@ -109,6 +112,21 @@ const NotificationDropdown = () => {
                             </span>
                         )}
                     </div>
+                    <div className="flex items-center gap-3">
+                    {desktopAlerts === "default" ? (
+                        <button
+                            type="button"
+                            onClick={() => void enableDesktopNotifications().then(setDesktopAlerts)}
+                            className="cursor-pointer text-xs font-medium text-[var(--brand)] hover:text-[var(--brand-hover)]"
+                            title="Pop-up on your desktop when a contract is sent, viewed, signed, declined or voided"
+                        >
+                            Enable desktop alerts
+                        </button>
+                    ) : desktopAlerts === "denied" ? (
+                        <span className="text-[11px] text-muted-foreground" title="Allow notifications for this site in the browser address bar to turn them on">
+                            Desktop alerts blocked
+                        </span>
+                    ) : null}
                     {unreadCount > 0 && (
                         <button
                             type="button"
@@ -118,6 +136,7 @@ const NotificationDropdown = () => {
                             Mark all read
                         </button>
                     )}
+                    </div>
                 </div>
 
                 {/* Tabs */}
