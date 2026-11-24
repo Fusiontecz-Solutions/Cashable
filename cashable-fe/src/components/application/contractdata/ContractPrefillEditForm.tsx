@@ -401,7 +401,7 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
             id: "transaction_terms",
             title: "Transaction terms",
             description:
-                "Offer amount auto-updates payback (offer × factor rate), payment amount (payback ÷ term), and the origination fee box (page 2).",
+                "Offer amount auto-updates payback (offer × factor rate), payment amount (payback ÷ term), and the origination fee box (page 2). Payment amount and fees can be edited on their own — they never change the payback or the offer amount.",
             Icon: DollarSign,
             groups: [
                 {
@@ -2406,7 +2406,12 @@ export function ContractPrefillEditForm({
                     Object.assign(updates, stackUpdates);
                     // Keep live US-formatted offer while typing (stack commits 2dp on dependents).
                     updates.purchaseAmount = nextValue;
-                } else if (key === "purchasePrice" || key === "remittance") {
+                } else if (key === "remittance") {
+                    // Remittance is a manual entry: it never changes the purchase price (payback) or
+                    // the purchased amount (offer). Only the ACH per-payment amount follows it.
+                    updates.achAuthorizationAccountHolderBankTransactionFee = nextValue;
+                    updates[key] = nextValue;
+                } else if (key === "purchasePrice") {
                     const stackUpdates = applyVerifyPrefillOfferStackRecalc(
                         { ...prev, ...updates },
                         key,
