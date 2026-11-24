@@ -309,6 +309,38 @@ export function buildContractSendHistoryTermsSnapshot(
 }
 
 /** Read a frozen snapshot already stored on history / package for this envelope. */
+/** Terms from the values a PearSign / BoldSign document was sent with (advance, payback, payment). */
+function termsSnapshotFromSentValues(
+    values: Record<string, unknown> | null | undefined,
+): ContractSendHistoryTermsSnapshot | null {
+    if (!values) return null;
+    const advance = toSnapshotNumber(values.purchase_amount);
+    const payback = toSnapshotNumber(values.purchase_price);
+    const payment = toSnapshotNumber(values.remittance ?? values.estimated_payment);
+    if (advance == null && payback == null && payment == null) return null;
+    return {
+        approvedAmount: advance,
+        paybackAmount: payback,
+        totalAmount: payback,
+        paymentAmount: payment,
+        factorRate: advance && payback ? Math.round((payback / advance) * 1000) / 1000 : null,
+    };
+}
+
+/** Fill the blanks of `primary` from `fallback` (send-time values first, then the deal's terms). */
+function mergeTermsSnapshots(
+    primary: ContractSendHistoryTermsSnapshot | null,
+    fallback: ContractSendHistoryTermsSnapshot | null,
+): ContractSendHistoryTermsSnapshot | null {
+    if (!primary) return fallback;
+    if (!fallback) return primary;
+    const out: ContractSendHistoryTermsSnapshot = { ...fallback };
+    for (const [k, v] of Object.entries(primary)) {
+        if (v != null && v !== "") (out as Record<string, unknown>)[k] = v;
+    }
+    return out;
+}
+
 export function resolveTermsSnapshotFromContractPrefill(
     raw: unknown,
     envelopeId: string,
@@ -728,7 +760,7 @@ const HISTORY_DOCUMENT_STATUSES = new Set([
  */
 export function parsePearSignContractHistory(
     raw: unknown,
-): Array<{ envelopeId: string; status: string; sentAt: string | null; endedAt: string | null }> {
+): Array<{ envelopeId: string; status: string; sentAt: string | null; endedAt: string | null; terms: Record<string, unknown> | null }> {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
     const state = (raw as Record<string, unknown>).pearsignMainContract as { history?: unknown } | undefined;
     const list = Array.isArray(state?.history) ? state.history : [];
@@ -740,6 +772,7 @@ export function parsePearSignContractHistory(
                 status: String(r.status ?? "").trim().toLowerCase() || "sent",
                 sentAt: r.sentAt ? String(r.sentAt) : null,
                 endedAt: r.endedAt ? String(r.endedAt) : null,
+                terms: r.terms && typeof r.terms === "object" ? (r.terms as Record<string, unknown>) : null,
             };
         })
         .filter((h) => h.envelopeId)
@@ -1047,6 +1080,19 @@ export function buildContractSendTableRows(
 
     const seenEnvelopeIds = new Set<string>();
     const rows: ContractSendTableRow[] = [];
+    // PearSign / BoldSign sends: terms from the values each document was sent with, the gaps
+    // (term, position, buy rate, upsell) from the deal.
+    const dealTerms = buildContractSendHistoryTermsSnapshot(contract);
+    const esignState =
+        prefill && typeof prefill === "object" && !Array.isArray(prefill)
+            ? ((prefill as Record<string, unknown>).pearsignMainContract as
+                  | { envelopeId?: unknown; values?: Record<string, unknown> }
+                  | undefined)
+            : undefined;
+    const currentEsignTerms =
+        String(esignState?.envelopeId ?? "").trim() === mainEnvelopeId
+            ? mergeTermsSnapshots(termsSnapshotFromSentValues(esignState?.values), dealTerms)
+            : null;
 
     const mainEnvelopeIsAchOnly = Boolean(
         mainEnvelopeId && knownAchEnvelopeIds.has(mainEnvelopeId),
@@ -1083,10 +1129,9 @@ export function buildContractSendTableRows(
                 funderName:
                     String((contract as { funderName?: unknown }).funderName ?? "").trim() ||
                     null,
-                termsSnapshot: resolveTermsSnapshotFromContractPrefill(
-                    prefill,
-                    mainEnvelopeId,
-                ),
+                termsSnapshot:
+                    resolveTermsSnapshotFromContractPrefill(prefill, mainEnvelopeId) ??
+                    currentEsignTerms,
             });
         }
     }
@@ -1105,7 +1150,9 @@ export function buildContractSendTableRows(
             isCurrent: false,
             keyPrefix: "history-esign",
             funderName: String((contract as { funderName?: unknown }).funderName ?? "").trim() || null,
-            termsSnapshot: resolveTermsSnapshotFromContractPrefill(prefill, entry.envelopeId),
+            termsSnapshot:
+                resolveTermsSnapshotFromContractPrefill(prefill, entry.envelopeId) ??
+                mergeTermsSnapshots(termsSnapshotFromSentValues(entry.terms), dealTerms),
         });
     }
 

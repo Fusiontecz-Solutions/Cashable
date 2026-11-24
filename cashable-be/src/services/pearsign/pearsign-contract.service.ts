@@ -129,7 +129,7 @@ export type PearSignContractState = {
   /** Sent after the CRM started emailing CCs: the signed copy goes to them on completion. */
   crmCcMail?: boolean;
   title?: string;
-  history?: Array<{ envelopeId: string; status: string; sentAt?: string; endedAt?: string }>;
+  history?: Array<{ envelopeId: string; status: string; sentAt?: string; endedAt?: string; terms?: Record<string, string> }>;
   /** Package sends use a per-send template, deleted once the envelope is finished. */
   ephemeralTemplate?: boolean;
   templateDeletedAt?: string | null;
@@ -301,6 +301,16 @@ export async function writeState(contractId: number, next: PearSignContractState
       },
     });
    }, { timeout: 30_000, maxWait: 10_000 }); // large package JSON over Neon
+}
+
+/** The money terms a document was sent with (shown on its Contracts Generated row). */
+export function sendTerms(values: Record<string, string> | null | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of ['purchase_amount', 'purchase_price', 'remittance', 'estimated_payment', 'frequency', 'specified_percentage']) {
+    const v = String(values?.[k] ?? '').trim();
+    if (v) out[k] = v;
+  }
+  return out;
 }
 
 export function cleanValues(values: unknown): Record<string, string> {
@@ -711,7 +721,7 @@ export async function sendPearSignContract(
     title,
     history: [
       ...(prev?.history ?? []),
-      ...(prev?.envelopeId ? [{ envelopeId: prev.envelopeId, status: prev.status ?? '', sentAt: prev.sentAt }] : []),
+      ...(prev?.envelopeId ? [{ envelopeId: prev.envelopeId, status: prev.status ?? '', sentAt: prev.sentAt, terms: sendTerms(prev.values) }] : []),
     ].slice(-20),
   };
 

@@ -36,6 +36,7 @@ import {
   writeState,
   sendStatusNoticeOnce,
   syncPearSignContract,
+  sendTerms,
   recordHistoryEnvelopeStatus,
   findContractIdByPearSignEnvelopeId,
   type PearSignContractState,
@@ -947,7 +948,7 @@ async function recordPackageSent(
     ...(sent.sentPackage ? { package: sent.sentPackage } : {}),
     history: [
       ...(state?.history ?? []),
-      ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt }] : []),
+      ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '', sentAt: state.sentAt, terms: sendTerms(state.values) }] : []),
     ].slice(-20),
   };
   await writeState(contractId, next, { status: 'SENT' });
