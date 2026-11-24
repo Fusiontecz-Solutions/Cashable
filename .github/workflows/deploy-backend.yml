@@ -52,11 +52,13 @@ jobs:
           S_BOLDSIGN_SANDBOX: ${{ vars.BOLDSIGN_SANDBOX }}
           S_BOLDSIGN_API_KEY: ${{ secrets.BOLDSIGN_API_KEY }}
           S_BOLDSIGN_WEBHOOK_SECRET: ${{ secrets.BOLDSIGN_WEBHOOK_SECRET }}
+          S_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          S_OPENAI_PDF_MODEL: ${{ vars.OPENAI_PDF_MODEL }}
         run: |
           node -e '
             const fs = require("fs");
             const file = process.env.APP_DIR + "/.env";
-            const names = ["SIGNING_PROVIDER", "BOLDSIGN_SANDBOX", "BOLDSIGN_API_KEY", "BOLDSIGN_WEBHOOK_SECRET"];
+            const names = ["SIGNING_PROVIDER", "BOLDSIGN_SANDBOX", "BOLDSIGN_API_KEY", "BOLDSIGN_WEBHOOK_SECRET", "OPENAI_API_KEY", "OPENAI_PDF_MODEL"];
             let lines = fs.existsSync(file) ? fs.readFileSync(file, "utf8").split(/\r?\n/) : [];
             while (lines.length && lines[lines.length - 1] === "") lines.pop();
             const changed = [];

@@ -80,12 +80,72 @@ async function parsePdfBufferForHybrid(buffer: Buffer): Promise<{
   };
 }
 
+// ---------- OpenAI (GPT) ----------
+
+function openAiKey(cfg: ConfigService): string {
+  return String(cfg.get<string>("OPENAI_API_KEY") ?? process.env.OPENAI_API_KEY ?? "").trim();
+}
+
+function openAiModel(cfg: ConfigService): string {
+  return String(cfg.get<string>("OPENAI_PDF_MODEL") ?? process.env.OPENAI_PDF_MODEL ?? "").trim() || "gpt-4.1";
+}
+
+/** The Claude message blocks (text, page images, the PDF itself) as OpenAI chat content parts. */
+export function toOpenAiContent(blocks: Anthropic.Messages.ContentBlockParam[]): Array<Record<string, unknown>> {
+  const parts: Array<Record<string, unknown>> = [];
+  for (const raw of blocks) {
+    const b = raw as { type?: string; text?: string; source?: { type?: string; media_type?: string; data?: string } };
+    if (b.type === "text" && b.text) parts.push({ type: "text", text: b.text });
+    else if (b.type === "image" && b.source?.data) {
+      parts.push({ type: "image_url", image_url: { url: `data:${b.source.media_type || "image/png"};base64,${b.source.data}` } });
+    } else if (b.type === "document" && b.source?.data) {
+      parts.push({ type: "file", file: { filename: "document.pdf", file_data: `data:${b.source.media_type || "application/pdf"};base64,${b.source.data}` } });
+    }
+  }
+  return parts;
+}
+
+async function callOpenAi(cfg: ConfigService, system: string, userContent: Anthropic.Messages.ContentBlockParam[]): Promise<string> {
+  const base = String(cfg.get<string>("OPENAI_API_URL") ?? process.env.OPENAI_API_URL ?? "https://api.openai.com").replace(/\/+$/, "");
+  const maxTokens = PdfClaudeExtractionUtils.readPositiveIntCfg(cfg, "OPENAI_PDF_MAX_TOKENS", 12000);
+  const res = await fetch(`${base}/v1/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey(cfg)}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: openAiModel(cfg),
+      temperature: 0,
+      max_completion_tokens: maxTokens,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: toOpenAiContent(userContent) },
+      ],
+    }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
+  if (!res.ok) throw new Error(`OpenAI PDF reader failed (${res.status}): ${body.error?.message || "no details"}`);
+  return String(body.choices?.[0]?.message?.content ?? "").trim();
+}
+
 @Injectable()
 export class ClaudePdfExtractionService {
-  private readonly client: Anthropic;
+  private client!: Anthropic;
   private readonly disableVisionFallback: boolean;
+  /** 'openai': same prompts and parsing, the model call goes to OpenAI (GPT) instead of Claude. */
+  private readonly llm: 'claude' | 'openai';
 
-  constructor(private readonly cfg: ConfigService) {
+  constructor(private readonly cfg: ConfigService, opts: { llm?: 'claude' | 'openai' } = {}) {
+    this.llm = opts.llm ?? 'claude';
+    this.disableVisionFallback = (
+      this.cfg.get<string>("CLAUDE_PDF_DISABLE_VISION_FALLBACK") ??
+      process.env.CLAUDE_PDF_DISABLE_VISION_FALLBACK ??
+      "false"
+    )
+      .trim()
+      .toLowerCase() === "true";
+    if (this.llm === 'openai') {
+      if (!openAiKey(this.cfg)) throw new Error("OPENAI_API_KEY is required for the OpenAI PDF reader");
+      return;
+    }
     const apiKey = (
       this.cfg.get<string>("ANTHROPIC_API_KEY") ??
       process.env.ANTHROPIC_API_KEY ??
@@ -101,16 +161,12 @@ export class ClaudePdfExtractionService {
         "https://api.anthropic.com"
       ).trim() || "https://api.anthropic.com";
     this.client = new Anthropic({ apiKey, baseURL });
-    this.disableVisionFallback = (
-      this.cfg.get<string>("CLAUDE_PDF_DISABLE_VISION_FALLBACK") ??
-      process.env.CLAUDE_PDF_DISABLE_VISION_FALLBACK ??
-      "false"
-    )
-      .trim()
-      .toLowerCase() === "true";
   }
 
   getRuntimeDebugConfig(): { provider: string; model: string; disableVisionFallback: boolean } {
+    if (this.llm === 'openai') {
+      return { provider: 'openai', model: openAiModel(this.cfg), disableVisionFallback: this.disableVisionFallback };
+    }
     return {
       provider: 'claude',
       model: this.cfg.get<string>("CLAUDE_PDF_MODEL") ?? "claude-sonnet-4-6",
@@ -239,6 +295,7 @@ export class ClaudePdfExtractionService {
     system: string,
     userContent: Anthropic.Messages.ContentBlockParam[]
   ): Promise<string> {
+    if (this.llm === 'openai') return callOpenAi(this.cfg, system, userContent);
     const model = this.cfg.get<string>("CLAUDE_PDF_MODEL") ?? "claude-sonnet-4-6";
     const max_tokens =
       PdfClaudeExtractionUtils.readPositiveIntCfg(this.cfg, "CLAUDE_PDF_MAX_TOKENS", 12000);

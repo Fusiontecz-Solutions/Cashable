@@ -1,7 +1,7 @@
 import type { ConfigService } from '@nestjs/config';
 import { ClaudePdfExtractionService } from '../../nestjs-claude-pdf/claude-pdf-extraction.service';
 
-export type PdfExtractionProvider = 'claude' | 'documentai';
+export type PdfExtractionProvider = 'claude' | 'documentai' | 'openai';
 
 export interface PdfExtractionServiceLike {
   getRuntimeDebugConfig(): Record<string, unknown>;
@@ -20,10 +20,17 @@ export interface PdfExtractionServiceLike {
 
 let singleton: PdfExtractionServiceLike | undefined;
 
+/**
+ * With an OpenAI (ChatGPT) key on the server, application PDFs are read with GPT unless
+ * PDF_EXTRACTION_PROVIDER=claude/documentai is forced with PDF_EXTRACTION_PROVIDER_LOCK=true.
+ */
 function readProvider(): PdfExtractionProvider {
   const raw = String(process.env.PDF_EXTRACTION_PROVIDER || 'claude')
     .trim()
     .toLowerCase();
+  const hasOpenAi = String(process.env.OPENAI_API_KEY || '').trim() !== '';
+  if (raw === 'openai' || raw === 'gpt' || raw === 'chatgpt') return 'openai';
+  if (hasOpenAi && process.env.PDF_EXTRACTION_PROVIDER_LOCK !== 'true') return 'openai';
   if (raw === 'documentai' || raw === 'document_ai' || raw === 'google') return 'documentai';
   return 'claude';
 }
@@ -46,6 +53,9 @@ function createClaudeService(): PdfExtractionServiceLike {
 }
 
 function buildPdfExtractionService(): PdfExtractionServiceLike {
+  if (readProvider() === 'openai') {
+    return new ClaudePdfExtractionService(buildEnvConfigService() as ConfigService, { llm: 'openai' });
+  }
   if (readProvider() === 'documentai') {
     // Optional — only when PDF_EXTRACTION_PROVIDER=documentai
     // eslint-disable-next-line @typescript-eslint/no-var-requires
