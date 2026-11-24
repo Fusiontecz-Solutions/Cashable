@@ -83,7 +83,56 @@ function longDate(raw: string): string {
 }
 
 /** What every COJ prints, resolved from the CRM values once. */
+/** Blank width (pt) of each field in the fillable COJ forms. */
+const FILLABLE_FIELD_WIDTH: Record<string, number> = {
+  PLAINTIFF: 170,
+  MERCHANT_NAME: 235,
+  OWNER_NAME: 170,
+  OWNER_ADDRESS: 265,
+  BUSINESS_ADDRESS: 265,
+  STATE: 110,
+  OWNER_COUNTY: 110,
+  BUSINESS_COUNTY: 110,
+  REPAYMENT_AMOUNT: 90,
+  JUDGMENT_TOTAL: 90,
+  AGREEMENT_DATE: 125,
+  COJ_DATE: 90,
+  DAY: 38,
+  MONTH: 80,
+  YEAR: 42,
+};
+/** "{{NAME}}" (optionally followed by punctuation) in a fillable COJ: a blank with a form field. */
+const FILLABLE_TOKEN = /^\{\{([A-Z_]+)\}\}([^A-Za-z0-9{]*)$/;
+
 export function cojFacts(values: Values) {
+  // Fillable form (renderFillableCoj): every value is a named blank.
+  if (String(values.__fillable ?? '') === '1') {
+    const base = cojFactsFrom({
+      business_name_with_dba: '{{MERCHANT_NAME}}',
+      owner1_guarantor_name: '{{OWNER_NAME}}',
+      funder_name: '{{PLAINTIFF}}',
+      owner_county: '{{OWNER_COUNTY}}',
+      business_county: '{{BUSINESS_COUNTY}}',
+      guarantor_address_full: '{{OWNER_ADDRESS}}',
+      business_address_full: '{{BUSINESS_ADDRESS}}',
+    });
+    return {
+      ...base,
+      ownerState: '{{STATE}}',
+      purchase: '{{REPAYMENT_AMOUNT}}',
+      judgment: '{{JUDGMENT_TOTAL}}',
+      agreementDate: '{{AGREEMENT_DATE}}',
+      cojDate: '{{COJ_DATE}}',
+      dayOrdinal: '{{DAY}}',
+      month: '{{MONTH}}',
+      year: '{{YEAR}}',
+      merchantAnd: '{{MERCHANT_NAME}}',
+    };
+  }
+  return cojFactsFrom(values);
+}
+
+function cojFactsFrom(values: Values) {
   // Additional names (mapping field, separated by ";" or new lines) follow the merchant everywhere.
   const extraNames = String(values.coj_additional_names ?? '')
     .split(/[;\r\n]+/)
@@ -238,6 +287,8 @@ class Typesetter {
   pages: PDFPage[] = [];
   y = 0; // distance from the top of the page to the current baseline
   marks: Array<{ kind: 'signature' | 'initial'; page: number; x: number; y: number }> = [];
+  /** Fillable form only: where each "{{NAME}}" blank was drawn (PDF coordinates). */
+  fields: Array<{ name: string; page: number; x: number; y: number; w: number; h: number }> = [];
 
   /** Body size / line spacing (shrunk by `scale` when a COJ must keep its page count). */
   body = BODY;
@@ -267,10 +318,21 @@ class Typesetter {
   }
 
   width(text: string, bold: boolean | undefined, size: number) {
+    const field = FILLABLE_TOKEN.exec(text);
+    if (field) return (FILLABLE_FIELD_WIDTH[field[1]] ?? 120) * (size / BODY) + this.font(bold).widthOfTextAtSize(encodable(field[2]), size);
     return this.font(bold).widthOfTextAtSize(encodable(text), size);
   }
 
   draw(text: string, x: number, baseline: number, opts: { bold?: boolean; size?: number } = {}) {
+    const field = FILLABLE_TOKEN.exec(text);
+    if (field) {
+      const size = opts.size ?? this.body;
+      const w = (FILLABLE_FIELD_WIDTH[field[1]] ?? 120) * (size / BODY);
+      this.page.drawLine({ start: { x, y: PAGE_H - baseline - 2 }, end: { x: x + w, y: PAGE_H - baseline - 2 }, thickness: 0.5, color: rgb(0, 0, 0) });
+      this.fields.push({ name: field[1], page: this.pages.indexOf(this.page), x, y: PAGE_H - baseline - 2.5, w, h: size + 4 });
+      if (field[2]) this.draw(field[2], x + w, baseline, opts);
+      return;
+    }
     const t = encodable(text);
     if (!t) return;
     this.page.drawText(t, { x, y: PAGE_H - baseline, size: opts.size ?? this.body, font: this.font(opts.bold), color: rgb(0, 0, 0) });
@@ -777,4 +839,32 @@ export async function renderTypedCoj(
     slot: `${m.kind}_p${m.page}_${Math.round(m.x)}_${Math.round(m.y)}`,
   }));
   return { pdf, placements, pageCount: t.pages.length };
+}
+
+/** Default text of fillable fields (all editable). */
+const FILLABLE_DEFAULTS: Record<string, string> = { PLAINTIFF: 'CASHABLE FUND LLC' };
+
+/**
+ * A COJ as a fillable PDF form: same wording and layout as the CRM's typed COJ, with a form field
+ * on every value (same-named fields are linked: type the owner's name once, it fills everywhere).
+ */
+export async function renderFillableCoj(kind: CojKind): Promise<Buffer> {
+  const t = await BUILDERS[kind]({ __fillable: '1' });
+  const placed = [...t.fields];
+  const doc = await PDFDocument.load(await t.finish());
+  const form = doc.getForm();
+  const font = await doc.embedFont(StandardFonts.TimesRomanBold);
+  const made = new Map<string, ReturnType<typeof form.createTextField>>();
+  for (const f of placed) {
+    let field = made.get(f.name);
+    if (!field) {
+      field = form.createTextField(f.name);
+      if (FILLABLE_DEFAULTS[f.name]) field.setText(FILLABLE_DEFAULTS[f.name]);
+      made.set(f.name, field);
+    }
+    field.addToPage(doc.getPage(f.page), { x: f.x, y: f.y, width: f.w, height: f.h, borderWidth: 0, backgroundColor: rgb(0.9, 0.94, 1), font });
+  }
+  for (const field of made.values()) field.setFontSize(0); // auto-fit to the blank
+  form.updateFieldAppearances(font);
+  return Buffer.from(await doc.save());
 }
