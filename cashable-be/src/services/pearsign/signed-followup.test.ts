@@ -19,3 +19,18 @@ describe('owedSignedFollowUp (Signed email held back for its PDF)', () => {
     expect(owedSignedFollowUp({}, state({ completedAt: null }))).toBe(false);
   });
 });
+
+describe('Signed email: BoldSign sends it, not the CRM', () => {
+  const { crmSendsSignedEmail } = jest.requireActual('./pearsign-contract.service');
+  const prev = process.env.CRM_BOLDSIGN_SIGNED_EMAILS;
+  afterEach(() => {
+    process.env.CRM_BOLDSIGN_SIGNED_EMAILS = prev;
+  });
+  it('no CRM Signed email for BoldSign documents (unless switched back on); PearSign keeps it', () => {
+    delete process.env.CRM_BOLDSIGN_SIGNED_EMAILS;
+    expect(crmSendsSignedEmail('bs-6cdd4a77-49a3-4686-a447-f26dd9dd133e')).toBe(false);
+    expect(crmSendsSignedEmail('env-6cdd4a77-49a3-4686-a447-f26dd9dd133e')).toBe(true);
+    process.env.CRM_BOLDSIGN_SIGNED_EMAILS = 'true';
+    expect(crmSendsSignedEmail('bs-6cdd4a77-49a3-4686-a447-f26dd9dd133e')).toBe(true);
+  });
+});

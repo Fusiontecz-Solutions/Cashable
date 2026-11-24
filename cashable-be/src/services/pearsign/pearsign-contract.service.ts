@@ -816,8 +816,11 @@ async function announceStatus(
   // The Signed update carries the signed contract: get it first. If it is not ready yet (BoldSign is
   // still finishing it, or the hourly API limit), nothing is sent and the next sync tries again —
   // after SIGNED_PDF_GIVE_UP_MS the update goes out without it rather than never.
+  // BoldSign emails the signed notice itself (office@ and ariel@ are CC on every document): the
+  // CRM sends no Signed email for it — only the in-app notice below.
+  const crmSignedEmail = group !== 'signed' || crmSendsSignedEmail(envelopeId);
   let pdf: Buffer | null = null;
-  if (group === 'signed') {
+  if (group === 'signed' && crmSignedEmail) {
     pdf = await signedPdfWithRetry(envelopeId);
     const completedMs = Date.parse(String(state.completedAt || '')) || Date.now();
     if (!pdf && Date.now() - completedMs < SIGNED_PDF_GIVE_UP_MS) {
@@ -845,7 +848,7 @@ async function announceStatus(
     provider: 'pearsign',
   }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
 
-  if (!EMAILED_NOTICE_GROUPS.has(group)) return;
+  if (!EMAILED_NOTICE_GROUPS.has(group) || !crmSignedEmail) return;
   const threads = await readTeamThreads(contractId, envelopeId);
   const result = await notifyPearSignStatusChange({
     contractId,
@@ -922,6 +925,15 @@ const signedNoticeClaimed = new Set<string>();
  * Email the executed contract to the CCs once per envelope, when it is completed.
  * Claimed atomically first so overlapping syncs (cron + Refresh) never both send.
  */
+/**
+ * Whether the CRM emails the Signed notice (team + CCs). Not for BoldSign: BoldSign sends it to the
+ * signers and CCs. CRM_BOLDSIGN_SIGNED_EMAILS=true turns the CRM emails back on.
+ */
+export function crmSendsSignedEmail(envelopeId: string): boolean {
+  if (!isBoldSignEnvelopeId(envelopeId)) return true;
+  return String(process.env.CRM_BOLDSIGN_SIGNED_EMAILS ?? '').trim().toLowerCase() === 'true';
+}
+
 async function sendSignedNoticeOnce(
   contractId: number,
   applicationId: string,
@@ -931,6 +943,7 @@ async function sendSignedNoticeOnce(
 ): Promise<void> {
   const envelopeId = state.envelopeId;
   if (!envelopeId || !state.crmCcMail || !(state.ccEmails ?? []).length) return;
+  if (!crmSendsSignedEmail(envelopeId)) return; // BoldSign copies the CCs itself
   if (String(state.status || '').toLowerCase() !== 'completed') return;
   if (signedNoticeClaimed.has(envelopeId)) return;
   // Wait for the signed copy (retried on the next sync), unless it has been missing for hours.
