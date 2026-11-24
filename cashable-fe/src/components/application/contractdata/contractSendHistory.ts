@@ -713,11 +713,38 @@ const HISTORY_DOCUMENT_STATUSES = new Set([
     "sent",
     "delivered",
     "viewed",
+    "partially_signed",
     "signed",
     "completed",
     "voided",
     "revoked",
+    "declined",
+    "expired",
 ]);
+
+/**
+ * Every earlier document of this contract sent through PearSign / BoldSign (re-sent, voided,
+ * declined, expired or signed), newest first: `contractPrefillOverrides.pearsignMainContract.history`.
+ */
+export function parsePearSignContractHistory(
+    raw: unknown,
+): Array<{ envelopeId: string; status: string; sentAt: string | null; endedAt: string | null }> {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const state = (raw as Record<string, unknown>).pearsignMainContract as { history?: unknown } | undefined;
+    const list = Array.isArray(state?.history) ? state.history : [];
+    return list
+        .map((h) => {
+            const r = (h && typeof h === "object" ? h : {}) as Record<string, unknown>;
+            return {
+                envelopeId: String(r.envelopeId ?? "").trim(),
+                status: String(r.status ?? "").trim().toLowerCase() || "sent",
+                sentAt: r.sentAt ? String(r.sentAt) : null,
+                endedAt: r.endedAt ? String(r.endedAt) : null,
+            };
+        })
+        .filter((h) => h.envelopeId)
+        .reverse();
+}
 
 const HISTORY_CONTRACT_STATUSES = new Set([
     "SENT",
@@ -1062,6 +1089,24 @@ export function buildContractSendTableRows(
                 ),
             });
         }
+    }
+
+    // PearSign / BoldSign: every earlier document of this contract, newest first.
+    for (const entry of parsePearSignContractHistory(prefill)) {
+        if (seenEnvelopeIds.has(entry.envelopeId) || knownAchEnvelopeIds.has(entry.envelopeId)) continue;
+        const status = entry.status === "partially_signed" ? "viewed" : entry.status;
+        if (!isContractRowVisibleInSendTable(status, status, entry.envelopeId, entry.sentAt)) continue;
+        seenEnvelopeIds.add(entry.envelopeId);
+        pushMainEnvelopeDocumentRows(rows, {
+            envelopeId: entry.envelopeId,
+            contractStatus: status,
+            documentStatus: status,
+            sentAt: entry.sentAt ?? entry.endedAt ?? null,
+            isCurrent: false,
+            keyPrefix: "history-esign",
+            funderName: String((contract as { funderName?: unknown }).funderName ?? "").trim() || null,
+            termsSnapshot: resolveTermsSnapshotFromContractPrefill(prefill, entry.envelopeId),
+        });
     }
 
     const contractHistoryNewestFirst = [...contractHistory].reverse();

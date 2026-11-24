@@ -1019,10 +1019,54 @@ const BOLDSIGN_MIN_SYNC_MS = 60_000;
  * webhook carries it), so no API call is made. BoldSign documents are otherwise re-read at most
  * once a minute; a finished one is never re-read.
  */
+/** Status order: an update never moves a document back (a late "Viewed" after "Completed"). */
+const ENVELOPE_STATUS_RANK: Record<string, number> = {
+  draft: 0, sent: 1, viewed: 2, partially_signed: 3, signed: 3, completed: 4, voided: 4, declined: 4, expired: 4,
+};
+
+/**
+ * An earlier document of this contract (re-sent since, or one the CRM missed): keep its own status
+ * in the contract's history — never apply it to the current document. Adds the entry when missing.
+ */
+export async function recordHistoryEnvelopeStatus(
+  contractId: number,
+  details: Pick<PearSignEnvelopeDetails, 'envelopeId' | 'status' | 'completedAt'> & { sentAt?: string | null },
+) {
+  const contract = await loadContract(contractId);
+  const state = readState(contract.contractPrefillOverrides);
+  if (!state || !details.envelopeId || details.envelopeId === state.envelopeId) return { changed: false };
+  const status = String(details.status || '').toLowerCase();
+  const history = [...(state.history ?? [])];
+  const i = history.findIndex((h) => h.envelopeId === details.envelopeId);
+  const finished = ['completed', 'voided', 'declined', 'expired'].includes(status);
+  if (i < 0) {
+    history.push({
+      envelopeId: details.envelopeId,
+      status: status || 'sent',
+      ...(details.sentAt ? { sentAt: details.sentAt } : {}),
+      ...(finished ? { endedAt: details.completedAt ?? new Date().toISOString() } : {}),
+    });
+    history.sort((a, b) => (Date.parse(String(a.sentAt || '')) || 0) - (Date.parse(String(b.sentAt || '')) || 0));
+  } else {
+    const from = String(history[i].status || 'sent').toLowerCase();
+    const rank = (s: string) => ENVELOPE_STATUS_RANK[s] ?? 1;
+    if (!status || rank(status) < rank(from) || (rank(from) === 4 && status !== from)) return { changed: false };
+    if (status === from) return { changed: false };
+    history[i] = { ...history[i], status, ...(finished ? { endedAt: details.completedAt ?? new Date().toISOString() } : {}) };
+  }
+  await writeState(contractId, { ...state, history: history.slice(-30) });
+  return { changed: true };
+}
+
 export async function syncPearSignContract(contractId: number, opts: { details?: PearSignEnvelopeDetails } = {}) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
   if (!state?.envelopeId) return { state, changed: false };
+  // An update for an earlier document of this contract only updates that document's history entry.
+  if (opts.details?.envelopeId && opts.details.envelopeId !== state.envelopeId) {
+    await recordHistoryEnvelopeStatus(contractId, opts.details);
+    return { state, changed: false };
+  }
 
   const boldSign = isBoldSignEnvelopeId(state.envelopeId);
   if (boldSign && !opts.details) {

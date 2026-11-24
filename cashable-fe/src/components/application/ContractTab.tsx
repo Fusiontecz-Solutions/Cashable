@@ -296,10 +296,9 @@ function formatContractTableStatusLabel(
     if (ds === "completed" || ds === "signed" || cs === "COMPLETED" || cs === "SIGNED") {
         return "Signed";
     }
-    if (
-        ["revoked", "voided", "declined", "expired"].includes(ds) ||
-        ["REVOKED", "VOIDED", "DECLINED", "EXPIRED"].includes(cs)
-    ) {
+    if (ds === "declined" || cs === "DECLINED") return "Declined";
+    if (ds === "expired" || cs === "EXPIRED") return "Expired";
+    if (["revoked", "voided"].includes(ds) || ["REVOKED", "VOIDED"].includes(cs)) {
         return "Voided";
     }
     if (ds === "viewed" || ds === "delivered" || cs === "VIEWED") return "Viewed";
@@ -316,7 +315,7 @@ function contractStatusToCapsuleStatus(
     if (label === "Signed") return "SIGNED";
     if (label === "Viewed") return "VIEWED";
     if (label === "Sent") return "SENT";
-    if (label === "Voided") return "VOIDED";
+    if (label === "Voided" || label === "Declined" || label === "Expired") return "VOIDED";
     return "DRAFT";
 }
 
@@ -4264,7 +4263,7 @@ export default function ContractTab({
             row.documentKind === "ach" ||
             row.documentKind === "package";
         const isSupplementalRow = isAchRow || isPackageRow || isNonContractDocument;
-        const rowStatusLabel = isAchRow
+        const baseRowStatusLabel = isAchRow
             ? formatAchTableStatusLabel({
                   envelopeId: row.envelopeId,
                   status: row.achStatus,
@@ -4276,6 +4275,11 @@ export default function ContractTab({
                     row.documentStatus,
                     Boolean(row.envelopeId),
                 );
+        // An earlier contract that was re-sent before anyone signed it.
+        const rowStatusLabel =
+            !row.isCurrent && !isAchRow && !isPackageRow && (baseRowStatusLabel === "Sent" || baseRowStatusLabel === "Viewed")
+                ? "Replaced"
+                : baseRowStatusLabel;
         const rowCapsuleStatus: AchAuthorizationDocuSignCapsuleStatus = isAchRow
             ? (row.achStatus ?? "DRAFT")
             : isPackageRow

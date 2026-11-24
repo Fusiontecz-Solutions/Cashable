@@ -36,6 +36,7 @@ import {
   writeState,
   sendStatusNoticeOnce,
   syncPearSignContract,
+  recordHistoryEnvelopeStatus,
   type PearSignContractState,
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
@@ -1463,6 +1464,21 @@ async function finishBoldSignPackageEditor(
  */
 export async function recoverBoldSignEditorSend(contractId: number, envelopeId: string) {
   const contract = await loadContract(contractId);
+  // A document older than the contract's current one: list it in the history (with its own
+  // status), never make it current again.
+  const current = readState(contract.contractPrefillOverrides);
+  if (current?.envelopeId && current.envelopeId !== envelopeId && current.sentAt) {
+    const props = await boldSignDocumentProperties(envelopeId.replace(/^bs-/i, ''));
+    if (String(props.metaData?.contractId ?? '') !== String(contractId)) return { status: 'not_ours', state: current };
+    const createdMs = Number(props.createdDate) * 1000;
+    if (Number.isFinite(createdMs) && createdMs > 0 && createdMs < Date.parse(current.sentAt)) {
+      const details = boldSignDetailsFromPayload(envelopeId, props);
+      if (String(props.status || '').toLowerCase() === 'draft' || !details) return { status: 'open', state: current };
+      await recordHistoryEnvelopeStatus(contractId, { ...details, sentAt: new Date(createdMs).toISOString() });
+      if (readEditorSession(contract.contractPrefillOverrides)?.sessionId === envelopeId) await writeEditorSession(contractId, null);
+      return { status: 'history', state: current };
+    }
+  }
   const record: EditorSessionRecord = readEditorSession(contract.contractPrefillOverrides) ?? {
     sessionId: envelopeId,
     createdAt: new Date().toISOString(),
