@@ -1028,7 +1028,7 @@ export function boldSignSignersFor(
 }
 
 /** Always copied on every BoldSign contract (env BOLDSIGN_ALWAYS_CC overrides, comma-separated). */
-const BOLDSIGN_ALWAYS_CC_DEFAULT = ['office@cashablefunding.com', 'ariel@cashablefunding.com'];
+const BOLDSIGN_ALWAYS_CC_DEFAULT = ['office@cashablefunding.com', 'ariel@cashablefunding.com', 'edward@cashablefunding.com'];
 export function boldSignAlwaysCc(): string[] {
   const raw = String(process.env.BOLDSIGN_ALWAYS_CC ?? '').trim();
   return raw ? raw.split(/[,;\s]+/).filter(Boolean) : BOLDSIGN_ALWAYS_CC_DEFAULT;

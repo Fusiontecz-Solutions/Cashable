@@ -128,10 +128,11 @@ describe('BoldSign reviewers and always-CC', () => {
       ['bob@example.com', 3, 'Signer'],
     ]);
   });
-  it('office@ and ariel@ are always CC (a reviewer is not CC too)', () => {
+  it('office@, ariel@ and edward@ are always CC (a reviewer is not CC too)', () => {
     expect(boldSignCcFor({ ccEmails: ['x@example.com', 'larry@cashablefunding.com'], reviewerEmails: ['larry@cashablefunding.com'] })).toEqual([
       'office@cashablefunding.com',
       'ariel@cashablefunding.com',
+      'edward@cashablefunding.com',
       'x@example.com',
     ]);
   });
