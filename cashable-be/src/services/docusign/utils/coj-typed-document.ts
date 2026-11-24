@@ -132,7 +132,23 @@ export function cojFacts(values: Values) {
   return cojFactsFrom(values);
 }
 
-function cojFactsFrom(values: Values) {
+/** Names print with one space after every comma ("CORPORATION,COZY" → "CORPORATION, COZY"). */
+export function cojNameCommas(raw: unknown): string {
+  return String(raw ?? '').replace(/,(?=[^\s ])/g, ', ');
+}
+const COJ_NAME_KEYS = [
+  'business_name_with_dba',
+  'client_legal_name',
+  'disclosure_merchant_name',
+  'coj_additional_names',
+  'owner1_guarantor_name',
+  'guaranty_owner1_name',
+  'client_name',
+] as const;
+
+function cojFactsFrom(rawValues: Values) {
+  const values: Values = { ...rawValues };
+  for (const k of COJ_NAME_KEYS) if (values[k] != null) values[k] = cojNameCommas(values[k]);
   // Additional names (mapping field, separated by ";" or new lines) follow the merchant everywhere.
   const extraNames = String(values.coj_additional_names ?? '')
     .split(/[;\r\n]+/)

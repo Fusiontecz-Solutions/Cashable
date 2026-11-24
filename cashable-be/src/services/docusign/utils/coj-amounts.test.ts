@@ -20,3 +20,16 @@ describe('COJ amounts are the repayment (RTR), not the funded amount', () => {
     }
   });
 });
+
+describe('COJ names: one space after each comma', () => {
+  it('adds the missing space between names, keeps amounts', () => {
+    const f = cojFacts({
+      business_name_with_dba: 'AZURE HOME HEALTHCARE LLC DBA AZURE HOME HEALTHCARE',
+      coj_additional_names: 'SLJ INVESTMENTS CORPORATION,COZY SKATE COMPANY',
+      owner1_guarantor_name: 'DARNA GOINS FINKELSTEIN',
+      purchase_price: '34,100',
+    });
+    expect(f.merchant).toBe('AZURE HOME HEALTHCARE LLC DBA AZURE HOME HEALTHCARE, SLJ INVESTMENTS CORPORATION, COZY SKATE COMPANY');
+    expect(f.purchase).toBe('$34,100.00');
+  });
+});
