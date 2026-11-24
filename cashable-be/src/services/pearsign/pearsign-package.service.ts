@@ -37,6 +37,7 @@ import {
   sendStatusNoticeOnce,
   syncPearSignContract,
   recordHistoryEnvelopeStatus,
+  findContractIdByPearSignEnvelopeId,
   type PearSignContractState,
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
@@ -47,6 +48,7 @@ import {
   boldSignCreateEmbeddedSend,
   boldSignDetailsFromPayload,
   boldSignDocumentProperties,
+  boldSignListDocuments,
   boldSignSandbox,
   boldSignSendDocument,
   isBoldSignConfigured,
@@ -1561,4 +1563,49 @@ export async function finishPearSignPackageEditor(
     redrawable: Boolean(edited),
   });
   return { status: 'sent', state: next, documents: pkg.documents.map((d) => d.name) };
+}
+
+/**
+ * Bring every contract's document chain in line with BoldSign (runs once after the server starts):
+ *  - a document the CRM created (tagged contractId) but never recorded is added to its contract
+ *    (older than the current one → history; newer → recorded as the current send);
+ *  - an earlier document's status is refreshed from BoldSign (signed/voided after it was replaced).
+ * Read-only on BoldSign; one properties call per document the CRM does not know yet.
+ */
+export async function backfillBoldSignDocumentChain(maxPages = 10): Promise<{ added: number; updated: number }> {
+  let added = 0;
+  let updated = 0;
+  for (let page = 1; page <= maxPages; page++) {
+    const list = await boldSignListDocuments(page, 100);
+    for (const item of list.result ?? []) {
+      const status = String(item.status || '').toLowerCase();
+      if (!item.documentId || status === 'draft' || status === 'scheduled') continue;
+      const envelopeId = toBoldSignEnvelopeId(item.documentId);
+      try {
+        const known = await findContractIdByPearSignEnvelopeId(envelopeId);
+        if (known) {
+          const state = readState((await loadContract(known)).contractPrefillOverrides);
+          if (state?.envelopeId !== envelopeId) {
+            const details = boldSignDetailsFromPayload(envelopeId, item);
+            if (details && (await recordHistoryEnvelopeStatus(known, details)).changed) updated++;
+          }
+          continue;
+        }
+        const props = await boldSignDocumentProperties(item.documentId);
+        if (props.metaData?.source !== 'cashable-crm') continue;
+        const tagged = Number(props.metaData?.contractId);
+        if (!Number.isFinite(tagged) || tagged <= 0) continue;
+        if (!(await prisma.contract.findUnique({ where: { id: tagged }, select: { id: true } }))) continue;
+        const out = await recoverBoldSignEditorSend(tagged, envelopeId);
+        if (out.status === 'sent' || out.status === 'history') {
+          added++;
+          console.log(`[BoldSign] chain backfill: document ${item.documentId} added to contract ${tagged} (${out.status})`);
+        }
+      } catch (err) {
+        console.warn(`[BoldSign] chain backfill skipped ${item.documentId}:`, (err as Error)?.message);
+      }
+    }
+    if (page >= Number(list.pageDetails?.totalPages ?? 1)) break;
+  }
+  return { added, updated };
 }

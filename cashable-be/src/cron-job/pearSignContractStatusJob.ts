@@ -1,7 +1,7 @@
 import { isPearSignConfigured } from '../services/pearsign/pearsign-client';
 import { isBoldSignConfigured } from '../services/pearsign/boldsign-client';
 import { listActivePearSignContractIds, syncPearSignContract } from '../services/pearsign/pearsign-contract.service';
-import { listPendingBoldSignEditorSessions, recoverBoldSignEditorSend } from '../services/pearsign/pearsign-package.service';
+import { backfillBoldSignDocumentChain, listPendingBoldSignEditorSessions, recoverBoldSignEditorSend } from '../services/pearsign/pearsign-package.service';
 
 /**
  * Polls PearSign for contracts still out for signature so a deal moves to Contract
@@ -55,4 +55,12 @@ export function startPearSignContractStatusJob() {
   timer = setInterval(() => void tick(), INTERVAL_MS);
   timer.unref?.();
   setTimeout(() => void tick(), 30_000).unref?.();
+  // Once per start: add documents the CRM missed and refresh earlier documents' statuses.
+  if (isBoldSignConfigured() && process.env.BOLDSIGN_CHAIN_BACKFILL !== 'false') {
+    setTimeout(() => {
+      void backfillBoldSignDocumentChain()
+        .then((r) => console.log(`[BoldSign] chain backfill done: ${r.added} added, ${r.updated} statuses refreshed`))
+        .catch((err) => console.warn('[BoldSign] chain backfill failed:', (err as Error)?.message));
+    }, 90_000).unref?.();
+  }
 }

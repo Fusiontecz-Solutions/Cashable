@@ -247,6 +247,14 @@ export type BoldSignDocumentProperties = {
   documentHistory?: Array<{ action?: string; timestamp?: number; email?: string }>;
 };
 
+/** One page of the account's documents (newest activity first). */
+export async function boldSignListDocuments(page: number, pageSize = 100): Promise<{
+  result?: BoldSignDocumentProperties[];
+  pageDetails?: { totalPages?: number };
+}> {
+  return request('GET', '/v1/document/list', { params: { Page: page, PageSize: pageSize } });
+}
+
 export async function boldSignDocumentProperties(documentId: string): Promise<BoldSignDocumentProperties> {
   return request<BoldSignDocumentProperties>('GET', '/v1/document/properties', { params: { documentId } });
 }
