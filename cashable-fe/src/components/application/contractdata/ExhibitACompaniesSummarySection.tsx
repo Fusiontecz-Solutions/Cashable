@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,10 +50,18 @@ export function ExhibitACompaniesSummarySection({
     const [addresses, setAddresses] = useState<string[]>([""]);
     const [saving, setSaving] = useState(false);
 
+    // Load from the deal only when its saved Exhibit A values change: the page refreshes the
+    // contract in the background (a new object each time), which must not wipe what is being typed.
+    const loadedSignatureRef = useRef<string | null>(null);
     useEffect(() => {
         if (!prefillOverridesReady) return;
-        setCompanies(companiesFromPrefill(persistedPrefillOverrides));
-        setAddresses(companyAddressesFromPrefill(persistedPrefillOverrides));
+        const names = companiesFromPrefill(persistedPrefillOverrides);
+        const addrs = companyAddressesFromPrefill(persistedPrefillOverrides);
+        const signature = JSON.stringify([names, addrs]);
+        if (signature === loadedSignatureRef.current) return;
+        loadedSignatureRef.current = signature;
+        setCompanies(names);
+        setAddresses(addrs);
     }, [prefillOverridesReady, persistedPrefillOverrides]);
 
     const updateAddress = useCallback((index: number, value: string) => {
