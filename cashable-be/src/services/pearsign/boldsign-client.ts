@@ -49,6 +49,54 @@ export function boldSignDocumentId(envelopeId: string): string {
   return String(envelopeId).trim().replace(/^bs-/i, '');
 }
 
+/**
+ * BoldSign's hourly API allowance, as its responses report it (X-RateLimit-* headers).
+ * Background work (status job, recovery checks) stops while the allowance is low so what is left
+ * goes to people opening, sending and voiding contracts; after a 429 nothing calls BoldSign until
+ * the allowance resets.
+ */
+const rate = { limit: null as number | null, remaining: null as number | null, resetAt: 0, blockedUntil: 0 };
+
+function headerNumber(headers: Record<string, unknown>, name: string): number | null {
+  const raw = headers[name] ?? headers[name.toLowerCase()];
+  const n = Number(Array.isArray(raw) ? raw[0] : raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A reset header is either epoch seconds or seconds from now. */
+function resetMs(value: number | null): number {
+  if (value == null || value <= 0) return 0;
+  return value > 1e9 ? value * 1000 : Date.now() + value * 1000;
+}
+
+function noteRateHeaders(headers: Record<string, unknown>, status: number) {
+  const limit = headerNumber(headers, 'x-ratelimit-limit');
+  const remaining = headerNumber(headers, 'x-ratelimit-remaining');
+  const reset = resetMs(headerNumber(headers, 'x-ratelimit-reset'));
+  if (limit != null) rate.limit = limit;
+  if (remaining != null) rate.remaining = remaining;
+  if (reset) rate.resetAt = reset;
+  if (status === 429) {
+    const retry = resetMs(headerNumber(headers, 'retry-after'));
+    rate.blockedUntil = Math.max(retry, reset, Date.now() + 10 * 60_000);
+  }
+}
+
+/** True when background work may spend a BoldSign call (keeps a reserve for people using the CRM). */
+export function boldSignBackgroundAllowed(): boolean {
+  const now = Date.now();
+  if (now < rate.blockedUntil) return false;
+  if (rate.resetAt && now >= rate.resetAt) return true; // the allowance has reset since we last heard
+  if (rate.remaining == null) return true;
+  const reserve = Math.max(20, Math.round((rate.limit ?? 0) * 0.25));
+  return rate.remaining > reserve;
+}
+
+/** For logs: what BoldSign last reported about the hourly allowance. */
+export function boldSignRateStatus() {
+  return { ...rate };
+}
+
 async function request<T>(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
@@ -56,6 +104,13 @@ async function request<T>(
 ): Promise<T> {
   const key = apiKey();
   if (!key) throw new PearSignApiError('BOLDSIGN_API_KEY is not set in .env', 0);
+  if (Date.now() < rate.blockedUntil) {
+    // Already over the limit: don't spend another call finding that out.
+    throw new PearSignApiError(
+      "BoldSign's hourly API limit for this account is used up. Wait a few minutes and try again (BoldSign resets it within the hour).",
+      429,
+    );
+  }
   const res = await axios.request({
     method,
     url: `${apiBase()}${path}`,
@@ -72,6 +127,7 @@ async function request<T>(
     maxContentLength: 60 * 1024 * 1024,
     validateStatus: () => true,
   });
+  noteRateHeaders((res.headers ?? {}) as Record<string, unknown>, res.status);
   if (res.status >= 200 && res.status < 300) return res.data as T;
   let body: unknown = res.data;
   if (opts.binary && body) {
@@ -255,8 +311,18 @@ export async function boldSignListDocuments(page: number, pageSize = 100): Promi
   return request('GET', '/v1/document/list', { params: { Page: page, PageSize: pageSize } });
 }
 
+/** A send, a sync and a recovery check often read the same document within seconds. */
+const propertiesCache = new Map<string, { at: number; props: BoldSignDocumentProperties }>();
+const PROPERTIES_CACHE_MS = 20_000;
+
 export async function boldSignDocumentProperties(documentId: string): Promise<BoldSignDocumentProperties> {
-  return request<BoldSignDocumentProperties>('GET', '/v1/document/properties', { params: { documentId } });
+  const hit = propertiesCache.get(documentId);
+  if (hit && Date.now() - hit.at < PROPERTIES_CACHE_MS) return hit.props;
+  const props = await request<BoldSignDocumentProperties>('GET', '/v1/document/properties', { params: { documentId } });
+  for (const [k, v] of propertiesCache) if (Date.now() - v.at >= PROPERTIES_CACHE_MS) propertiesCache.delete(k);
+  // A draft is about to change (the editor's Send) — always read it fresh.
+  if (!/^(draft|scheduled)$/i.test(String(props.status || ''))) propertiesCache.set(documentId, { at: Date.now(), props });
+  return props;
 }
 
 /** Recent downloads: the archive, the Signed email and a download often want the same PDF at once. */
@@ -277,6 +343,7 @@ export async function boldSignDownload(documentId: string): Promise<Buffer> {
 /** Void ("revoke") a document out for signature. */
 export async function boldSignRevoke(documentId: string, message = 'Voided from the Cashable CRM.'): Promise<void> {
   await request('POST', '/v1/document/revoke', { params: { documentId }, data: { message } });
+  propertiesCache.delete(documentId);
 }
 
 const isoFromEpoch = (s?: number | null) => (s && Number.isFinite(s) ? new Date(s * 1000).toISOString() : null);

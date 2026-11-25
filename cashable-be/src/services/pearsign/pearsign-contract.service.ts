@@ -1062,7 +1062,10 @@ export async function recordHistoryEnvelopeStatus(
   return { changed: true };
 }
 
-export async function syncPearSignContract(contractId: number, opts: { details?: PearSignEnvelopeDetails } = {}) {
+export async function syncPearSignContract(
+  contractId: number,
+  opts: { details?: PearSignEnvelopeDetails; webhookEvent?: boolean } = {},
+) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
   if (!state?.envelopeId) return { state, changed: false };
@@ -1082,6 +1085,11 @@ export async function syncPearSignContract(contractId: number, opts: { details?:
         opts = { ...opts, details: { envelopeId: state.envelopeId, title: state.title || '', status: 'completed', createdAt: '', completedAt: state.completedAt ?? null, recipients: [] } };
       } else return { state, changed: false };
     } else {
+      // BoldSign status comes only from its webhook (it pushes every view / sign / decline / void),
+      // so status never spends the hourly API allowance. BOLDSIGN_STATUS_API=true restores a
+      // throttled status call for an environment without the webhook.
+      // One call is allowed for a real BoldSign event whose payload could not be verified.
+      if (!opts.webhookEvent && process.env.BOLDSIGN_STATUS_API !== 'true') return { state, changed: false };
       const recent = Date.now() - (Date.parse(String(state.lastSyncedAt || '')) || 0) < BOLDSIGN_MIN_SYNC_MS;
       if (finished || recent) return { state, changed: false };
     }

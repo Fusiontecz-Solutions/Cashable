@@ -99,11 +99,6 @@ function validateAchFields(
         const digits = value.replace(/\D/g, "");
         return digits.length >= 10 ? null : "Enter a phone number with at least 10 digits.";
     };
-    const validateEin = (value: string): string | null => {
-        if (!value) return null;
-        const digits = value.replace(/\D/g, "");
-        return digits.length === 9 ? null : "EIN / tax ID must be 9 digits.";
-    };
     const validateRouting = (value: string): string | null => {
         if (!value) return null;
         const digits = value.replace(/\D/g, "");
@@ -147,10 +142,7 @@ function validateAchFields(
         const msg = validatePhone(trimField(values, key));
         if (msg) err[key] = msg;
     }
-    if (ACH_FORM_FLAT_FIELD_KEYS.has("authorizationClientTaxId")) {
-        const msg = validateEin(trimField(values, "authorizationClientTaxId"));
-        if (msg) err.authorizationClientTaxId = msg;
-    }
+    // EIN / tax ID is never checked: blank, partial or "APPLIED FOR" all save.
     for (const key of routingKeys) {
         if (!ACH_FORM_FLAT_FIELD_KEYS.has(key)) continue;
         const msg = validateRouting(trimField(values, key));

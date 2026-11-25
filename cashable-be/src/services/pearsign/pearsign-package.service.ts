@@ -50,6 +50,7 @@ import {
   boldSignCreateEmbeddedSend,
   boldSignDetailsFromPayload,
   boldSignDocumentProperties,
+  boldSignBackgroundAllowed,
   boldSignListDocuments,
   boldSignSandbox,
   boldSignSendDocument,
@@ -1207,7 +1208,14 @@ export async function sendPearSignPackage(
 /** Open editor session per contract (outside the package, so a package write never clears it). */
 const EDITOR_SESSION_KEY = 'pearsignEditorSession';
 
-type EditorSessionRecord = { sessionId: string; createdAt: string; createdByUserId: string | null; message: string };
+type EditorSessionRecord = {
+  sessionId: string;
+  createdAt: string;
+  createdByUserId: string | null;
+  message: string;
+  /** Last time the status job asked BoldSign about this (still unsent) editor draft. */
+  checkedAt?: string;
+};
 
 /** An origin PearSign will let frame the editor: https, or http on localhost. */
 export function editorOrigin(raw: unknown): string {
@@ -1492,16 +1500,46 @@ export async function recoverBoldSignEditorSend(contractId: number, envelopeId: 
   return out;
 }
 
-/** Contracts with a BoldSign editor opened in the last 3 days (2+ minutes ago) and not recorded. */
+/**
+ * How long to wait between BoldSign checks of an editor draft that is still unsent: soon after it
+ * was opened a Send is likely; an editor closed without sending is just a draft, and the webhook
+ * reports a later send anyway.
+ */
+function editorDraftCheckGapMs(ageMs: number): number {
+  if (ageMs < 60 * 60_000) return 5 * 60_000; // first hour: every 5 minutes
+  if (ageMs < 24 * 3600_000) return 60 * 60_000; // first day: hourly
+  return 6 * 3600_000; // after that: every 6 hours
+}
+
+/** Contracts with a BoldSign editor opened in the last 3 days (2+ minutes ago), not recorded, and due a check. */
 export async function listPendingBoldSignEditorSessions(): Promise<Array<{ contractId: number; envelopeId: string }>> {
-  const rows = await prisma.$queryRaw<Array<{ id: number; session: string | null }>>`
-    SELECT id, "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'sessionId' AS session
+  const rows = await prisma.$queryRaw<Array<{ id: number; session: string | null; createdAt: string | null; checkedAt: string | null }>>`
+    SELECT id,
+      "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'sessionId' AS session,
+      "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'createdAt' AS "createdAt",
+      "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'checkedAt' AS "checkedAt"
     FROM "Contract"
     WHERE "contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'sessionId' LIKE 'bs-%'
       AND coalesce(("contractPrefillOverrides" -> ${EDITOR_SESSION_KEY} ->> 'createdAt')::timestamptz, 'epoch'::timestamptz)
           BETWEEN now() - interval '3 days' AND now() - interval '2 minutes'
   `;
-  return rows.filter((r) => r.session).map((r) => ({ contractId: Number(r.id), envelopeId: String(r.session) }));
+  const now = Date.now();
+  return rows
+    .filter((r) => {
+      if (!r.session) return false;
+      const checked = Date.parse(String(r.checkedAt || ''));
+      if (!Number.isFinite(checked)) return true;
+      const age = now - (Date.parse(String(r.createdAt || '')) || now);
+      return now - checked >= editorDraftCheckGapMs(age);
+    })
+    .map((r) => ({ contractId: Number(r.id), envelopeId: String(r.session) }));
+}
+
+/** Note that the status job just checked this editor draft (still unsent), so it waits before the next check. */
+export async function markBoldSignEditorSessionChecked(contractId: number, envelopeId: string): Promise<void> {
+  const record = readEditorSession((await loadContract(contractId)).contractPrefillOverrides);
+  if (!record || record.sessionId !== envelopeId) return;
+  await writeEditorSession(contractId, { ...record, checkedAt: new Date().toISOString() });
 }
 
 export async function finishPearSignPackageEditor(
@@ -1586,6 +1624,10 @@ export async function backfillBoldSignDocumentChain(maxPages = 10): Promise<{ ad
             if (details && (await recordHistoryEnvelopeStatus(known, details)).changed) updated++;
           }
           continue;
+        }
+        if (!boldSignBackgroundAllowed()) {
+          console.warn('[BoldSign] chain backfill paused: hourly API allowance is low');
+          return { added, updated };
         }
         const props = await boldSignDocumentProperties(item.documentId);
         if (props.metaData?.source !== 'cashable-crm') continue;

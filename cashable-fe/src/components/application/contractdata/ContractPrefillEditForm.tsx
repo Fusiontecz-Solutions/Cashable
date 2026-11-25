@@ -805,11 +805,6 @@ const PHONE_KEYS: (keyof BuildContractPrefillFieldsArgs)[] = [
     "authorizedBusinessPhone",
     "achAuthorizationAccountHolderPhone",
 ];
-const EIN_KEYS: (keyof BuildContractPrefillFieldsArgs)[] = [
-    "federalTaxIdEin",
-    "securityTaxEin",
-    "authorizationClientTaxId",
-];
 const ROUTING_KEYS: (keyof BuildContractPrefillFieldsArgs)[] = [
     "authorizationClientBankRouting",
     "achAuthorizationAccountHolderBankRoutingNumber",
@@ -888,12 +883,6 @@ function validatePhone(value: string): string | null {
     return digits.length >= 10 ? null : "Enter a phone number with at least 10 digits.";
 }
 
-function validateEin(value: string): string | null {
-    if (!value) return null;
-    const digits = value.replace(/\D/g, "");
-    return digits.length === 9 ? null : "EIN / tax ID must be 9 digits (optional XX-XXXXXXX format).";
-}
-
 function validateRouting(value: string): string | null {
     if (!value) return null;
     const digits = value.replace(/\D/g, "");
@@ -956,10 +945,7 @@ function validatePrefillValues(values: Record<keyof BuildContractPrefillFieldsAr
         const msg = validatePhone(trimField(values, key));
         if (msg) err[key] = msg;
     }
-    for (const key of EIN_KEYS) {
-        const msg = validateEin(trimField(values, key));
-        if (msg) err[key] = msg;
-    }
+    // EIN / tax ID is never checked: blank, partial or "APPLIED FOR" all save.
     for (const key of ROUTING_KEYS) {
         const msg = validateRouting(trimField(values, key));
         if (msg) err[key] = msg;

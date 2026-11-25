@@ -1129,20 +1129,21 @@ function buildPrePaymentAddendumComputed(
     application: Record<string, unknown> | null,
     sctx: StateDisclosureContext,
 ): ContractPrefillField[] {
+    // Same sources as the main contract (Verify Prefill wins), so the addendum always
+    // matches the deal: its date, business legal name and Owner 1 name.
     const c = contract ?? {};
     const sellerName =
         resolveContractBusinessLegalNameForPrefill(c, application) ||
         sctx.recipientName ||
         "";
     const guarantorName =
-        getApplicationPrimaryRecipientName(application) ||
+        resolveContractClientPersonNameForPrefill(c, application) ||
         str(c.owner1GuarantorName) ||
+        getApplicationPrimaryRecipientName(application) ||
         str(c.guarantorName) ||
-        str(c.customerName) ||
-        str(c.clientName) ||
         "";
     return buildPrePaymentAddendumContractPrefillFields({
-        agreementDate: currentUsDate(),
+        agreementDate: toUsDateOnly(str(c.agreementDate) || str(c.contractDate)) || currentUsDate(),
         sellerName,
         guarantorName,
         businessDays: str(c.prePaymentBusinessDays),
@@ -1657,11 +1658,18 @@ function toUsDateOnly(value: string): string {
     const v = String(value ?? "").trim();
     if (!v) return "";
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v;
+    // A plain calendar date ("2026-11-25") is that day as written — never shifted by time zone.
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if (ymd) return `${ymd[2]}/${ymd[3]}/${ymd[1]}`;
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return v;
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${mm}/${dd}/${d.getFullYear()}`;
+    // Timestamps print as the Eastern Time day (CRM rule), not the viewer's local day.
+    return new Intl.DateTimeFormat("en-US", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
+        timeZone: "America/New_York",
+    }).format(d);
 }
 
 function resolveCashablePlatformDocKey(key: string): string | null {

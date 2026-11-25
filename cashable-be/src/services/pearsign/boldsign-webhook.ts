@@ -95,7 +95,7 @@ async function handleBoldSignWebhook(req: Request, res: Response): Promise<void>
     }
     // A verified payload carries the document's status: use it (no BoldSign API call).
     const details = check.verified ? boldSignDetailsFromPayload(envelopeId, req.body?.data) : null;
-    const { changed, state } = await syncPearSignContract(contractId, details ? { details } : {});
+    const { changed, state } = await syncPearSignContract(contractId, details ? { details } : { webhookEvent: true });
     console.log(`[BoldSign webhook] ${event} ${documentId} → contract ${contractId}${changed ? ` now ${state?.status}` : ' (no change)'}`);
   } catch (err) {
     console.error(`[BoldSign webhook] ${event} ${documentId} sync failed:`, (err as Error)?.message);
