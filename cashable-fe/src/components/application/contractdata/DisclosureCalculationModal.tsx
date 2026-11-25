@@ -453,7 +453,30 @@ export function DisclosureCalculationModal({
                                                 }}
                                             />
                                         </div>
-                                        <div className="hidden sm:block" aria-hidden />
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs">
+                                                Payment per period (Scrubbing repay)
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                min={0}
+                                                step="0.01"
+                                                placeholder="payback ÷ number of payments"
+                                                className={`tabular-nums ${EDITABLE_INPUT_CLASS}`}
+                                                value={
+                                                    form.estimatedPayment != null && form.estimatedPayment > 0
+                                                        ? String(form.estimatedPayment)
+                                                        : ""
+                                                }
+                                                onChange={(e) => {
+                                                    const n = Number(e.target.value);
+                                                    updateForm(
+                                                        "estimatedPayment",
+                                                        Number.isFinite(n) && n > 0 ? n : undefined,
+                                                    );
+                                                }}
+                                            />
+                                        </div>
                                     </div>
                                     {form.frequency === "Daily" ? (
                                         <p className="mt-2 text-[11px] text-slate-500">

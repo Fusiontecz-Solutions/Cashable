@@ -21,15 +21,35 @@ describe('achDebitDayName (3 business days after today, Eastern time)', () => {
   });
 });
 
-describe('"On the following days" day box: daily and weekly deals', () => {
+describe('"On the following days" line: weekly deals only', () => {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { prefillFieldsToValueMap } = require('./build-envelope-from-layout');
-  it('weekly deals get the day too; a typed day wins', () => {
-    const weekly = prefillFieldsToValueMap([{ id: 'frequency', value: 'Weekly' }]);
+  it('weekly deals get the day and the daily fallback = remit ÷ 5; a typed day wins', () => {
+    const weekly = prefillFieldsToValueMap([
+      { id: 'frequency', value: 'Weekly' },
+      { id: 'remittance', value: '8,000.00' },
+    ]);
     expect(weekly.ach_following_days_day).toMatch(/^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY)$/);
-    const daily = prefillFieldsToValueMap([{ id: 'frequency', value: 'Daily' }]);
-    expect(daily.ach_following_days_day).toBe(weekly.ach_following_days_day);
+    expect(weekly.ach_following_days).toMatch(/Daily ACH of \$1,600\.00$/);
     const typed = prefillFieldsToValueMap([{ id: 'frequency', value: 'Weekly' }, { id: 'ach_following_days_day', value: 'MONDAY' }]);
     expect(typed.ach_following_days_day).toBe('MONDAY');
+  });
+  it('a stale amount in the standard sentence is replaced with the current remit ÷ 5', () => {
+    const v = prefillFieldsToValueMap([
+      { id: 'frequency', value: 'Weekly' },
+      { id: 'remittance', value: '2,840.00' },
+      { id: 'ach_following_days', value: '- IF A WEEKLY ACH BOUNCES OR IS UNCOLLECTED, THE WEEKLY ACH WILL CHANGE TO DAILY ACH OF $596.00' },
+    ]);
+    expect(v.ach_following_days).toMatch(/Daily ACH of \$568\.00$/);
+  });
+  it('daily deals print neither the sentence nor the day', () => {
+    const daily = prefillFieldsToValueMap([
+      { id: 'frequency', value: 'Daily' },
+      { id: 'remittance', value: '500.00' },
+      { id: 'ach_following_days', value: '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $' },
+      { id: 'ach_following_days_day', value: 'MONDAY' },
+    ]);
+    expect(daily.ach_following_days).toBe('');
+    expect(daily.ach_following_days_day).toBe('');
   });
 });

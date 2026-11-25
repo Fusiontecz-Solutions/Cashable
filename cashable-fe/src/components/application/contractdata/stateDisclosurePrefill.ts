@@ -649,12 +649,17 @@ export function buildStateDisclosurePrefillContextFromContract(args: {
         ) ?? coerceFiniteNumber(contract.appendixUnderwritingFees);
 
     /** Per-period payment lives on the TermsOffer / OfferDecision row. */
-    const periodicPayment = coerceFiniteNumber(
-        offer?.paymentAmount ??
-            (contract as Record<string, unknown>).paymentAmount ??
-            offer?.dailyPayment ??
-            offer?.weeklyPayment,
-    );
+    // Total Remit (= Scrubbing's Repay, which may be entered by hand) is the payment.
+    const periodicPayment = [
+        (contract as Record<string, unknown>).remittance,
+        offer?.repayPerPeriod,
+        offer?.paymentAmount,
+        (contract as Record<string, unknown>).paymentAmount,
+        offer?.dailyPayment,
+        offer?.weeklyPayment,
+    ]
+        .map((v) => coerceFiniteNumber(v))
+        .find((n) => n !== undefined && n > 0);
     const numberOfPayments = coerceFiniteNumber(
         offer?.numberOfPayments ?? (contract as Record<string, unknown>).numberOfPayments,
     );

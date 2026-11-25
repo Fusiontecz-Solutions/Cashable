@@ -44,6 +44,8 @@ export interface DisclosureCalculatorInputs {
     isRefinance?: boolean;
     numberOfPayments: number;
     numberOfPaymentDays: number;
+    /** Payment per period entered in Scrubbing (Repay); 0 / missing = payback ÷ number of payments. */
+    estimatedPayment?: number;
     disbursementDate: string;
     firstPaymentDate: string;
     /** Monthly net-credit / revenue figures from bank analysis (historical method). */
@@ -203,7 +205,11 @@ export function calculateDisclosureMetrics(
     const estimatedTotalPayment = revenuePurchased;
 
     const { numberOfWeeks, actualPaymentCount } = resolveDisclosurePaymentSchedule(input);
-    const estimatedPayment = roundMoney(estimatedTotalPayment / actualPaymentCount);
+    // Scrubbing's Repay (entered by hand) is the payment; otherwise payback ÷ number of payments.
+    const estimatedPayment =
+        input.estimatedPayment != null && input.estimatedPayment > 0
+            ? roundMoney(input.estimatedPayment)
+            : roundMoney(estimatedTotalPayment / actualPaymentCount);
     const paymentTotal = estimatedTotalPayment;
 
     // Estimated monthly cost = remittance × 22 (daily) or × 4 (weekly).
@@ -518,6 +524,9 @@ export function buildDisclosureCalculatorInputsFromSources(args: {
         isRefinance: false,
         numberOfPayments: Math.max(1, numberOfPayments || 1),
         numberOfPaymentDays: Math.max(1, numberOfPaymentDays || numberOfPayments || 1),
+        // Scrubbing's Repay (may be entered by hand) is the disclosure's payment.
+        estimatedPayment:
+            parseMoney(offer?.repayPerPeriod ?? offer?.daysWeeks ?? offer?.paymentAmount) || undefined,
         disbursementDate: args.disbursementDate || defaultDate,
         firstPaymentDate: args.firstPaymentDate || args.disbursementDate || defaultDate,
         monthlyRevenues,

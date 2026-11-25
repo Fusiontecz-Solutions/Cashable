@@ -1165,26 +1165,25 @@ export function expandPrefillValues(
     }
   }
 
-  // ACH "On The Following days" note — weekly deals state the daily fallback.
-  // The daily amount is left blank after the "$": the team adds it in Review.
-  // Admin-provided text wins when present. Printed after a separate day-name box
-  // (`ach_following_days_day`, left blank), so the line reads "<DAY> - If a Weekly ACH bounces …".
-  if (!String(out.ach_following_days || '').trim()) {
+  // ACH "On the following days" line — weekly deals only: "<DAY> - If a Weekly ACH bounces …
+  // Daily ACH of $<remit ÷ 5>" (the weekly remit spread over 5 business days). The standard
+  // sentence is always rebuilt with the current remit; text the team wrote themselves wins.
+  // Daily deals print neither the sentence nor the day.
+  {
     const freq = String(out.frequency || '').trim().toLowerCase();
+    const current = String(out.ach_following_days || '').trim();
+    const isStandardSentence = !current || /^-?\s*if a weekly ach bounces/i.test(current);
     if (freq.startsWith('week')) {
-      out.ach_following_days =
-        '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $';
+      if (isStandardSentence) out.ach_following_days = weeklyAchFallbackSentence(out.remittance);
+      // The day box: the first debit day — 3 business days after the send (Eastern time):
+      // Mon→Thu, Tue→Fri, Wed→Mon, Thu→Tue, Fri→Wed — unless the team typed one.
+      if (!String(out.ach_following_days_day || '').trim()) {
+        out.ach_following_days_day = achDebitDayName();
+      }
+    } else if (freq.startsWith('dai')) {
+      if (isStandardSentence) out.ach_following_days = '';
+      out.ach_following_days_day = '';
     }
-  }
-
-  // The "On the following days" day box, daily and weekly deals: the first debit day — 3 business
-  // days after the send (Eastern time): Mon→Thu, Tue→Fri, Wed→Mon, Thu→Tue, Fri→Wed — unless the
-  // team typed one.
-  if (
-    /^(dai|week)/.test(String(out.frequency || '').trim().toLowerCase()) &&
-    !String(out.ach_following_days_day || '').trim()
-  ) {
-    out.ach_following_days_day = achDebitDayName();
   }
 
   // ACH "On the following days" checkboxes (ach_days_*_check): the forms print the
@@ -1793,6 +1792,15 @@ function resolveDisclosureMerchantNameValue(
  * Exhibit A row N on the contract: "<company> — <address>" when the company has an address
  * (`exhibit_a_address_N`). Only this box shows the address; the COJs list the name alone.
  */
+/** Weekly ACH fallback line: the daily ACH amount is the weekly remit ÷ 5 business days. */
+export function weeklyAchFallbackSentence(weeklyRemit: unknown): string {
+  const base = '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $';
+  const n = Number.parseFloat(String(weeklyRemit ?? '').replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return base;
+  const daily = Math.round((n / 5) * 100) / 100;
+  return `${base}${daily.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export function exhibitARowValue(key: string, values: Record<string, string>): string | null {
   const row = /^exhibit_a_value_(\d+)$/i.exec(key);
   if (!row) return null;
