@@ -588,20 +588,23 @@ export class InsufficientParsedPdfError extends Error {
 /**
  * New-client path needs owner name fields; businessName falls back when missing.
  */
-export function assertReadyToCreateNewClientFromPdf(parsedData: unknown, clientRecord: unknown): void {
-    if (clientRecord) {
-        return;
-    }
-    const o =
-        (parsedData as { owner?: { owner_first_name?: string | null; owner_last_name?: string | null } })?.owner ??
-        {};
-    const fn = o.owner_first_name != null ? String(o.owner_first_name).trim() : '';
-    const ln = o.owner_last_name != null ? String(o.owner_last_name).trim() : '';
-    if (!fn || !ln) {
-        throw new InsufficientParsedPdfError(
-            'Could not determine owner first and last name from this PDF. Prisma requires both; ensure Claude key_data includes owner_first_name / owner_last_name.',
-        );
-    }
+export function assertReadyToCreateNewClientFromPdf(_parsedData: unknown, _clientRecord: unknown): void {
+    // Uploads always create the application with whatever was read: a missing owner name is
+    // filled by pdfOwnerNameParts (the team corrects it on the deal).
+}
+
+/**
+ * Owner first / last name for a new client (both are required columns). A missing part becomes
+ * "-"; no name at all becomes "UNKNOWN" / "OWNER".
+ */
+export function pdfOwnerNameParts(owner: { owner_first_name?: unknown; owner_last_name?: unknown } | null | undefined): {
+    first: string;
+    last: string;
+} {
+    const first = String(owner?.owner_first_name ?? '').trim();
+    const last = String(owner?.owner_last_name ?? '').trim();
+    if (!first && !last) return { first: 'UNKNOWN', last: 'OWNER' };
+    return { first: first || '-', last: last || '-' };
 }
 
 /**
@@ -944,9 +947,9 @@ async function createClientAndApplicationFromPDFBufferUnlocked(
                 businessCity: business.business_city || null,
                 businessState: business.business_state || null,
                 businessZipCode: business.business_zip_code || null,
-                ownerFirstName: owner.owner_first_name || null,
+                ownerFirstName: pdfOwnerNameParts(owner).first,
                 ownerMiddleName: owner.owner_middle_name || null,
-                ownerLastName: owner.owner_last_name || null,
+                ownerLastName: pdfOwnerNameParts(owner).last,
                 ownerEmail: owner.owner_email || null,
                 ownerMobileNumber: owner.owner_mobile_number || null,
                 ownerDateOfBirth: parseDateForClientFields(owner.owner_date_of_birth),
