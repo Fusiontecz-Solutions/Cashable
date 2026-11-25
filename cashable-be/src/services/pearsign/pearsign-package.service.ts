@@ -20,6 +20,7 @@ import {
   getPearSignTemplate,
   isPearSignConfigured,
   sendPearSignEnvelope,
+  voidPearSignEnvelope,
   type PearSignEditorField,
   type PearSignFieldType,
   type PearSignSendResult,
@@ -52,6 +53,7 @@ import {
   boldSignDocumentProperties,
   boldSignBackgroundAllowed,
   boldSignListDocuments,
+  boldSignRevoke,
   boldSignSandbox,
   boldSignSendDocument,
   isBoldSignConfigured,
@@ -895,6 +897,46 @@ async function preparePackageSend(contractId: number, body: { message?: string; 
 }
 
 /** After PearSign has the envelope: save the state, link the Document, notify, move the deal. */
+/** Statuses of a document out for signature that nobody has signed yet. */
+const UNSIGNED_REPLACEABLE_STATUSES = new Set(['', 'sent', 'viewed', 'in_signing', 'delivered']);
+
+/**
+ * After an updated contract is sent, void every earlier document of the contract that is still
+ * out and unsigned (sent / viewed). Signed, partly signed, declined, expired or already voided
+ * documents are left alone. Each void is recorded in the contract's document chain.
+ */
+export async function voidReplacedUnsignedDocuments(
+  contractId: number,
+  newEnvelopeId: string,
+  earlier: Array<{ envelopeId?: string | null; status?: string | null }>,
+): Promise<string[]> {
+  const voided: string[] = [];
+  const seen = new Set<string>();
+  for (const doc of earlier) {
+    const envelopeId = String(doc.envelopeId ?? '').trim();
+    if (!envelopeId || envelopeId === newEnvelopeId || seen.has(envelopeId)) continue;
+    seen.add(envelopeId);
+    if (!UNSIGNED_REPLACEABLE_STATUSES.has(String(doc.status ?? '').trim().toLowerCase())) continue;
+    try {
+      if (isBoldSignEnvelopeId(envelopeId)) {
+        await boldSignRevoke(
+          envelopeId.replace(/^bs-/i, ''),
+          'This contract was replaced by an updated version, which has been sent to you.',
+        );
+      } else {
+        await voidPearSignEnvelope(envelopeId);
+      }
+      await recordHistoryEnvelopeStatus(contractId, { envelopeId, status: 'voided', completedAt: null });
+      voided.push(envelopeId);
+      console.info('[PearSign] voided replaced unsigned document', { contractId, envelopeId, newEnvelopeId });
+    } catch (err) {
+      // Already signed / voided in BoldSign meanwhile, or a temporary error: the new send stands.
+      console.warn(`[PearSign] could not void replaced document ${envelopeId} on contract ${contractId}:`, (err as Error)?.message);
+    }
+  }
+  return voided;
+}
+
 async function recordPackageSent(
   contractId: number,
   actorUserId: string | null,
@@ -940,6 +982,11 @@ async function recordPackageSent(
     ].slice(-20),
   };
   await writeState(contractId, next, { status: 'SENT' });
+  // The updated contract is out: void the earlier ones nobody has signed yet.
+  await voidReplacedUnsignedDocuments(contractId, sent.envelopeId, [
+    ...(state?.history ?? []),
+    ...(state?.envelopeId ? [{ envelopeId: state.envelopeId, status: state.status ?? '' }] : []),
+  ]);
   // Notifications inbox: "Contract Sent" (in-app only; the team is emailed from Viewed on).
   await sendStatusNoticeOnce(contractId, applicationId, contract.funderName ?? null, next, null).catch((err) =>
     console.error('[PearSign] sent notification failed', err),
