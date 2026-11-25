@@ -1193,10 +1193,11 @@ export function expandPrefillValues(
     }
   }
 
-  // The "On the following days" day box: on DAILY deals, the first debit day — 3 business days
-  // after today (Eastern time) — unless the team typed one. Weekly deals leave it for the team.
+  // The "On the following days" day box, daily and weekly deals: the first debit day — 3 business
+  // days after the send (Eastern time): Mon→Thu, Tue→Fri, Wed→Mon, Thu→Tue, Fri→Wed — unless the
+  // team typed one.
   if (
-    String(out.frequency || '').trim().toLowerCase().startsWith('dai') &&
+    /^(dai|week)/.test(String(out.frequency || '').trim().toLowerCase()) &&
     !String(out.ach_following_days_day || '').trim()
   ) {
     out.ach_following_days_day = achDebitDayName();

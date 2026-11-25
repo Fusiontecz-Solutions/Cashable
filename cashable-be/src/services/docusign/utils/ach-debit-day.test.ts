@@ -20,3 +20,16 @@ describe('achDebitDayName (3 business days after today, Eastern time)', () => {
     expect(achDebitDayName(new Date('2026-11-24T02:00:00Z'))).toBe('THURSDAY');
   });
 });
+
+describe('"On the following days" day box: daily and weekly deals', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { prefillFieldsToValueMap } = require('./build-envelope-from-layout');
+  it('weekly deals get the day too; a typed day wins', () => {
+    const weekly = prefillFieldsToValueMap([{ id: 'frequency', value: 'Weekly' }]);
+    expect(weekly.ach_following_days_day).toMatch(/^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY)$/);
+    const daily = prefillFieldsToValueMap([{ id: 'frequency', value: 'Daily' }]);
+    expect(daily.ach_following_days_day).toBe(weekly.ach_following_days_day);
+    const typed = prefillFieldsToValueMap([{ id: 'frequency', value: 'Weekly' }, { id: 'ach_following_days_day', value: 'MONDAY' }]);
+    expect(typed.ach_following_days_day).toBe('MONDAY');
+  });
+});
