@@ -122,14 +122,9 @@ export function ExhibitACompaniesSummarySection({
             onDraftInvalidate?.();
             setCompanies(companiesFromPrefill(mainSaved));
             setAddresses(companyAddressesFromPrefill(mainSaved));
+            // Refresh the deal in the background (the local snapshot is already up to date).
             const appKey = String(applicationUuid ?? "").trim();
-            if (appKey) {
-                try {
-                    await dispatch(getByApplicationIdContract(appKey)).unwrap();
-                } catch {
-                    /* parent keeps local snapshot */
-                }
-            }
+            if (appKey) void dispatch(getByApplicationIdContract(appKey));
             toast.success("Exhibit A company names saved.");
         } catch (e: unknown) {
             const msg =

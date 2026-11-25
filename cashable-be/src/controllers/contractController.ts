@@ -180,8 +180,10 @@ class ContractController {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid id parameter' });
 
-      const existing = await contractService.getByIdContract(id);
-      if (!existing) return res.status(404).json({ success: false, message: 'Contract not found' });
+      // Existence only (the full contract load here made every save slower).
+      if (!(await contractService.contractExists(id))) {
+        return res.status(404).json({ success: false, message: 'Contract not found' });
+      }
 
       const {
         clientId,

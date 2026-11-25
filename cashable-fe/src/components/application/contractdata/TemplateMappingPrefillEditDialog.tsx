@@ -342,14 +342,9 @@ export function TemplateMappingPrefillEditDialog({
                 }
             }
 
+            // Refresh the deal in the background: the dialog closes as soon as the save lands.
             const appKey = String(applicationUuid ?? "").trim();
-            if (appKey) {
-                try {
-                    await dispatch(getByApplicationIdContract(appKey)).unwrap();
-                } catch {
-                    /* ignore */
-                }
-            }
+            if (appKey) void dispatch(getByApplicationIdContract(appKey));
 
             toast.success(
                 coordinateLayout

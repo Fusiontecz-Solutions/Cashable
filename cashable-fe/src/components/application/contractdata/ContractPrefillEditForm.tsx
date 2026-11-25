@@ -2076,7 +2076,8 @@ export function ContractPrefillEditForm({
                 (updateRes as { data?: { contractPrefillOverrides?: unknown } })?.data
                     ?.contractPrefillOverrides ??
                 (updateRes as { contractPrefillOverrides?: unknown })?.contractPrefillOverrides;
-            if (appKey) {
+            // The save's reply carries the saved prefill; reload only if it does not.
+            if (appKey && (rawOverrides == null || typeof rawOverrides !== "object")) {
                 try {
                     const res = await dispatch(getByApplicationIdContract(appKey)).unwrap();
                     const contract = (res as { data?: unknown })?.data ?? res;
@@ -2120,7 +2121,10 @@ export function ContractPrefillEditForm({
                 fromDb ?? (payload as Partial<BuildContractPrefillFieldsArgs>),
                 parsedBlob,
             );
-            try {
+            // The contract is saved: the linked records (application, offer, client, owners, bank)
+            // update in the background, so the dialog closes at once.
+            const sourceSync = (async () => {
+              try {
                 await syncContractPrefillToSourceRecords({
                     dispatch,
                     applicationData,
@@ -2136,28 +2140,33 @@ export function ContractPrefillEditForm({
                         contractRecords?.contract ??
                         null,
                 });
-            } catch (syncErr) {
+              } catch (syncErr) {
                 console.error(syncErr);
                 const syncMsg =
                     syncErr instanceof Error
                         ? syncErr.message
                         : "Contract saved, but application or offer sync failed.";
                 toast.warn(syncMsg);
-            }
+              }
+            })();
             setSaveError(null);
-            toast.success("Saved — contract, application, offer, client, owners, and bank updated.");
+            toast.success("Saved");
             if (appKey) {
-                let contractForEmit: unknown =
+                const contractSnapshot: unknown =
                     (updatedContract as Record<string, unknown> | null) ??
                     contractRecords?.contract ??
                     undefined;
-                try {
-                    const res = await dispatch(getByApplicationIdContract(appKey)).unwrap();
-                    contractForEmit = (res as { data?: unknown })?.data ?? res;
-                } catch {
-                    /* use prior contract snapshot */
-                }
-                emitContractPrefillUpdated(appKey, contractForEmit);
+                // Refresh the deal once the linked records are updated (background).
+                void sourceSync.then(async () => {
+                    let contractForEmit = contractSnapshot;
+                    try {
+                        const res = await dispatch(getByApplicationIdContract(appKey)).unwrap();
+                        contractForEmit = (res as { data?: unknown })?.data ?? res;
+                    } catch {
+                        /* use prior contract snapshot */
+                    }
+                    emitContractPrefillUpdated(appKey, contractForEmit);
+                });
             }
             queueMicrotask(() => {
                 onAfterPrefillSaved?.();

@@ -1381,6 +1381,12 @@ class ContractService {
     return rows.map((row: Record<string, unknown>) => mapContractRecordForApi(row));
   }
 
+  /** Cheap existence check (one indexed lookup, no relations). */
+  async contractExists(id: number): Promise<boolean> {
+    const row = await prisma.contract.findUnique({ where: { id }, select: { id: true } });
+    return Boolean(row);
+  }
+
   async getByIdContract(id: number) {
     const row = await (prisma as any).contract.findUnique({
       where: { id },
@@ -1559,12 +1565,11 @@ class ContractService {
     let rowToReturn = row;
 
     // Contract / ACH prefill saves → Client (+ list dealDisplayName) so Overview matches.
+    // In the background: the save answers at once, the Client catches up a moment later.
     if (data.contractPrefillOverrides !== undefined) {
-      try {
-        await syncContractPrefillIdentityToClient(id);
-      } catch (err) {
-        console.error('syncContractPrefillIdentityToClient failed:', err);
-      }
+      void syncContractPrefillIdentityToClient(id).catch((err) =>
+        console.error('syncContractPrefillIdentityToClient failed:', err),
+      );
     }
 
     if (plainBank && applicationId) {
