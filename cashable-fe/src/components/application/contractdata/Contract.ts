@@ -513,6 +513,9 @@ function formatUsDateString(value: string): string {
     const t = String(value || "").trim();
     if (!t) return "";
     if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)) return t;
+    // CRM screens show MM-DD-YYYY; contracts print MM/DD/YYYY.
+    const dashed = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(t);
+    if (dashed) return `${dashed[1].padStart(2, "0")}/${dashed[2].padStart(2, "0")}/${dashed[3]}`;
     if (/^\d{4}-\d{2}-\d{2}/.test(t)) {
         const y = t.slice(0, 4);
         const m = t.slice(5, 7);

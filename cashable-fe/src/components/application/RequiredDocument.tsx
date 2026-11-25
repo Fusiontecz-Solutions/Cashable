@@ -1,3 +1,4 @@
+import { formatDateTimeET } from "@/lib/dateTime";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -780,13 +781,7 @@ const RequiredDocument = ({
                                                         </TableCell>
                                                         <TableCell className={`text-sm ${isDark ? "text-gray-400" : "text-muted-foreground"}`}>
                                                             {file.uploadedAt
-                                                                ? new Date(file.uploadedAt).toLocaleDateString("en-US", { timeZone: "America/New_York",
-                                                                    year: "numeric",
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                })
+                                                                ? formatDateTimeET(new Date(file.uploadedAt))
                                                                 : "—"}
                                                         </TableCell>
                                                         <TableCell className="text-left">

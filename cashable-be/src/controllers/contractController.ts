@@ -180,11 +180,8 @@ class ContractController {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid id parameter' });
 
-      // Existence only (the full contract load here made every save slower).
-      if (!(await contractService.contractExists(id))) {
-        return res.status(404).json({ success: false, message: 'Contract not found' });
-      }
-
+      // No separate existence check (a database round trip on every save): the update itself
+      // reports a missing contract (Prisma P2025 → 404 below).
       const {
         clientId,
         applicationId,
@@ -236,6 +233,9 @@ class ContractController {
 
       return res.status(200).json({ success: true, message: 'Contract updated successfully', data });
     } catch (error: any) {
+      if (error?.code === 'P2025') {
+        return res.status(404).json({ success: false, message: 'Contract not found' });
+      }
       console.error('Update contract error:', error);
       return res.status(500).json({ success: false, message: error?.message || 'Internal server error' });
     }

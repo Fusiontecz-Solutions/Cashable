@@ -35,5 +35,6 @@ export function formatProjectedEndDate(
   if (!Number.isFinite(start.getTime())) return '—';
   const end = new Date(start);
   end.setDate(end.getDate() + calendarDays);
-  return end.toLocaleDateString();
-}
+  return formatDateET(end);
+}import { formatDateET } from "@/lib/dateTime";
+

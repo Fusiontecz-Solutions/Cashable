@@ -1737,6 +1737,8 @@ function toUsDateOnly(value: string): string {
     const v = String(value ?? "").trim();
     if (!v) return "";
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v;
+    const dashed = /^(\d{1,2})-(\d{1,2})-(\d{4})$/.exec(v);
+    if (dashed) return `${dashed[1].padStart(2, "0")}/${dashed[2].padStart(2, "0")}/${dashed[3]}`;
     // A plain calendar date ("2026-11-25") is that day as written — never shifted by time zone.
     const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
     if (ymd) return `${ymd[2]}/${ymd[3]}/${ymd[1]}`;

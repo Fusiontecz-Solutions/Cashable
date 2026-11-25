@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import MyNotes from '@/components/application/MyNotes';
 import RejectApplicationModal from '@/components/application/RejectApplicationModal';
@@ -283,7 +284,7 @@ export const FundingCall = ({ applicationId, onSaved, onCallStatusChange }: Fund
       applicationStatus: latest.applicationStatus || '',
       remarks: latest.remarks || '',
       followUpDate: latest.followUpDate
-        ? new Date(latest.followUpDate).toLocaleDateString('en-US', { timeZone: "America/New_York" })
+        ? formatDateET(new Date(latest.followUpDate))
         : '',
     }));
     onCallStatusChange?.(callStatus);

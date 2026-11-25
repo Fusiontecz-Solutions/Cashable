@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -221,11 +222,7 @@ export default function DecisionLogicInfo({ data }: { data: any }) {
             label="As of Date"
             value={
               data?.asOfDate
-                ? new Date(data.asOfDate).toLocaleDateString("en-US", { timeZone: "America/New_York",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })
+                ? formatDateET(new Date(data.asOfDate))
                 : "N/A"
             }
             disabled={true}

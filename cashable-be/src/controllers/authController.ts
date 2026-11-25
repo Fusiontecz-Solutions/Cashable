@@ -9,6 +9,7 @@ import { isValidRole, PUBLIC_REGISTER_ROLES, ROLES } from '../constants/roles';
 import dotenv from 'dotenv';
 import { sendWelcomeEmail } from '../services/emailService';
 import { recordAuthAudit } from '../services/systemActivityLogService';
+import { forgetAuthenticatedToken } from '../middleware/authMiddleware';
 
 dotenv.config();
 
@@ -971,6 +972,7 @@ class AuthController {
                 where: { token },
                 data: { expiresAt: new Date() },
             });
+            forgetAuthenticatedToken(token);
 
             if (tokenRow.user) {
                 try {

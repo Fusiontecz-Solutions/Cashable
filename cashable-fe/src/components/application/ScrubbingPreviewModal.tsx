@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSelector } from "react-redux";
@@ -597,11 +598,7 @@ export default function ScrubbingPreviewModal({
 
   const displayDate = useMemo(
     () =>
-      new Date().toLocaleDateString("en-US", { timeZone: "America/New_York",
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
-      }),
+      formatDateET(new Date()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [open],
   );

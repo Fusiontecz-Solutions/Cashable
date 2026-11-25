@@ -1,3 +1,4 @@
+import { trackContractSave } from "@/lib/pendingContractSaves";
 import { toPrefillUppercase } from "./prefillUppercase";
 import { signingProviderName } from "@/lib/signingProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -311,7 +312,7 @@ export function TemplateMappingPrefillEditDialog({
                 }
             }
 
-            await dispatch(
+            const saveRequest = dispatch(
                 updateContract({
                     id: cid,
                     data: {
@@ -320,6 +321,31 @@ export function TemplateMappingPrefillEditDialog({
                     },
                 }),
             ).unwrap();
+
+            // COJ / disclosure / addendum edits: close at once and finish the save in the
+            // background (each server round trip costs about a second). Sending a contract waits
+            // for it; a failure is reported so the document can be reopened.
+            if (!(coordinateLayout && achCamel)) {
+                const appKeyBg = String(applicationUuid ?? "").trim();
+                void trackContractSave(saveRequest)
+                    .then(() => {
+                        if (appKeyBg) void dispatch(getByApplicationIdContract(appKeyBg));
+                        onSaved(undefined);
+                    })
+                    .catch((err: unknown) => {
+                        const msg =
+                            err && typeof err === "object" && "message" in err
+                                ? String((err as { message?: string }).message)
+                                : typeof err === "string"
+                                  ? err
+                                  : "";
+                        toast.error(`The document was not saved${msg ? `: ${msg}` : ""}. Open it again and save.`);
+                    });
+                toast.success("Saved.");
+                onOpenChange(false);
+                return;
+            }
+            await trackContractSave(saveRequest);
 
             // Persist ACH form fields onto the contract ACH row so Info Required
             // and later reloads match what was saved on this form.

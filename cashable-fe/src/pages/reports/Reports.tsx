@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Filter, FileText, ChevronDown } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
@@ -433,11 +434,7 @@ const Reports = () => {
             row.commission,
             row.dealStatus,
             row.status,
-            new Date(row.date).toLocaleDateString('en-US', { timeZone: "America/New_York",
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-            }),
+            formatDateET(new Date(row.date)),
         ]);
 
         const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
@@ -831,11 +828,7 @@ const Reports = () => {
                                             </span>
                                         </td>
                                         <td className="py-2 pr-4 text-foreground">
-                                            {new Date(row.date).toLocaleDateString('en-US', { timeZone: "America/New_York",
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                            })}
+                                            {formatDateET(new Date(row.date))}
                                         </td>
                                     </tr>
                                 ))

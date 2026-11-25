@@ -1,3 +1,4 @@
+import { waitForPendingContractSaves } from "@/lib/pendingContractSaves";
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
 import { signingProviderName } from "@/lib/signingProvider";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,7 +41,7 @@ import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
 import { applyContractDocumentDate, usDateToYmd, ymdToUsDate } from "@/lib/contractDateSync";
-import { formatYmdET } from "@/lib/dateTime";
+import { formatContractDateET, formatYmdET } from "@/lib/dateTime";
 import {
     Select,
     SelectContent,
@@ -2313,7 +2314,7 @@ const PDFViewerModal = ({
             },
         );
         const fromApp = buildContractPrefillFieldsFromApplication(applicationData, {
-            agreementDate: formatDate(new Date()),
+            agreementDate: formatContractDateET(),
             contractRecords: contractPrefillRecords,
             overrides:
                 Object.keys(liveSyncedOverrides).length > 0 ? liveSyncedOverrides : undefined,
@@ -3892,6 +3893,8 @@ const PDFViewerModal = ({
 
     const handleSend = async (sendOptions?: { forceNewEnvelope?: boolean; provider?: "pearsign" }) => {
         if (!fileUrl) return;
+        // A COJ / disclosure save may still be finishing in the background: send its values.
+        await waitForPendingContractSaves();
         const forceNewEnvelope = sendOptions?.forceNewEnvelope === true;
         /**
          * Every send goes through PearSign: the same package (contract + addendums + disclosure)
@@ -5391,7 +5394,7 @@ const PDFViewerModal = ({
             contract: resolvedContract as Record<string, unknown> | null,
             application: applicationForSigners as unknown as Record<string, unknown> | null,
             offerDecision,
-            agreementDate: formatDate(new Date()),
+            agreementDate: formatContractDateET(),
             mainPrefillOverrides: mainPrefillForTemplates,
             bankDetail: contractPrefillRecords.bankDetail ?? null,
         });
@@ -5406,7 +5409,7 @@ const PDFViewerModal = ({
             contract: resolvedContract as Record<string, unknown> | null,
             application: applicationForSigners as unknown as Record<string, unknown> | null,
             offerDecision,
-            agreementDate: formatDate(new Date()),
+            agreementDate: formatContractDateET(),
             mainPrefillOverrides: mainPrefillForTemplates,
             bankDetail: contractPrefillRecords.bankDetail ?? null,
         });
@@ -11470,7 +11473,7 @@ const PDFViewerModal = ({
                 applicationData={applicationData}
                 resolvedContract={resolvedContract}
                 contractRecords={contractPrefillRecords}
-                agreementDate={formatDate(new Date())}
+                agreementDate={formatContractDateET()}
                 documentTemplatePrefillByMappingId={documentTemplatePrefillByMappingId}
                 mainPrefillOverrides={mainPrefillOverridesForTemplateDialog}
                 offerDecision={(offerDecisionData as Record<string, unknown> | null) ?? null}

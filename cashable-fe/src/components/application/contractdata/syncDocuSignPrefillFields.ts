@@ -1,6 +1,6 @@
 import { axiosPatch } from "@/redux/axios";
 import { signingProviderName } from "@/lib/signingProvider";
-import { formatDate } from "@/lib/utils";
+import { formatContractDateET } from "@/lib/dateTime";
 import { toast } from "react-toastify";
 import type { BuildContractPrefillFieldsArgs } from "./Contract";
 import {
@@ -120,7 +120,7 @@ export function buildAchDocuSignPrefillFieldsPayload(args: {
         contractPrefillOverridesRaw,
         contract: args.contract,
         application: args.application,
-        agreementDate: formatDate(new Date()),
+        agreementDate: formatContractDateET(),
         mainPrefillOverrides: mainPrefill as Partial<BuildContractPrefillFieldsArgs> | null,
     })
         .map((field) => ({

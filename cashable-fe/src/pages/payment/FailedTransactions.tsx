@@ -115,7 +115,7 @@ function isoYmdToUsDisplay(iso: string): string {
   const t = iso.trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return "";
   const d = parse(t, "yyyy-MM-dd", new Date());
-  return isValid(d) ? format(d, "MM/dd/yyyy") : "";
+  return isValid(d) ? format(d, "MM-dd-yyyy") : "";
 }
 
 function dealLabelFromGroup(group: FailedDealGroup): string {

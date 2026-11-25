@@ -245,6 +245,39 @@ export async function resolveAuditLogUserId(
     return null;
 }
 
+/**
+ * Valid sessions seen in the last 30 s (token → expiry). Every API call checked the AccessToken
+ * table, which is a database round trip (~¼ s) on each request; a known-good token now skips it.
+ * Logout and user deletion drop the token at once (`forgetAuthenticatedToken`).
+ */
+const AUTH_CACHE_MS = 30_000;
+const authCache = new Map<string, { expiresAt: number; checkedAt: number }>();
+
+export function forgetAuthenticatedToken(token?: string | null): void {
+    if (token) authCache.delete(token);
+}
+
+/** Drop every cached session (e.g. after a user's tokens are deleted). */
+export function forgetAllAuthenticatedTokens(): void {
+    authCache.clear();
+}
+
+function cachedTokenValid(token: string): boolean {
+    const hit = authCache.get(token);
+    if (!hit) return false;
+    const now = Date.now();
+    if (now - hit.checkedAt > AUTH_CACHE_MS || hit.expiresAt <= now) {
+        authCache.delete(token);
+        return false;
+    }
+    return true;
+}
+
+function rememberValidToken(token: string, expiresAt: Date): void {
+    if (authCache.size > 5000) authCache.clear();
+    authCache.set(token, { expiresAt: expiresAt.getTime(), checkedAt: Date.now() });
+}
+
 export const authenticateToken = async (
     req: Request,
     res: Response,
@@ -320,17 +353,19 @@ export const authenticateToken = async (
             publicApprovalActor?: 'CLIENT' | 'ISO';
         };
 
-        // Check if token exists in AccessToken table and is not expired
-        const accessToken = await withDbRetry(
-            () =>
-                prisma.accessToken.findFirst({
-                    where: {
-                        token,
-                        userId: decoded.id,
-                    },
-                }),
-            { label: 'authenticateToken lookup' },
-        );
+        // Check if token exists in AccessToken table and is not expired (cached for 30 s).
+        const accessToken = cachedTokenValid(token)
+            ? { expiresAt: new Date(authCache.get(token)!.expiresAt) }
+            : await withDbRetry(
+                  () =>
+                      prisma.accessToken.findFirst({
+                          where: {
+                              token,
+                              userId: decoded.id,
+                          },
+                      }),
+                  { label: 'authenticateToken lookup' },
+              );
 
         if (!accessToken) {
             return res.status(401).json({
@@ -340,7 +375,9 @@ export const authenticateToken = async (
         }
 
         // Check if token is expired
+        if (accessToken.expiresAt >= new Date()) rememberValidToken(token, accessToken.expiresAt);
         if (accessToken.expiresAt < new Date()) {
+            forgetAuthenticatedToken(token);
             // Optionally delete expired token
             await withDbRetry(
                 () => prisma.accessToken.deleteMany({ where: { token } }),

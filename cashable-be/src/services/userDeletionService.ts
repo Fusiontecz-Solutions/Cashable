@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import prisma from '../config/prismaClient';
+import { forgetAllAuthenticatedTokens } from '../middleware/authMiddleware';
 
 async function detachLinkedSyndicator(tx: Prisma.TransactionClient, userId: string): Promise<void> {
   const synd = await tx.syndicator.findUnique({
@@ -14,6 +15,8 @@ async function detachLinkedSyndicator(tx: Prisma.TransactionClient, userId: stri
 async function deleteUserAuthTokens(tx: Prisma.TransactionClient, userId: string): Promise<void> {
   await tx.accessToken.deleteMany({ where: { userId } });
   await tx.verificationToken.deleteMany({ where: { userId } });
+  // Their sessions stop working at once (not after the 30 s login cache).
+  forgetAllAuthenticatedTokens();
 }
 
 async function resolveFallbackUserId(

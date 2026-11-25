@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -1345,7 +1346,7 @@ export default function DealDetails() {
                           <span className="text-muted-foreground">
                             Created:{" "}
                             {deal.date
-                              ? new Date(deal.date).toLocaleDateString("en-US", { timeZone: "America/New_York" })
+                              ? formatDateET(new Date(deal.date))
                               : "-"}
                           </span>
                         </div>

@@ -1,4 +1,5 @@
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
+import { formatContractDateET } from "@/lib/dateTime";
 import { signingProviderName } from "@/lib/signingProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
@@ -212,7 +213,6 @@ import {
 import {
     formatCurrency,
     formatCurrencyFull,
-    formatDate,
     formatDateET,
     formatDateTimeUS,
     formatNumberUSForInput,
@@ -2434,7 +2434,7 @@ export default function ContractTab({
               }
             : undefined;
         return buildContractPrefillFieldsFromApplication(applicationData, {
-            agreementDate: formatDate(new Date()),
+            agreementDate: formatContractDateET(),
             contractRecords: recordsForBuild,
             overrides,
             offerDecision: (offerDecision as Record<string, unknown> | null) ?? null,
@@ -2963,7 +2963,7 @@ export default function ContractTab({
                             contract: latestContract as Record<string, unknown>,
                             application: applicationForPrefill as unknown as Record<string, unknown>,
                             offerDecision: offerDecisionForPrefill,
-                            agreementDate: formatDate(new Date()),
+                            agreementDate: formatContractDateET(),
                             mainPrefillOverrides: mainPrefillForTemplates,
                             allowAchAliasFallback: !multipleAchForms,
                         });
@@ -3102,7 +3102,7 @@ export default function ContractTab({
                     contract: latestContract as Record<string, unknown>,
                     application: applicationForPrefill as unknown as Record<string, unknown>,
                     offerDecision: offerDecisionForPrefill,
-                    agreementDate: formatDate(new Date()),
+                    agreementDate: formatContractDateET(),
                     mainPrefillOverrides: mainPrefillForTemplates,
                 });
             } catch (mapErr) {

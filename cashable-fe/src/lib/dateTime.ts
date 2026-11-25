@@ -38,25 +38,46 @@ export function formatYmdET(value: DateInput = new Date()): string {
   return formatInTimeZone(date, BUSINESS_TIMEZONE, "yyyy-MM-dd");
 }
 
-/** `MM/DD/YYYY` in Eastern Time. */
+/** CRM display format for dates: `MM-DD-YYYY` (Eastern Time). */
+export const CRM_DATE_FORMAT = "MM-dd-yyyy" as const;
+
+/**
+ * A plain calendar date (`2026-11-25`, `11/25/2026`, `11-25-2026`) is that day as written —
+ * never shifted by time zone. Returns null for timestamps / other values.
+ */
+function calendarDayFromString(value: DateInput): string | null {
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (m) return `${m[2]}-${m[3]}-${m[1]}`;
+  m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(t);
+  if (m) return `${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}-${m[3]}`;
+  return null;
+}
+
+/** `MM-DD-YYYY` in Eastern Time (the CRM's date format). */
 export function formatDateET(value: DateInput, fallback = ""): string {
+  const day = calendarDayFromString(value);
+  if (day) return day;
   const date = parseDateInput(value);
   if (!date) return fallback;
-  return formatInTimeZone(date, BUSINESS_TIMEZONE, "MM/dd/yyyy");
+  return formatInTimeZone(date, BUSINESS_TIMEZONE, CRM_DATE_FORMAT);
 }
 
-/** Short month label in ET, e.g. `Apr 07, 2026`. */
+/** CRM date in ET — `MM-DD-YYYY` (kept for callers that used the short-month label). */
 export function formatDateShortMonthET(value: DateInput, fallback = ""): string {
-  const date = parseDateInput(value);
-  if (!date) return fallback;
-  return formatInTimeZone(date, BUSINESS_TIMEZONE, "MMM dd, yyyy");
+  return formatDateET(value, fallback);
 }
 
-/** US numeric calendar date in ET, e.g. `4/7/2026`. */
+/** CRM date in ET — `MM-DD-YYYY`. */
 export function formatDateMonthDayYearET(value: DateInput, fallback = ""): string {
-  const date = parseDateInput(value);
-  if (!date) return fallback;
-  return formatInTimeZone(date, BUSINESS_TIMEZONE, "M/d/yyyy");
+  return formatDateET(value, fallback);
+}
+
+/** Contract / legal documents keep `MM/DD/YYYY` (Eastern Time). */
+export function formatContractDateET(value: DateInput = new Date(), fallback = ""): string {
+  const day = formatDateET(value, "");
+  return day ? day.replace(/-/g, "/") : fallback;
 }
 
 /**
@@ -80,7 +101,7 @@ export function formatDateTimeET(value: DateInput, fallback = ""): string {
   const get = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value ?? "";
 
-  return `${get("month")}/${get("day")}/${get("year")} ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
+  return `${get("month")}-${get("day")}-${get("year")} ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
 }
 
 /** Time only in ET, e.g. `3:45 PM`. */

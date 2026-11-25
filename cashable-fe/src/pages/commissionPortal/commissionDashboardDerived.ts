@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import {
     type DealRow,
     getCommissionForApplication,
@@ -175,7 +176,7 @@ export function buildRecentActivityFromApplications(
         const agent = app.agent as Record<string, unknown> | undefined
         const act = new Date(row.activityAtMs)
         const date =
-            row.activityAtMs && !Number.isNaN(act.getTime()) ? act.toLocaleDateString('en-US', { timeZone: "America/New_York" }) : '—'
+            row.activityAtMs && !Number.isNaN(act.getTime()) ? formatDateET(act) : '—'
         const agentName =
             [agent?.firstName, agent?.lastName].filter(Boolean).join(' ').trim() ||
             String(agent?.email || '—')

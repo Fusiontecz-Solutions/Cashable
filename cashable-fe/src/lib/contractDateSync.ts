@@ -41,7 +41,7 @@ export function ymdToUsDate(ymd: string): string {
 /** "11/25/2026" (or an ISO date) → "2026-11-25" for a date input; "" when not a date. */
 export function usDateToYmd(raw: unknown): string {
     const s = String(raw ?? "").trim();
-    let m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+    let m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(s);
     if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
     m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
     return m ? `${m[1]}-${m[2]}-${m[3]}` : "";

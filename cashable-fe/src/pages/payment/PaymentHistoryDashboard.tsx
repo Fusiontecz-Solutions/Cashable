@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router";
@@ -1047,11 +1048,7 @@ function mapDisbursementApplicationToRow(
   const updatedRaw = app.updatedAt;
   const date =
     updatedRaw && !Number.isNaN(Date.parse(updatedRaw))
-      ? new Date(updatedRaw).toLocaleDateString("en-US", { timeZone: "America/New_York",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
+      ? formatDateET(new Date(updatedRaw))
       : "—";
 
   const offerApproved = getApprovedOfferAmount(app);

@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { useSelector } from "react-redux";
@@ -185,11 +186,7 @@ function formatDataMerchDate(raw: string | null | undefined): string | null {
   if (!value || value === "0001-01-01") return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", { timeZone: "America/New_York",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDateET(parsed);
 }
 
 function merchantDisplayName(merchant: DataMerchMerchant): string {

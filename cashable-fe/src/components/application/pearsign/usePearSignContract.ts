@@ -1,3 +1,4 @@
+import { waitForPendingContractSaves } from "@/lib/pendingContractSaves";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { signingProviderName } from "@/lib/signingProvider";
 import { contractPdfFileName } from "@/lib/contractPdfFileName";
@@ -201,6 +202,7 @@ export function usePearSignContract(opts: {
 
     const fetchReview = useCallback(async (): Promise<PearSignReview> => {
         if (!contractId) throw new Error("Save the contract before reviewing it.");
+        await waitForPendingContractSaves();
         const res = await axiosPost(`/pearsign/contracts/${contractId}/review`, payload());
         const data = res?.data?.data as PearSignReview;
         setReview(data);
@@ -229,6 +231,7 @@ export function usePearSignContract(opts: {
     /** Open the Review for the package staged by handleSend({ provider: "pearsign" }). */
     const openPackageReview = useCallback(async () => {
         if (!contractId) throw new Error("Save the contract before reviewing it.");
+        await waitForPendingContractSaves();
         setBusy("review");
         setError(null);
         // Start the preview PDF in parallel so the document is ready when the modal opens.

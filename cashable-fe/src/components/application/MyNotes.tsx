@@ -1,3 +1,4 @@
+import { formatDateET } from "@/lib/dateTime";
 import { useState, useEffect } from "react";
 import { useParams } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
@@ -166,11 +167,7 @@ const MyNotes = ({
     const formatDate = (dateString?: string): string => {
         if (!dateString) return "";
         const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", { timeZone: "America/New_York",
-            day: "numeric",
-            month: "long",
-            year: "numeric"
-        });
+        return formatDateET(date);
     };
 
     // Helper function to format time
