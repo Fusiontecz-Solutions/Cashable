@@ -9,7 +9,8 @@ import {
     markAllNotificationsAsRead,
 } from "@/redux/actions/notificationActions";
 import { useNotificationsSync } from "@/hooks/useNotificationsSync";
-import NotificationItem from "@/components/notifications/NotificationItem";
+import NotificationItem, { notificationStatusTone } from "@/components/notifications/NotificationItem";
+import { formatDateTimeET } from "@/lib/utils";
 import { useNotificationActions } from "@/components/notifications/useNotificationActions";
 import {
     BUCKET_META,
@@ -344,19 +345,71 @@ export default function NotificationDashboard() {
                                 const unreadEarlier = g.earlier.filter((n) => !n.isRead).length;
                                 return (
                                     <div key={g.key} className="border-b border-border/60 last:border-b-0">
-                                        <NotificationItem
-                                            notification={g.latest}
-                                            actions={actions}
-                                            selectable
-                                            selected={selected.has(g.latest._id)}
-                                            onSelectChange={(c) => toggleSelect(g.latest._id, c)}
-                                        />
+                                        <div className="flex items-stretch">
+                                            <div className="min-w-0 flex-1">
+                                                <NotificationItem
+                                                    notification={g.latest}
+                                                    actions={actions}
+                                                    selectable
+                                                    selected={selected.has(g.latest._id)}
+                                                    onSelectChange={(c) => toggleSelect(g.latest._id, c)}
+                                                />
+                                            </div>
+                                            {/* Wide screens: the merchant's earlier updates as a timeline on the right. */}
+                                            {g.earlier.length > 0 ? (
+                                                <aside className="hidden w-[380px] shrink-0 border-l border-border/60 px-4 py-3 xl:block">
+                                                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Earlier updates ({g.earlier.length})
+                                                        {unreadEarlier > 0 ? (
+                                                            <span className="ml-1.5 rounded-full bg-[var(--brand)]/10 px-1.5 text-[10px] text-[var(--brand)]">
+                                                                {unreadEarlier} unread
+                                                            </span>
+                                                        ) : null}
+                                                    </p>
+                                                    <ol className="space-y-0.5">
+                                                        {(open ? g.earlier : g.earlier.slice(0, 5)).map((n) => {
+                                                            const st = notificationStatusTone(n.title);
+                                                            return (
+                                                                <li key={n._id}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => actions.open(n)}
+                                                                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-muted/60"
+                                                                        title={n.message}
+                                                                    >
+                                                                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ring-1 ${st.badge}`}>
+                                                                            {st.status}
+                                                                        </span>
+                                                                        <span className={`min-w-0 flex-1 truncate text-xs ${!n.isRead ? "font-semibold" : ""} ${st.text}`}>
+                                                                            {n.title}
+                                                                        </span>
+                                                                        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+                                                                            {formatDateTimeET(n.createdAt)}
+                                                                        </span>
+                                                                        {!n.isRead ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" aria-label="Unread" /> : null}
+                                                                    </button>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ol>
+                                                    {g.earlier.length > 5 ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleGroup(g.key)}
+                                                            className="mt-1 cursor-pointer px-1.5 text-[11px] font-medium text-[var(--brand)] hover:underline"
+                                                        >
+                                                            {open ? "Show fewer" : `Show all ${g.earlier.length}`}
+                                                        </button>
+                                                    ) : null}
+                                                </aside>
+                                            ) : null}
+                                        </div>
                                         {g.earlier.length > 0 ? (
                                             <button
                                                 type="button"
                                                 onClick={() => toggleGroup(g.key)}
                                                 aria-expanded={open}
-                                                className="-mt-1 mb-2 ml-[4.25rem] inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--brand)] hover:bg-muted"
+                                                className="-mt-1 mb-2 ml-[4.25rem] inline-flex xl:hidden cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--brand)] hover:bg-muted"
                                             >
                                                 {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                 {open ? "Hide" : "Show"} {g.earlier.length} earlier update{g.earlier.length === 1 ? "" : "s"}
@@ -368,7 +421,7 @@ export default function NotificationDashboard() {
                                             </button>
                                         ) : null}
                                         {open ? (
-                                            <div className="mb-2 ml-[4.25rem] mr-3 border-l-2 border-[var(--brand)]/25">
+                                            <div className="mb-2 ml-[4.25rem] mr-3 border-l-2 border-[var(--brand)]/25 xl:hidden">
                                                 {g.earlier.map((n) => (
                                                     <NotificationItem
                                                         key={n._id}

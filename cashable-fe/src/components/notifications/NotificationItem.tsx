@@ -320,3 +320,14 @@ function notificationView(
     const inText = /\$\s?[\d,]+(?:\.\d{2})?/.exec(`${title} ${message}`)?.[0]?.replace(/\s/g, "") ?? null;
     return { status, tone, customer: dealName, amount: inText ?? dealAmount, rest: message };
 }
+
+/** Status label and colours of a notification (from its title), for the merchant timeline. */
+export function notificationStatusTone(title: string): {
+    status: string;
+    text: string;
+    badge: string;
+} {
+    const rule = STATUS_RULES.find(([re]) => re.test(String(title ?? "").toLowerCase()));
+    const tone = STATUS_TONES[rule ? rule[2] : "neutral"];
+    return { status: rule ? rule[1] : "Update", text: tone.text, badge: tone.badge };
+}
