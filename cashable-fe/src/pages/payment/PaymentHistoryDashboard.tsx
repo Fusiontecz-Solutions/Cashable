@@ -64,6 +64,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { nowInET } from "@/lib/dateTime";
 
 type StatCardProps = {
   title: string;
@@ -1348,8 +1349,8 @@ export const PaymentHistoryDashboard = () => {
   const paymentOrganizationApiParam =
     organizationFilter !== "all" ? organizationFilter : undefined;
   const [moneyFlowView, setMoneyFlowView] = useState<MoneyFlowView>("monthly");
-  const [moneyFlowFilterYear, setMoneyFlowFilterYear] = useState<number>(new Date().getFullYear());
-  const [moneyFlowFilterMonth, setMoneyFlowFilterMonth] = useState<number | "all">(new Date().getMonth());
+  const [moneyFlowFilterYear, setMoneyFlowFilterYear] = useState<number>(nowInET().getFullYear());
+  const [moneyFlowFilterMonth, setMoneyFlowFilterMonth] = useState<number | "all">(nowInET().getMonth());
   const debouncedChartYear = useDebouncedValue(moneyFlowFilterYear, 400);
   const debouncedChartMonth = useDebouncedValue(moneyFlowFilterMonth, 400);
 
@@ -1483,14 +1484,14 @@ export const PaymentHistoryDashboard = () => {
     if (dashboardData?.chartYearOptions && dashboardData.chartYearOptions.length > 0) {
       return dashboardData.chartYearOptions;
     }
-    const currentYear = new Date().getFullYear();
+    const currentYear = nowInET().getFullYear();
     return Array.from({ length: currentYear - 2023 + 1 }, (_, idx) => 2023 + idx);
   }, [dashboardData?.chartYearOptions]);
 
   useEffect(() => {
     if (moneyFlowYearOptions.length === 0) return;
     if (!moneyFlowYearOptions.includes(moneyFlowFilterYear)) {
-      const currentYear = new Date().getFullYear();
+      const currentYear = nowInET().getFullYear();
       setMoneyFlowFilterYear(
         moneyFlowYearOptions.includes(currentYear)
           ? currentYear

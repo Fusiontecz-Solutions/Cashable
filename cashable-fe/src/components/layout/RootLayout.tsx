@@ -28,6 +28,7 @@ import {
 import { isShellPrefetchFresh } from "@/lib/prefetchFreshness";
 import { axiosGet } from "@/redux/axios";
 import { toast } from "react-toastify";
+import { nowInET } from "@/lib/dateTime";
 
 interface DecodedToken {
     role: string;
@@ -192,11 +193,11 @@ const RootLayout = () => {
         if (!localStorage.getItem("token")) return;
         if (pathname !== "/payments") return;
         if (!paymentDashboardFetched && !paymentDashboardLoading && !paymentDashboardError) {
-            const year = new Date().getFullYear();
+            const year = nowInET().getFullYear();
             void dispatch(
                 fetchPaymentFinancialOverviewSummary({
                     chartYear: year,
-                    chartMonth: new Date().getMonth(),
+                    chartMonth: nowInET().getMonth(),
                 }),
             );
         }

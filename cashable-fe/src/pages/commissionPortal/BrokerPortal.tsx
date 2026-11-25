@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
+import { formatYmdET } from "@/lib/dateTime";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
@@ -304,10 +305,9 @@ function parseNum(v: unknown): number {
 
 function toDateInputValue(isoLike: string | null): string {
     if (!isoLike) return ''
-    const d = new Date(isoLike)
-    if (Number.isNaN(d.getTime())) return ''
-    const z = d.getTimezoneOffset() * 60000
-    return new Date(d.getTime() - z).toISOString().slice(0, 10)
+    // Calendar day in Eastern Time (CRM rule); plain YYYY-MM-DD stays as written.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoLike.trim())) return isoLike.trim()
+    return formatYmdET(isoLike)
 }
 
 /** Scheduled pay from API → `yyyy-mm-dd` (avoids TZ shift on date-only strings). */

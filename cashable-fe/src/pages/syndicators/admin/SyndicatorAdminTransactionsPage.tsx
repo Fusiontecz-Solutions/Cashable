@@ -19,6 +19,7 @@ import { CircleDollarSign, Download, Wallet as WalletIcon, Layers, Loader2 } fro
 import SyndicatorAdminStatCard from './SyndicatorAdminStatCard';
 import { formatUSD } from '@/utils/formatCurrency';
 import { downloadStatementPdf, type StatementSection } from '@/lib/statementPdf';
+import { formatYmdET } from "@/lib/dateTime";
 type WalletRow = {
   id?: number;
   date: string;
@@ -384,7 +385,7 @@ export default function SyndicatorAdminTransactionsPage() {
 
       const repaymentsMissing = view === 'deal' && dealGroups.some((g) => !Array.isArray(dealRepay[g.key]));
       await downloadStatementPdf({
-        fileName: `syndicator-${syndicatorId}-wallet-${view === 'deal' ? 'by-deal' : 'ledger'}-${new Date().toISOString().slice(0, 10)}`,
+        fileName: `syndicator-${syndicatorId}-wallet-${view === 'deal' ? 'by-deal' : 'ledger'}-${formatYmdET()}`,
         title: 'Syndicator wallet statement',
         headerLines: [
           holderLine,

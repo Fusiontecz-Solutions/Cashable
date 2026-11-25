@@ -1,4 +1,5 @@
 import { CollectionPaymentStatus, Prisma, type PrismaClient } from '@prisma/client';
+import { formatYmdET } from '../utils/dateTime';
 
 import { extractDescriptionDateKeys } from '../utils/extractDescriptionDateKeys';
 
@@ -1408,7 +1409,7 @@ export function computeDealCollectionsView(input: {
       factor: factorForSchedule,
       paybackAmount: paybackEconomicsForSchedule > 0 ? paybackEconomicsForSchedule : Number(paybackNum),
       dailyPayment: dailyPaymentSchedule,
-      startDate: new Date().toISOString().slice(0, 10),
+      startDate: formatYmdET(),
     },
   };
 }

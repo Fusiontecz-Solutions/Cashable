@@ -72,6 +72,7 @@ import { CommissionRecipientToggle } from './CommissionRecipientToggle'
 import { fetchUsersByRole } from '@/redux/actions/settingsUserActions'
 import { selectUsersByRole } from '@/redux/selectors/settingsUsersSelectors'
 import type { CommissionRecipientType } from './commissionRecipientShared'
+import { formatYmdET, nowInET } from "@/lib/dateTime";
 
 /** Map typographic dashes to ASCII so CSV survives Excel’s default (non‑UTF‑8) import. */
 function sanitizeCsvText(value: string): string {
@@ -123,7 +124,7 @@ function downloadDealRowsCsv(rows: DealRow[]) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `commission-history-${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `commission-history-${formatYmdET()}.csv`
     a.click()
     URL.revokeObjectURL(url)
 }
@@ -188,7 +189,7 @@ export default function MonthHistoryCommission() {
     const [selectedUnderwriterId, setSelectedUnderwriterId] = useState('all')
     const [selectedMonthKey, setSelectedMonthKey] = useState('all')
     const [monthMenuOpen, setMonthMenuOpen] = useState(false)
-    const [pickerYear, setPickerYear] = useState(() => new Date().getFullYear())
+    const [pickerYear, setPickerYear] = useState(() => nowInET().getFullYear())
     const [selectedStatus, setSelectedStatus] = useState('all')
     const [tableSearchInput, setTableSearchInput] = useState('')
     const [tablePage, setTablePage] = useState(1)
@@ -535,7 +536,7 @@ export default function MonthHistoryCommission() {
                                     const y = Number(selectedMonthKey.slice(0, 4))
                                     if (Number.isFinite(y)) setPickerYear(y)
                                 } else {
-                                    setPickerYear(new Date().getFullYear())
+                                    setPickerYear(nowInET().getFullYear())
                                 }
                             }
                         }}

@@ -40,6 +40,7 @@ import {
   extractDealTokensFromText,
   normalizeDealIdToken,
 } from "./paymentDealIdUtils";
+import { formatYmdET } from "@/lib/dateTime";
 
 const SchedulePaymentTrackingLauncher = lazy(() =>
   import("./SchedulePaymentTrackingModal").then((m) => ({
@@ -103,11 +104,8 @@ const paymentStatusBadge: Record<
   },
 };
 
-const getTodayInputDate = () => {
-  const now = new Date();
-  const timezoneOffsetMs = now.getTimezoneOffset() * 60 * 1000;
-  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
-};
+/** Today's calendar day in Eastern Time (CRM rule), never the viewer's computer clock. */
+const getTodayInputDate = () => formatYmdET();
 
 function rowStatusLc(p: PaymentRow): string {
   return String(p.status ?? "").trim().toLowerCase();

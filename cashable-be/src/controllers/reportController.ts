@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import prisma from '../config/prismaClient';
+import { formatYmdET } from '../utils/dateTime';
 import { resolveFilters, type RawFilters } from '../services/reporting/reportFilters';
 import {
   booksReport,
@@ -166,7 +167,7 @@ class ReportController {
       const f = await scopedFilters(req);
       const format = String(req.query.format ?? 'xlsx') === 'csv' ? 'csv' : 'xlsx';
       const sheets = await buildReportSheets(key, f);
-      const stamp = new Date().toISOString().slice(0, 10);
+      const stamp = formatYmdET();
       if (format === 'csv') {
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${key}-${stamp}.csv"`);

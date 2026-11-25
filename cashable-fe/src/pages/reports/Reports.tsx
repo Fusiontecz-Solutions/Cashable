@@ -30,6 +30,7 @@ import type { Application } from '@/types/applicationTypes';
 import type { TermsOffer } from '@/types/termsOfferTypes';
 import { formatCurrency, formatInt } from '@/lib/utils';
 import * as XLSX from 'xlsx-js-style';
+import { nowInET } from "@/lib/dateTime";
 
 type ReportRow = {
     id: number;
@@ -320,7 +321,7 @@ const Reports = () => {
             // Get the year from the data (use current year if no data)
             const year = reportRows.length > 0
                 ? new Date(reportRows[0].date).getFullYear()
-                : new Date().getFullYear();
+                : nowInET().getFullYear();
 
             // Initialize all 12 months
             for (let month = 0; month < 12; month++) {

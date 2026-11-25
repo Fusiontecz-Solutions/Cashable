@@ -18,6 +18,7 @@ import { toast } from 'react-toastify';
 import { getApplicationByApplicationId } from '@/redux/actions/applicationActions';
 import { fetchUsersByRole } from '@/redux/actions/userActions';
 import { createCommissionRequest, getCommissionRequests, getFundedDeals, regenerateCommissionRequest } from '@/redux/actions/commissionRequestActions';
+import { formatYmdET } from "@/lib/dateTime";
 
 type CommissionRequestFormValues = {
     companyDeal: string;
@@ -75,7 +76,7 @@ export default function CommissiongenrateRequest({ applicationId, commissionRequ
         resolver: yupResolver(commissionRequestSchema) as any,
         defaultValues: {
             companyDeal: '',
-            date: new Date().toISOString().slice(0, 10),
+            date: formatYmdET(),
             applicationId: applicationId ? String(applicationId) : '',
             firstName: '',
             lastName: '',

@@ -11,6 +11,7 @@ import {
 import type { ComplianceCheck } from "@/types/complianceCheckTypes";
 import { toast } from "react-toastify";
 import ProvideDetailsModal from "./ProvideDetailsModal";
+import { formatYmdET } from "@/lib/dateTime";
 
 export interface CheckQuestion {
     id: string;
@@ -247,7 +248,7 @@ const ComplianceChecksQuestionnaire = ({
                 return;
             }
 
-            const currentDate = new Date().toISOString().split("T")[0];
+            const currentDate = formatYmdET();
             const userName =
                 user?.firstName && user?.lastName
                     ? `${user.firstName} ${user.lastName}`.replace(

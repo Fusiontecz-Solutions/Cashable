@@ -68,6 +68,7 @@ import {
   RefreshCw,
   Loader2,
 } from 'lucide-react';
+import { formatYmdET, nowInET } from "@/lib/dateTime";
 
 /* ----------------------------------------------------------------------------
  * Types + persistence
@@ -1935,7 +1936,7 @@ function Payouts({ store, actions }: SectionProps) {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `iso-payouts-${scope}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.href = url; a.download = `iso-payouts-${scope}-${formatYmdET()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('CSV exported');
@@ -2120,9 +2121,9 @@ function buildReport(name: string, store: IsoStore): ReportData {
       return { columns: ['Period', 'ISO', 'Gross', 'Clawback', 'Net', 'Status'], rows: store.payouts.map((p) => [p.period, p.iso, m(p.gross), m(p.clawback), m(Math.max(0, p.gross - p.clawback)), p.status]) };
     case 'Year-end tax report':
       return {
-        columns: ['ISO', `Commissions paid in ${new Date().getFullYear()}`, '1099'],
+        columns: ['ISO', `Commissions paid in ${nowInET().getFullYear()}`, '1099'],
         rows: isoIds.map((id) => {
-          const year = new Date().getFullYear();
+          const year = nowInET().getFullYear();
           const paid = byIso(id)
             .filter((x) => x.payoutStatus === 'paid' && x.paidAt && new Date(x.paidAt).getFullYear() === year)
             .reduce((a, x) => a + x.commission, 0);
@@ -2141,7 +2142,7 @@ function downloadReportCsv(name: string, data: ReportData) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${formatYmdET()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { formatYmdET } from "@/lib/dateTime";
 
 const formatPercent = (value: number | null): string => {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -296,7 +297,7 @@ export default function Transactions() {
       factor: s?.factor ?? 0,
       paybackAmount: s?.paybackAmount ?? 0,
       dailyPayment: s?.dailyPayment ?? 0,
-      startDate: s?.startDate ?? new Date().toISOString().split("T")[0],
+      startDate: s?.startDate ?? formatYmdET(),
       totalPayments: 0,
       payments: [],
     };

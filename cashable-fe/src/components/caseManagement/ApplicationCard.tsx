@@ -5,6 +5,7 @@ import type { Application } from '@/types/applicationTypes';
 import { useState, useRef } from 'react';
 import { formatCurrency } from "@/lib/utils";
 import { resolveApplicationDisplayLoanAmount } from "@/lib/applicationLoanAmount";
+import { formatYmdET } from "@/lib/dateTime";
 
 interface ApplicationCardProps {
     application: Application;
@@ -55,7 +56,7 @@ const ApplicationCard = ({ application, onClick }: ApplicationCardProps) => {
 
     // Get due date (using createdAt as placeholder, format as YYYY-MM-DD)
     const dueDate = application.createdAt
-        ? new Date(application.createdAt).toISOString().split('T')[0]
+        ? formatYmdET(application.createdAt)
         : '';
 
     // Priority text (matching screenshot - just text, no badge)

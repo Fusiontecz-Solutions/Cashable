@@ -57,28 +57,45 @@ export function boldSignDocumentId(envelopeId: string): string {
  */
 const rate = { limit: null as number | null, remaining: null as number | null, resetAt: 0, blockedUntil: 0 };
 
-function headerNumber(headers: Record<string, unknown>, name: string): number | null {
-  const raw = headers[name] ?? headers[name.toLowerCase()];
-  const n = Number(Array.isArray(raw) ? raw[0] : raw);
+function header(headers: Record<string, unknown>, ...names: string[]): string {
+  for (const name of names) {
+    const raw = headers[name] ?? headers[name.toLowerCase()];
+    const v = String((Array.isArray(raw) ? raw[0] : raw) ?? '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
+function headerNumber(headers: Record<string, unknown>, ...names: string[]): number | null {
+  const v = header(headers, ...names);
+  const n = v ? Number(v) : NaN;
   return Number.isFinite(n) ? n : null;
 }
 
-/** A reset header is either epoch seconds or seconds from now. */
-function resetMs(value: number | null): number {
-  if (value == null || value <= 0) return 0;
-  return value > 1e9 ? value * 1000 : Date.now() + value * 1000;
+/** A reset time: an ISO date (what BoldSign sends), epoch seconds, or seconds from now. */
+function resetMs(value: string): number {
+  if (!value) return 0;
+  const n = Number(value);
+  if (Number.isFinite(n)) return n <= 0 ? 0 : n > 1e9 ? n * 1000 : Date.now() + n * 1000;
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : 0;
 }
 
+/** BoldSign's allowance per window (its limit header is the window, e.g. "1h"). */
+const BOLDSIGN_HOURLY_LIMIT = Number(process.env.BOLDSIGN_HOURLY_LIMIT) || 50;
+
 function noteRateHeaders(headers: Record<string, unknown>, status: number) {
-  const limit = headerNumber(headers, 'x-ratelimit-limit');
-  const remaining = headerNumber(headers, 'x-ratelimit-remaining');
-  const reset = resetMs(headerNumber(headers, 'x-ratelimit-reset'));
-  if (limit != null) rate.limit = limit;
+  // BoldSign: x-rate-limit-limit "1h", x-rate-limit-remaining "49", x-rate-limit-reset ISO date.
+  const limit = headerNumber(headers, 'x-rate-limit-limit', 'x-ratelimit-limit');
+  const remaining = headerNumber(headers, 'x-rate-limit-remaining', 'x-ratelimit-remaining');
+  const reset = resetMs(header(headers, 'x-rate-limit-reset', 'x-ratelimit-reset'));
+  rate.limit = limit ?? BOLDSIGN_HOURLY_LIMIT;
   if (remaining != null) rate.remaining = remaining;
   if (reset) rate.resetAt = reset;
   if (status === 429) {
-    const retry = resetMs(headerNumber(headers, 'retry-after'));
-    rate.blockedUntil = Math.max(retry, reset, Date.now() + 10 * 60_000);
+    const retry = resetMs(header(headers, 'retry-after'));
+    rate.remaining = 0;
+    rate.blockedUntil = Math.max(retry, reset, Date.now() + 60_000);
   }
 }
 
@@ -88,7 +105,8 @@ export function boldSignBackgroundAllowed(): boolean {
   if (now < rate.blockedUntil) return false;
   if (rate.resetAt && now >= rate.resetAt) return true; // the allowance has reset since we last heard
   if (rate.remaining == null) return true;
-  const reserve = Math.max(20, Math.round((rate.limit ?? 0) * 0.25));
+  // Keep 40% of the hourly allowance (20 of 50) for people opening, sending and voiding.
+  const reserve = Math.max(10, Math.round((rate.limit ?? BOLDSIGN_HOURLY_LIMIT) * 0.4));
   return rate.remaining > reserve;
 }
 

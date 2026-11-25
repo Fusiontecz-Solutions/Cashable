@@ -1,3 +1,4 @@
+import './config/timezone'; // must stay first: the server runs on Eastern Time
 import express, { Application, NextFunction, Request, Response } from 'express';
 import './config/loadEnv';
 import { runWithDefaultCcRemoved } from './config/mandatoryCc';

@@ -2,6 +2,7 @@
  * Typed client for /api/v1/reports (see REPORTING.md).
  */
 import { axiosDelete, axiosGet, axiosPost, axiosPut } from '@/redux/axios';
+import { formatYmdET } from "@/lib/dateTime";
 
 export type Preset = 'today' | 'yesterday' | 'last7' | 'last30' | 'last90' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'thisQuarter' | 'ytd' | 'custom';
 
@@ -437,7 +438,7 @@ export async function downloadReport(key: ReportKey, f: ReportFilters, format: '
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${key}-${new Date().toISOString().slice(0, 10)}.${format}`;
+  a.download = `${key}-${formatYmdET()}.${format}`;
   document.body.appendChild(a);
   a.click();
   a.remove();
