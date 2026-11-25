@@ -189,7 +189,9 @@ export default function NotificationItem({
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                         <span className={`inline-flex items-center gap-1 ${cat.tone}`}>{cat.label}</span>
                         <span aria-hidden>·</span>
-                        <span title={formatDateTimeET(n.createdAt)}>{relativeTime(n.createdAt)}</span>
+                        <span className="tabular-nums text-foreground/70">{formatDateTimeET(n.createdAt)} ET</span>
+                        <span aria-hidden>·</span>
+                        <span>{relativeTime(n.createdAt)}</span>
                         {n.importance && n.importance !== "normal" && (
                             <span className={`rounded px-1.5 py-0.5 ${imp.chip}`}>{imp.label}</span>
                         )}
