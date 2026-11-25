@@ -93,6 +93,9 @@ export default function NotificationItem({
         : null;
     const hasDetails = Boolean(app || docs.length > 0 || n.createdBy);
 
+    // Contract signing updates: customer and amount in bold, a colour per status.
+    const contractUpdate = contractNotificationView(n.type, title, message, merchant);
+
     return (
         <div
             className={`group border-b border-border/60 last:border-b-0 transition-colors ${
@@ -128,7 +131,16 @@ export default function NotificationItem({
 
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm ${!n.isRead ? "font-semibold" : "font-medium"} text-foreground`}>
+                        <p
+                            className={`text-sm ${!n.isRead ? "font-semibold" : "font-medium"} ${
+                                contractUpdate ? contractUpdate.tone.text : "text-foreground"
+                            }`}
+                        >
+                            {contractUpdate ? (
+                                <span className={`mr-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${contractUpdate.tone.badge}`}>
+                                    {contractUpdate.status}
+                                </span>
+                            ) : null}
                             {title}
                         </p>
                         <div className="flex shrink-0 items-center gap-1">
@@ -139,7 +151,22 @@ export default function NotificationItem({
                         </div>
                     </div>
 
-                    {message && <p className="mt-0.5 line-clamp-3 text-xs text-muted-foreground" title={message}>{message}</p>}
+                    {contractUpdate?.customer ? (
+                        <p className="mt-0.5 text-sm text-foreground">
+                            <span className="font-bold">{contractUpdate.customer}</span>
+                            {contractUpdate.amount ? (
+                                <>
+                                    {" — "}
+                                    <span className="font-bold">{contractUpdate.amount}</span>
+                                </>
+                            ) : null}
+                        </p>
+                    ) : null}
+                    {(contractUpdate ? contractUpdate.rest : message) && (
+                        <p className="mt-0.5 line-clamp-3 text-xs text-muted-foreground" title={message}>
+                            {contractUpdate ? contractUpdate.rest : message}
+                        </p>
+                    )}
 
                     {/* Quick context line: deal + merchant when present */}
                     {(dealRef || merchant) && (
@@ -233,4 +260,36 @@ export default function NotificationItem({
             )}
         </div>
     );
+}
+
+const CONTRACT_STATUS_TONES = {
+    signed: { text: "text-emerald-700 dark:text-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800" },
+    viewed: { text: "text-sky-700 dark:text-sky-400", badge: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-800" },
+    sent: { text: "text-amber-700 dark:text-amber-400", badge: "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800" },
+    ended: { text: "text-rose-700 dark:text-rose-400", badge: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800" },
+} as const;
+
+/**
+ * Contract signing notification: its status (from the title) with a colour, and the customer /
+ * amount from the message ("<Customer> — <$amount> · …"; older notifications: the deal's name).
+ */
+function contractNotificationView(type: unknown, title: string, message: string, dealName: string | null) {
+    if (String(type ?? "") !== "contract_signing") return null;
+    const t = title.toLowerCase();
+    const key: keyof typeof CONTRACT_STATUS_TONES = /signed|completed/.test(t)
+        ? "signed"
+        : /viewed/.test(t)
+          ? "viewed"
+          : /declined|voided|revoked|expired/.test(t)
+            ? "ended"
+            : "sent";
+    const status = /completed/.test(t) ? "Completed" : /signed/.test(t) ? "Signed" : /viewed/.test(t) ? "Viewed" : /declined/.test(t) ? "Declined" : /expired/.test(t) ? "Expired" : /voided|revoked/.test(t) ? "Voided" : "Sent";
+    const m = /^(.+?) — (\$[\d,]+(?:\.\d{2})?) · (.*)$/.exec(message);
+    return {
+        status,
+        tone: CONTRACT_STATUS_TONES[key],
+        customer: m ? m[1] : dealName,
+        amount: m ? m[2] : null,
+        rest: m ? m[3] : message,
+    };
 }

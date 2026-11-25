@@ -1,3 +1,4 @@
+import { crmValue } from './pearsign-values';
 import { randomUUID } from 'crypto';
 import { contractPdfFileName } from '../../utils/contractPdfFileName';
 import prisma from '../../config/prismaClient';
@@ -155,8 +156,8 @@ async function emailContext(input: ContractMailInput) {
   const values = input.values ?? {};
   const label = stripTitleSuffix(input.title) || 'Contract';
   const merchantName =
-    String(values.client_legal_name || '').trim() || String(app?.dealDisplayName || '').trim() || label.split(' — ')[0];
-  const rawAmount = String(values.purchase_amount || '').trim();
+    crmValue(values, 'client_legal_name') || String(app?.dealDisplayName || '').trim() || label.split(' — ')[0];
+  const rawAmount = crmValue(values, 'purchase_amount');
   const logos = buildBrandLogoAttachments();
   const lightLogo = logos.find((a) => a.cid.includes('light')) ?? logos[0];
   return {

@@ -1,3 +1,4 @@
+import { crmValue } from './pearsign-values';
 import { contractPdfFileName } from '../../utils/contractPdfFileName';
 import type { Prisma } from '@prisma/client';
 import { PDFDocument, StandardFonts, type PDFFont } from 'pdf-lib';
@@ -1057,7 +1058,7 @@ export function withBoldSignReviewers(signers: BoldSignSigner[], reviewerEmails:
 /** "CASHABLE FUND LLC: <Merchant>.pdf", like every contract PDF the CRM hands out. */
 export function boldSignPackageFileName(prep: { pkg: { title: string }; values: Record<string, string> }): string {
   const merchant =
-    String(prep.values.client_legal_name || '').trim() || String(prep.pkg.title || '').split(' — ')[0].trim();
+    crmValue(prep.values, 'client_legal_name') || String(prep.pkg.title || '').split(' — ')[0].trim();
   return contractPdfFileName(merchant);
 }
 

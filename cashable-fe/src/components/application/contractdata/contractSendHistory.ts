@@ -314,9 +314,17 @@ function termsSnapshotFromSentValues(
     values: Record<string, unknown> | null | undefined,
 ): ContractSendHistoryTermsSnapshot | null {
     if (!values) return null;
-    const advance = toSnapshotNumber(values.purchase_amount);
-    const payback = toSnapshotNumber(values.purchase_price);
-    const payment = toSnapshotNumber(values.remittance ?? values.estimated_payment);
+    // Package sends store values per document ("d1__purchase_amount").
+    const pick = (variable: string): unknown => {
+        if (values[variable] != null && String(values[variable]).trim()) return values[variable];
+        for (const [k, v] of Object.entries(values)) {
+            if (k.endsWith(`__${variable}`) && !/__coj\d+__/.test(k) && v != null && String(v).trim()) return v;
+        }
+        return null;
+    };
+    const advance = toSnapshotNumber(pick("purchase_amount"));
+    const payback = toSnapshotNumber(pick("purchase_price"));
+    const payment = toSnapshotNumber(pick("remittance") ?? pick("estimated_payment"));
     if (advance == null && payback == null && payment == null) return null;
     return {
         approvedAmount: advance,

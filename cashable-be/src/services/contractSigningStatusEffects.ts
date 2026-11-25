@@ -268,6 +268,9 @@ export interface ContractSigningStatusTransitionInput {
   newStatus: string;
   envelopeId?: string;
   documentName?: string;
+  /** Customer (business) name and contract amount, shown in bold in the notification. */
+  merchantName?: string | null;
+  contractAmount?: string | null;
   provider?: 'docusign' | 'boldsign' | 'pearsign';
 }
 
@@ -315,7 +318,13 @@ export async function handleContractSigningStatusTransition(
           : 'E-sign';
 
   const title = `Contract ${stageLabel}`;
-  const message = `Application #${appNumber} — ${docLabel}: ${stageSubtitle} (${stageLabel}).`;
+  // "<Customer> — <$amount> · …": the bell shows customer and amount in bold.
+  const merchant = String(input.merchantName ?? '').trim();
+  const amount = String(input.contractAmount ?? '').trim();
+  const message =
+    merchant && amount
+      ? `${merchant} — ${amount} · Application #${appNumber}: ${stageSubtitle} (${stageLabel}).`
+      : `Application #${appNumber} — ${docLabel}: ${stageSubtitle} (${stageLabel}).`;
 
   const actionUrl =
     appNumber && appNumber !== applicationId

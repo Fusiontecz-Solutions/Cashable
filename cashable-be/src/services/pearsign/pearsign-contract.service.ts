@@ -1,3 +1,4 @@
+import { crmMoney, crmValue } from './pearsign-values';
 import type { Prisma } from '@prisma/client';
 import { forgetBoldSignDownload, isBoldSignEnvelopeId } from './boldsign-client';
 import type { PackageTypedCoj } from '../docusign/utils/coj-typed-document';
@@ -307,7 +308,7 @@ export async function writeState(contractId: number, next: PearSignContractState
 export function sendTerms(values: Record<string, string> | null | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const k of ['purchase_amount', 'purchase_price', 'remittance', 'estimated_payment', 'frequency', 'specified_percentage']) {
-    const v = String(values?.[k] ?? '').trim();
+    const v = crmValue(values, k);
     if (v) out[k] = v;
   }
   return out;
@@ -854,7 +855,9 @@ async function announceStatus(
     priorStatus: priorGroup && priorGroup !== group ? IN_APP_STAGE[priorGroup] : null,
     newStatus: IN_APP_STAGE[group],
     envelopeId,
-    documentName: `${String(state.values?.client_legal_name || '').trim() || 'Merchant'} contract`,
+    documentName: `${crmValue(state.values, 'client_legal_name') || 'Merchant'} contract`,
+    merchantName: crmValue(state.values, 'client_legal_name') || null,
+    contractAmount: crmMoney(crmValue(state.values, 'purchase_amount')) || null,
     provider: 'pearsign',
   }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
 
