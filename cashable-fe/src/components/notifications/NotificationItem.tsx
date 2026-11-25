@@ -93,8 +93,8 @@ export default function NotificationItem({
         : null;
     const hasDetails = Boolean(app || docs.length > 0 || n.createdBy);
 
-    // Contract signing updates: customer and amount in bold, a colour per status.
-    const contractUpdate = contractNotificationView(n.type, title, message, merchant);
+    // Every notification: a coloured status badge, the customer and amount in bold.
+    const contractUpdate = notificationView(n.type, title, message, merchant, amount, cat.label);
 
     return (
         <div
@@ -169,17 +169,17 @@ export default function NotificationItem({
                     )}
 
                     {/* Quick context line: deal + merchant when present */}
-                    {(dealRef || merchant) && (
+                    {(dealRef || (merchant && !contractUpdate?.customer)) && (
                         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-foreground/70">
                             <Building2 className="h-3 w-3 text-muted-foreground" />
                             {dealRef && <span className="font-medium">Deal {dealRef}</span>}
-                            {merchant && (
+                            {merchant && !contractUpdate?.customer && (
                                 <>
                                     {dealRef && <span aria-hidden>·</span>}
                                     <span className="truncate">{merchant}</span>
                                 </>
                             )}
-                            {amount && (
+                            {amount && !contractUpdate?.amount && (
                                 <>
                                     <span aria-hidden>·</span>
                                     <span className="font-medium">{amount}</span>
@@ -262,34 +262,61 @@ export default function NotificationItem({
     );
 }
 
-const CONTRACT_STATUS_TONES = {
-    signed: { text: "text-emerald-700 dark:text-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800" },
-    viewed: { text: "text-sky-700 dark:text-sky-400", badge: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-800" },
-    sent: { text: "text-amber-700 dark:text-amber-400", badge: "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800" },
+const STATUS_TONES = {
+    done: { text: "text-emerald-700 dark:text-emerald-400", badge: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800" },
+    info: { text: "text-sky-700 dark:text-sky-400", badge: "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:ring-sky-800" },
+    waiting: { text: "text-amber-700 dark:text-amber-400", badge: "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-800" },
     ended: { text: "text-rose-700 dark:text-rose-400", badge: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-800" },
+    neutral: { text: "text-foreground", badge: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700" },
 } as const;
 
+/** Status from the title, first match wins (red, then green, blue, amber). */
+const STATUS_RULES: Array<[RegExp, string, keyof typeof STATUS_TONES]> = [
+    [/sent (a |the )?(deal |application )?back|returned|correction/, "Sent back", "ended"],
+    [/declin/, "Declined", "ended"],
+    [/void|revok/, "Voided", "ended"],
+    [/reject/, "Rejected", "ended"],
+    [/expire/, "Expired", "ended"],
+    [/delet|remov/, "Deleted", "ended"],
+    [/cancel/, "Cancelled", "ended"],
+    [/fail|error|bounc|nsf/, "Failed", "ended"],
+    [/overdue|missed/, "Overdue", "ended"],
+    [/completed/, "Completed", "done"],
+    [/signed/, "Signed", "done"],
+    [/approved/, "Approved", "done"],
+    [/funded|disburs|released/, "Funded", "done"],
+    [/received|uploaded/, "Received", "done"],
+    [/paid|cleared|collected/, "Paid", "done"],
+    [/viewed|opened/, "Viewed", "info"],
+    [/assign|sent .*to you|to you/, "Assigned", "info"],
+    [/\bnew\b|created|added/, "New", "info"],
+    [/recommend|request|approval|review/, "Review", "waiting"],
+    [/remind|follow/, "Follow-up", "waiting"],
+    [/pending|awaiting|waiting/, "Pending", "waiting"],
+    [/\bsent\b/, "Sent", "waiting"],
+];
+
 /**
- * Contract signing notification: its status (from the title) with a colour, and the customer /
- * amount from the message ("<Customer> — <$amount> · …"; older notifications: the deal's name).
+ * How a notification reads: a status badge and colour (from the title), and the customer / amount
+ * shown in bold. Contract updates carry them in the message ("<Customer> — <$amount> · …");
+ * others use the deal's name and the first amount in the text (else the deal's amount).
  */
-function contractNotificationView(type: unknown, title: string, message: string, dealName: string | null) {
-    if (String(type ?? "") !== "contract_signing") return null;
+function notificationView(
+    type: unknown,
+    title: string,
+    message: string,
+    dealName: string | null,
+    dealAmount: string | null,
+    categoryLabel: string,
+) {
     const t = title.toLowerCase();
-    const key: keyof typeof CONTRACT_STATUS_TONES = /signed|completed/.test(t)
-        ? "signed"
-        : /viewed/.test(t)
-          ? "viewed"
-          : /declined|voided|revoked|expired/.test(t)
-            ? "ended"
-            : "sent";
-    const status = /completed/.test(t) ? "Completed" : /signed/.test(t) ? "Signed" : /viewed/.test(t) ? "Viewed" : /declined/.test(t) ? "Declined" : /expired/.test(t) ? "Expired" : /voided|revoked/.test(t) ? "Voided" : "Sent";
+    const rule = STATUS_RULES.find(([re]) => re.test(t));
+    const status = rule ? rule[1] : categoryLabel || "Update";
+    const tone = STATUS_TONES[rule ? rule[2] : "neutral"];
     const m = /^(.+?) — (\$[\d,]+(?:\.\d{2})?) · (.*)$/.exec(message);
-    return {
-        status,
-        tone: CONTRACT_STATUS_TONES[key],
-        customer: m ? m[1] : dealName,
-        amount: m ? m[2] : null,
-        rest: m ? m[3] : message,
-    };
+    if (m && String(type ?? "") === "contract_signing") {
+        return { status, tone, customer: m[1], amount: m[2], rest: m[3] };
+    }
+    const inText = /\$\s?[\d,]+(?:\.\d{2})?/.exec(`${title} ${message}`)?.[0]?.replace(/\s/g, "") ?? null;
+    return { status, tone, customer: dealName, amount: inText ?? dealAmount, rest: message };
 }
