@@ -7,6 +7,7 @@ export interface PdfExtractionServiceLike {
   getRuntimeDebugConfig(): Record<string, unknown>;
   extractHybridFromPdfBuffer(
     pdf: Buffer,
+    opts?: { applicationOnly?: boolean },
   ): Promise<{
     result: import('../../nestjs-claude-pdf/claude-pdf-extraction.service').PdfClaudeExtractResultDTO;
     meta: import('../../nestjs-claude-pdf/claude-pdf-extraction.service').ClaudePdfExtractMetaDTO;

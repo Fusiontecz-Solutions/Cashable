@@ -14,6 +14,8 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Anthropic from "@anthropic-ai/sdk";
+import { createHash } from "crypto";
+import { PDFDocument } from "pdf-lib";
 
 export interface PdfClaudeExtractResultDTO {
   document_type: string;
@@ -87,7 +89,7 @@ function openAiKey(cfg: ConfigService): string {
 }
 
 function openAiModel(cfg: ConfigService): string {
-  return String(cfg.get<string>("OPENAI_PDF_MODEL") ?? process.env.OPENAI_PDF_MODEL ?? "").trim() || "gpt-4.1";
+  return String(cfg.get<string>("OPENAI_PDF_MODEL") ?? process.env.OPENAI_PDF_MODEL ?? "").trim() || "gpt-4.1-mini";
 }
 
 /** The Claude message blocks (text, page images, the PDF itself) as OpenAI chat content parts. */
@@ -105,9 +107,14 @@ export function toOpenAiContent(blocks: Anthropic.Messages.ContentBlockParam[]):
   return parts;
 }
 
-async function callOpenAi(cfg: ConfigService, system: string, userContent: Anthropic.Messages.ContentBlockParam[]): Promise<string> {
+async function callOpenAi(
+  cfg: ConfigService,
+  system: string,
+  userContent: Anthropic.Messages.ContentBlockParam[],
+  maxOutputTokens?: number,
+): Promise<string> {
   const base = String(cfg.get<string>("OPENAI_API_URL") ?? process.env.OPENAI_API_URL ?? "https://api.openai.com").replace(/\/+$/, "");
-  const maxTokens = PdfClaudeExtractionUtils.readPositiveIntCfg(cfg, "OPENAI_PDF_MAX_TOKENS", 12000);
+  const maxTokens = maxOutputTokens ?? PdfClaudeExtractionUtils.readPositiveIntCfg(cfg, "OPENAI_PDF_MAX_TOKENS", 12000);
   const res = await fetch(`${base}/v1/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${openAiKey(cfg)}`, "Content-Type": "application/json" },
@@ -125,6 +132,10 @@ async function callOpenAi(cfg: ConfigService, system: string, userContent: Anthr
   if (!res.ok) throw new Error(`OpenAI PDF reader failed (${res.status}): ${body.error?.message || "no details"}`);
   return String(body.choices?.[0]?.message?.content ?? "").trim();
 }
+
+/** Recent reads by file hash: the same PDF uploaded again is not sent to the model again. */
+const PDF_READ_CACHE = new Map<string, { at: number; value: { result: PdfClaudeExtractResultDTO; meta: ClaudePdfExtractMetaDTO } }>();
+const PDF_READ_CACHE_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class ClaudePdfExtractionService {
@@ -174,7 +185,38 @@ export class ClaudePdfExtractionService {
     };
   }
 
+  /** Output-token cap for the current read (application reads need far fewer than statements). */
+  private outputTokenCap: number | undefined;
+
+  /**
+   * Read a PDF. `applicationOnly`: an application form — no transaction list is asked for (the
+   * biggest output) and the output is capped. The same file read again within 24h is not re-sent.
+   */
   async extractHybridFromPdfBuffer(
+    pdf: Buffer,
+    opts: { applicationOnly?: boolean } = {},
+  ): Promise<{ result: PdfClaudeExtractResultDTO; meta: ClaudePdfExtractMetaDTO }> {
+    const key = `${opts.applicationOnly ? "app" : "all"}:${createHash("sha256").update(pdf).digest("hex")}`;
+    const hit = PDF_READ_CACHE.get(key);
+    if (hit && Date.now() - hit.at < PDF_READ_CACHE_MS) return hit.value;
+    PdfClaudeExtractionUtils.applicationOnly = Boolean(opts.applicationOnly);
+    this.outputTokenCap = opts.applicationOnly
+      ? PdfClaudeExtractionUtils.readPositiveIntCfg(this.cfg, "PDF_APPLICATION_MAX_TOKENS", 4000)
+      : undefined;
+    try {
+      const value = await this.extractHybridUncached(pdf);
+      PDF_READ_CACHE.set(key, { at: Date.now(), value });
+      for (const [k, v] of PDF_READ_CACHE) {
+        if (Date.now() - v.at >= PDF_READ_CACHE_MS || PDF_READ_CACHE.size > 50) PDF_READ_CACHE.delete(k);
+      }
+      return value;
+    } finally {
+      PdfClaudeExtractionUtils.applicationOnly = false;
+      this.outputTokenCap = undefined;
+    }
+  }
+
+  private async extractHybridUncached(
     pdf: Buffer
   ): Promise<{ result: PdfClaudeExtractResultDTO; meta: ClaudePdfExtractMetaDTO }> {
     const { combined, perPage } = await parsePdfBufferForHybrid(pdf);
@@ -207,7 +249,23 @@ export class ClaudePdfExtractionService {
       };
     }
 
-    return this.extractFromPdfVisionInternal(pdf, letters);
+    return this.extractFromPdfVisionInternal(await this.firstPagesForVision(pdf), letters);
+  }
+
+  /** Scanned PDFs (read as images): GPT gets only the first OPENAI_PDF_VISION_MAX_PAGES pages. */
+  private async firstPagesForVision(pdf: Buffer): Promise<Buffer> {
+    if (this.llm !== "openai") return pdf;
+    const max = PdfClaudeExtractionUtils.readPositiveIntCfg(this.cfg, "OPENAI_PDF_VISION_MAX_PAGES", 8);
+    try {
+      const src = await PDFDocument.load(pdf, { ignoreEncryption: true });
+      if (src.getPageCount() <= max) return pdf;
+      const out = await PDFDocument.create();
+      const pages = await out.copyPages(src, Array.from({ length: max }, (_, i) => i));
+      pages.forEach((p) => out.addPage(p));
+      return Buffer.from(await out.save());
+    } catch {
+      return pdf;
+    }
   }
 
   /**
@@ -295,7 +353,7 @@ export class ClaudePdfExtractionService {
     system: string,
     userContent: Anthropic.Messages.ContentBlockParam[]
   ): Promise<string> {
-    if (this.llm === 'openai') return callOpenAi(this.cfg, system, userContent);
+    if (this.llm === 'openai') return callOpenAi(this.cfg, system, userContent, this.outputTokenCap);
     const model = this.cfg.get<string>("CLAUDE_PDF_MODEL") ?? "claude-sonnet-4-6";
     const max_tokens =
       PdfClaudeExtractionUtils.readPositiveIntCfg(this.cfg, "CLAUDE_PDF_MAX_TOKENS", 12000);
@@ -339,7 +397,7 @@ export class ClaudePdfExtractionService {
       "Also include legal_business_name, company_name, merchant_name, dba_name if present.";
     const user =
       "Extract only missing merchant-name fields from this document text.\n\n" +
-      `Document text:\n${PdfClaudeExtractionUtils.clip(fullText, 120_000)}`;
+      `Document text:\n${PdfClaudeExtractionUtils.clip(PdfClaudeExtractionUtils.squeeze(fullText), 20_000)}`;
     const raw = await this.callClaude(system, PdfClaudeExtractionUtils.singleTextBlock(user));
     const parsed = PdfClaudeExtractionUtils.parseJsonFromModel(raw);
     const retry = PdfClaudeExtractionUtils.validateResult(parsed);
@@ -470,7 +528,32 @@ export class PdfClaudeExtractionUtils {
   }
 
   /** ZipTool-style strict JSON extraction rules (system). */
+  /** Set while reading an application form (see extractHybridFromPdfBuffer). */
+  static applicationOnly = false;
+
+  /** Collapse runs of spaces / blank lines (PDF text is full of them; each costs tokens). */
+  static squeeze(s: string): string {
+    return String(s ?? "")
+      .replace(/[ \t\u00A0]+/g, " ")
+      .replace(/ *\n */g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
   static buildSystemPrompt(): string {
+    if (PdfClaudeExtractionUtils.applicationOnly) {
+      return [
+        "You extract structured data from business-funding application forms.",
+        "Reply with a single JSON object only, no markdown outside JSON.",
+        "Keys: document_type (string), title (string), summary (one short sentence),",
+        "key_data (object string->string with every filled form field: business, owner(s), addresses,",
+        "phones, emails, EIN/SSN, dates, amounts, bank details), transactions (always []).",
+        "- Always provide key_data.business_name as the legal entity name when visible",
+        "  (map legal_business_name / company_name / merchant_name; dba_name separately).",
+        "- Provide owner_first_name and owner_last_name when an owner/applicant name is present.",
+        "- Values are raw field values only (no labels). If unreadable, empty string; never invent.",
+      ].join("\n");
+    }
     return [
       "You extract structured data from documents.",
       "Reply with a single JSON object only, no markdown outside JSON.",
@@ -494,18 +577,14 @@ export class PdfClaudeExtractionUtils {
 
   /** Text-hybrid user block (ZipTool `_build_system_and_user_text` user half). */
   static buildUserTextPass(fullText: string, perPageTexts: string[]): string {
-    const pageBlocks = perPageTexts.map(
-      (t, i) => `--- Page ${i + 1} ---\n${PdfClaudeExtractionUtils.clip(t, 12_000)}\n`
+    // The text is sent once (per page). It used to be sent a second time merged — double the tokens.
+    const total = PdfClaudeExtractionUtils.applicationOnly ? 30_000 : 80_000;
+    const pages = perPageTexts.length ? perPageTexts : [fullText];
+    const perPage = Math.max(2_000, Math.floor(total / pages.length));
+    const pageBlocks = pages.map(
+      (t, i) => `--- Page ${i + 1} ---\n${PdfClaudeExtractionUtils.clip(PdfClaudeExtractionUtils.squeeze(t), perPage)}\n`
     );
-    return [
-      "Mode: text extraction (embedded/layered PDF text).",
-      "",
-      "Per-page text (may be empty on some pages):",
-      pageBlocks.join("\n"),
-      "",
-      "Full document text (merged):",
-      PdfClaudeExtractionUtils.clip(fullText, 120_000),
-    ].join("\n");
+    return ["Mode: text extraction (embedded/layered PDF text).", "", pageBlocks.join("\n")].join("\n");
   }
 
   static buildSystemAndUserText(

@@ -17,7 +17,8 @@ export async function extractPdfPlainTextForParsing(
 
     try {
         const svc = getPdfExtractionService();
-        const { result, meta } = await svc.extractHybridFromPdfBuffer(pdfBuffer);
+        // Application intake: no transaction list (fewer tokens).
+        const { result, meta } = await svc.extractHybridFromPdfBuffer(pdfBuffer, { applicationOnly: true });
         const dbg = svc.getRuntimeDebugConfig();
         const kd = result.key_data || {};
         const nonEmptyKeyCount = Object.values(kd).filter((v) => String(v ?? '').trim().length > 0).length;
