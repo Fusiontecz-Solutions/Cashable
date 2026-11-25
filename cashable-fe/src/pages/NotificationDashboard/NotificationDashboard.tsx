@@ -355,8 +355,8 @@ export default function NotificationDashboard() {
                                                     onSelectChange={(c) => toggleSelect(g.latest._id, c)}
                                                 />
                                             </div>
-                                            {/* Wide screens: the merchant's earlier updates as a timeline on the right. */}
-                                            {g.earlier.length > 0 ? (
+                                            {/* Wide screens, after "Show earlier updates": the merchant's earlier updates on the right. */}
+                                            {open && g.earlier.length > 0 ? (
                                                 <aside className="hidden w-[380px] shrink-0 border-l border-border/60 px-4 py-3 xl:block">
                                                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                                         Earlier updates ({g.earlier.length})
@@ -367,7 +367,7 @@ export default function NotificationDashboard() {
                                                         ) : null}
                                                     </p>
                                                     <ol className="space-y-0.5">
-                                                        {(open ? g.earlier : g.earlier.slice(0, 5)).map((n) => {
+                                                        {g.earlier.map((n) => {
                                                             const st = notificationStatusTone(n.title);
                                                             return (
                                                                 <li key={n._id}>
@@ -392,15 +392,6 @@ export default function NotificationDashboard() {
                                                             );
                                                         })}
                                                     </ol>
-                                                    {g.earlier.length > 5 ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleGroup(g.key)}
-                                                            className="mt-1 cursor-pointer px-1.5 text-[11px] font-medium text-[var(--brand)] hover:underline"
-                                                        >
-                                                            {open ? "Show fewer" : `Show all ${g.earlier.length}`}
-                                                        </button>
-                                                    ) : null}
                                                 </aside>
                                             ) : null}
                                         </div>
@@ -409,7 +400,7 @@ export default function NotificationDashboard() {
                                                 type="button"
                                                 onClick={() => toggleGroup(g.key)}
                                                 aria-expanded={open}
-                                                className="-mt-1 mb-2 ml-[4.25rem] inline-flex xl:hidden cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--brand)] hover:bg-muted"
+                                                className="-mt-1 mb-2 ml-[4.25rem] inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--brand)] hover:bg-muted"
                                             >
                                                 {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                                                 {open ? "Hide" : "Show"} {g.earlier.length} earlier update{g.earlier.length === 1 ? "" : "s"}
