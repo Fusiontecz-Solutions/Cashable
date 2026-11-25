@@ -22,7 +22,7 @@ import {
     isSnoozeDue,
 } from "@/components/notifications/notificationTaxonomy";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckCheck, RefreshCcw, Archive, X } from "lucide-react";
+import { Bell, CheckCheck, RefreshCcw, Archive, X, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** A snoozed-but-due item resurfaces in the Inbox; otherwise the stored bucket. */
@@ -89,6 +89,37 @@ export default function NotificationDashboard() {
         if (importance) l = l.filter((n) => (n.importance ?? "normal") === importance);
         return [...l].sort(compareNotifications);
     }, [active, bucket, category, importance]);
+
+    /**
+     * One row per merchant (deal): its latest notification, with the earlier ones of that deal
+     * behind "Show N earlier updates". The list is newest first, so groups are ordered by their
+     * latest update. Notifications without a deal stay single rows.
+     */
+    const groups = useMemo(() => {
+        const out: Array<{ key: string; latest: Notification; earlier: Notification[] }> = [];
+        const byKey = new Map<string, { key: string; latest: Notification; earlier: Notification[] }>();
+        for (const n of list) {
+            const app = n.application;
+            const appKey = app && typeof app === "object" ? String((app as { _id?: unknown })._id ?? "") : String(app ?? "");
+            const key = appKey ? `app:${appKey}` : `one:${n._id}`;
+            const g = byKey.get(key);
+            if (g) g.earlier.push(n);
+            else {
+                const fresh = { key, latest: n, earlier: [] as Notification[] };
+                byKey.set(key, fresh);
+                out.push(fresh);
+            }
+        }
+        return out;
+    }, [list]);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const toggleGroup = (key: string) =>
+        setExpandedGroups((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
 
     useEffect(() => {
         setSelected((prev) => {
@@ -308,16 +339,52 @@ export default function NotificationDashboard() {
                                 Loading notifications…
                             </div>
                         ) : list.length > 0 ? (
-                            list.map((n) => (
-                                <NotificationItem
-                                    key={n._id}
-                                    notification={n}
-                                    actions={actions}
-                                    selectable
-                                    selected={selected.has(n._id)}
-                                    onSelectChange={(c) => toggleSelect(n._id, c)}
-                                />
-                            ))
+                            groups.map((g) => {
+                                const open = expandedGroups.has(g.key);
+                                const unreadEarlier = g.earlier.filter((n) => !n.isRead).length;
+                                return (
+                                    <div key={g.key} className="border-b border-border/60 last:border-b-0">
+                                        <NotificationItem
+                                            notification={g.latest}
+                                            actions={actions}
+                                            selectable
+                                            selected={selected.has(g.latest._id)}
+                                            onSelectChange={(c) => toggleSelect(g.latest._id, c)}
+                                        />
+                                        {g.earlier.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => toggleGroup(g.key)}
+                                                aria-expanded={open}
+                                                className="-mt-1 mb-2 ml-[4.25rem] inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[var(--brand)] hover:bg-muted"
+                                            >
+                                                {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                                {open ? "Hide" : "Show"} {g.earlier.length} earlier update{g.earlier.length === 1 ? "" : "s"}
+                                                {unreadEarlier > 0 ? (
+                                                    <span className="ml-1 rounded-full bg-[var(--brand)]/10 px-1.5 text-[10px] font-semibold">
+                                                        {unreadEarlier} unread
+                                                    </span>
+                                                ) : null}
+                                            </button>
+                                        ) : null}
+                                        {open ? (
+                                            <div className="mb-2 ml-[4.25rem] mr-3 border-l-2 border-[var(--brand)]/25">
+                                                {g.earlier.map((n) => (
+                                                    <NotificationItem
+                                                        key={n._id}
+                                                        notification={n}
+                                                        actions={actions}
+                                                        compact
+                                                        selectable
+                                                        selected={selected.has(n._id)}
+                                                        onSelectChange={(c) => toggleSelect(n._id, c)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                );
+                            })
                         ) : (
                             <div className="flex h-full min-h-[50vh] flex-col items-center justify-center px-6 text-center">
                                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
