@@ -98,9 +98,7 @@ export default function NotificationItem({
 
     return (
         <div
-            className={`group border-b border-border/60 last:border-b-0 transition-colors ${
-                !n.isRead ? "bg-[var(--brand)]/[0.06] dark:bg-[var(--brand)]/10" : ""
-            }`}
+            className="group border-b border-border/60 last:border-b-0 transition-colors bg-background"
         >
             <div
                 className={`flex items-start gap-3 ${compact ? "px-3 py-2.5" : "px-4 py-3"} ${
