@@ -1805,6 +1805,18 @@ function resolveDisclosureMerchantNameValue(
   return resolveDisclosureMerchantBusinessName(values);
 }
 
+/**
+ * Exhibit A row N on the contract: "<company> — <address>" when the company has an address
+ * (`exhibit_a_address_N`). Only this box shows the address; the COJs list the name alone.
+ */
+export function exhibitARowValue(key: string, values: Record<string, string>): string | null {
+  const row = /^exhibit_a_value_(\d+)$/i.exec(key);
+  if (!row) return null;
+  const name = String(values[key] ?? values[key.toLowerCase()] ?? '').trim();
+  const address = String(values[`exhibit_a_address_${row[1]}`] ?? '').trim();
+  return name && address ? `${name} — ${address}` : null;
+}
+
 function resolveTextPlacementValue(
   variable: string,
   values: Record<string, string>,
@@ -2016,6 +2028,9 @@ function resolveTextPlacementValue(
       if (owner1) return owner1;
     }
   }
+
+  const exhibitRow = exhibitARowValue(key, values);
+  if (exhibitRow) return exhibitRow;
 
   const candidates = [
     key,

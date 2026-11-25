@@ -259,9 +259,27 @@ export interface BuildContractPrefillFieldsArgs {
     exhibitAValue8?: string;
     exhibitAValue9?: string;
     exhibitAValue10?: string;
+    /** Exhibit A company addresses — printed next to each company on Exhibit A only (`exhibit_a_address_N`). */
+    exhibitAAddress1?: string;
+    exhibitAAddress2?: string;
+    exhibitAAddress3?: string;
+    exhibitAAddress4?: string;
+    exhibitAAddress5?: string;
+    exhibitAAddress6?: string;
+    exhibitAAddress7?: string;
+    exhibitAAddress8?: string;
+    exhibitAAddress9?: string;
+    exhibitAAddress10?: string;
 }
 
 export const EXHIBIT_A_VALUE_COUNT = 10;
+
+export type ExhibitAAddressFieldKey = `exhibitAAddress${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
+
+export const EXHIBIT_A_ADDRESS_FIELD_KEYS: readonly ExhibitAAddressFieldKey[] = Array.from(
+    { length: EXHIBIT_A_VALUE_COUNT },
+    (_, i) => `exhibitAAddress${i + 1}` as ExhibitAAddressFieldKey,
+);
 
 export type ExhibitAValueFieldKey = `exhibitAValue${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10}`;
 
@@ -479,6 +497,16 @@ const FIELD_IDS = {
     exhibitAValue8: ["exhibit_a_value_8"],
     exhibitAValue9: ["exhibit_a_value_9"],
     exhibitAValue10: ["exhibit_a_value_10"],
+    exhibitAAddress1: ["exhibit_a_address_1"],
+    exhibitAAddress2: ["exhibit_a_address_2"],
+    exhibitAAddress3: ["exhibit_a_address_3"],
+    exhibitAAddress4: ["exhibit_a_address_4"],
+    exhibitAAddress5: ["exhibit_a_address_5"],
+    exhibitAAddress6: ["exhibit_a_address_6"],
+    exhibitAAddress7: ["exhibit_a_address_7"],
+    exhibitAAddress8: ["exhibit_a_address_8"],
+    exhibitAAddress9: ["exhibit_a_address_9"],
+    exhibitAAddress10: ["exhibit_a_address_10"],
 } as const;
 
 function formatUsDateString(value: string): string {
@@ -804,6 +832,16 @@ export const buildContractPrefillFields = ({
     exhibitAValue8 = "",
     exhibitAValue9 = "",
     exhibitAValue10 = "",
+    exhibitAAddress1 = "",
+    exhibitAAddress2 = "",
+    exhibitAAddress3 = "",
+    exhibitAAddress4 = "",
+    exhibitAAddress5 = "",
+    exhibitAAddress6 = "",
+    exhibitAAddress7 = "",
+    exhibitAAddress8 = "",
+    exhibitAAddress9 = "",
+    exhibitAAddress10 = "",
 }: BuildContractPrefillFieldsArgs): ContractPrefillField[] => {
     return [
         ...mapIds(FIELD_IDS.legalName, "Legal Name", legalName),
@@ -1092,6 +1130,16 @@ export const buildContractPrefillFields = ({
         ...mapIds(FIELD_IDS.exhibitAValue8, "Exhibit A company 8", exhibitAValue8),
         ...mapIds(FIELD_IDS.exhibitAValue9, "Exhibit A company 9", exhibitAValue9),
         ...mapIds(FIELD_IDS.exhibitAValue10, "Exhibit A company 10", exhibitAValue10),
+        ...mapIds(FIELD_IDS.exhibitAAddress1, "Exhibit A company 1 address", exhibitAAddress1),
+        ...mapIds(FIELD_IDS.exhibitAAddress2, "Exhibit A company 2 address", exhibitAAddress2),
+        ...mapIds(FIELD_IDS.exhibitAAddress3, "Exhibit A company 3 address", exhibitAAddress3),
+        ...mapIds(FIELD_IDS.exhibitAAddress4, "Exhibit A company 4 address", exhibitAAddress4),
+        ...mapIds(FIELD_IDS.exhibitAAddress5, "Exhibit A company 5 address", exhibitAAddress5),
+        ...mapIds(FIELD_IDS.exhibitAAddress6, "Exhibit A company 6 address", exhibitAAddress6),
+        ...mapIds(FIELD_IDS.exhibitAAddress7, "Exhibit A company 7 address", exhibitAAddress7),
+        ...mapIds(FIELD_IDS.exhibitAAddress8, "Exhibit A company 8 address", exhibitAAddress8),
+        ...mapIds(FIELD_IDS.exhibitAAddress9, "Exhibit A company 9 address", exhibitAAddress9),
+        ...mapIds(FIELD_IDS.exhibitAAddress10, "Exhibit A company 10 address", exhibitAAddress10),
     ];
 };
 
@@ -3633,8 +3681,8 @@ export function exhibitValuesToPrefillPartial(
     if (!row) return {};
     const overrides = normalizeContractPrefillOverrides(row.contractPrefillOverrides) ?? {};
     const out: Partial<BuildContractPrefillFieldsArgs> = {};
-    for (const key of EXHIBIT_A_VALUE_FIELD_KEYS) {
-        const v = str(row[key]) || str(overrides[key]);
+    for (const key of [...EXHIBIT_A_VALUE_FIELD_KEYS, ...EXHIBIT_A_ADDRESS_FIELD_KEYS]) {
+        const v = str(row[key]) || str((overrides as Record<string, unknown>)[key]);
         if (v) (out as Record<string, string>)[key] = v;
     }
     return out;

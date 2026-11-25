@@ -149,12 +149,25 @@ const COJ_NAME_KEYS = [
 function cojFactsFrom(rawValues: Values) {
   const values: Values = { ...rawValues };
   for (const k of COJ_NAME_KEYS) if (values[k] != null) values[k] = cojNameCommas(values[k]);
-  // Additional names (mapping field, separated by ";" or new lines) follow the merchant everywhere.
-  const extraNames = String(values.coj_additional_names ?? '')
-    .split(/[;\r\n]+/)
-    .map((s) => upper(cojKeepSpaces(s)))
-    .filter((s) => s.trim())
-    .filter(Boolean);
+  // Additional names follow the merchant everywhere: every Exhibit A company of the deal (added or
+  // removed there, it follows here), then any typed in this COJ's "Additional names" (";" or new
+  // lines). Duplicates and the merchant's own name are dropped.
+  const mainName = upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+  const own = new Set(
+    [mainName, upper(v(values, 'client_legal_name')), upper(v(values, 'doing_business_as'))]
+      .map((s) => s.replace(/\s+/g, ' ').trim())
+      .filter(Boolean),
+  );
+  const exhibitNames = Array.from({ length: 10 }, (_, i) => String(values[`exhibit_a_value_${i + 1}`] ?? ''));
+  const seen = new Set<string>();
+  const extraNames = [...exhibitNames, ...String(values.coj_additional_names ?? '').split(/[;\r\n]+/)]
+    .map((s) => upper(cojKeepSpaces(cojNameCommas(s))))
+    .filter((s) => {
+      const key = s.replace(/[\s\u00A0]+/g, ' ').trim();
+      if (!key || own.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   const merchant = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames]
     .filter(Boolean)
     .join(', ');

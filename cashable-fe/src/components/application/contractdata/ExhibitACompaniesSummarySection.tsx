@@ -8,7 +8,7 @@ import type { AppDispatch } from "@/redux/store";
 import { getByApplicationIdContract, updateContract } from "@/redux/actions/contractActions";
 import { toast } from "react-toastify";
 import { EXHIBIT_A_VALUE_COUNT, type BuildContractPrefillFieldsArgs } from "./Contract";
-import { companiesFromPrefill, companiesToPrefillPayload } from "./exhibitCompanyPrefill";
+import { companiesFromPrefill, companiesToPrefillPayload, companyAddressesFromPrefill } from "./exhibitCompanyPrefill";
 import {
     DOCUMENT_TEMPLATE_PREFILL_BY_MAPPING_ID_KEY,
     stripDocumentTemplateBlobFromPrefillOverrides,
@@ -46,12 +46,24 @@ export function ExhibitACompaniesSummarySection({
 }: ExhibitACompaniesSummarySectionProps) {
     const dispatch = useDispatch<AppDispatch>();
     const [companies, setCompanies] = useState<string[]>([""]);
+    /** Address per company row (prints next to it on Exhibit A only). */
+    const [addresses, setAddresses] = useState<string[]>([""]);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!prefillOverridesReady) return;
         setCompanies(companiesFromPrefill(persistedPrefillOverrides));
+        setAddresses(companyAddressesFromPrefill(persistedPrefillOverrides));
     }, [prefillOverridesReady, persistedPrefillOverrides]);
+
+    const updateAddress = useCallback((index: number, value: string) => {
+        setAddresses((prev) => {
+            const next = [...prev];
+            while (next.length <= index) next.push("");
+            next[index] = value;
+            return next;
+        });
+    }, []);
 
     const updateRow = useCallback((index: number, value: string) => {
         setCompanies((prev) => prev.map((c, i) => (i === index ? value : c)));
@@ -69,6 +81,7 @@ export function ExhibitACompaniesSummarySection({
             if (prev.length <= 1) return [""];
             return prev.filter((_, i) => i !== index);
         });
+        setAddresses((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
     }, []);
 
     const handleSave = async () => {
@@ -82,7 +95,7 @@ export function ExhibitACompaniesSummarySection({
             const base =
                 stripDocumentTemplateBlobFromPrefillOverrides(persistedPrefillOverrides) ??
                 ({} as Partial<BuildContractPrefillFieldsArgs>);
-            const exhibitPayload = companiesToPrefillPayload(companies);
+            const exhibitPayload = companiesToPrefillPayload(companies, addresses);
             const contractPrefillOverrides: Record<string, unknown> = {
                 ...base,
                 ...exhibitPayload,
@@ -108,6 +121,7 @@ export function ExhibitACompaniesSummarySection({
             onPersistedPrefillFullChange?.(fullSaved);
             onDraftInvalidate?.();
             setCompanies(companiesFromPrefill(mainSaved));
+            setAddresses(companyAddressesFromPrefill(mainSaved));
             const appKey = String(applicationUuid ?? "").trim();
             if (appKey) {
                 try {
@@ -166,6 +180,15 @@ export function ExhibitACompaniesSummarySection({
                                 onChange={(e) => updateRow(index, e.target.value)}
                                 disabled={!canEdit || saving}
                                 placeholder="Company legal name"
+                            />
+                            <Input
+                                id={`summary-exhibit-address-${index}`}
+                                aria-label={`Company ${index + 1} address`}
+                                className="h-8 text-sm"
+                                value={addresses[index] ?? ""}
+                                onChange={(e) => updateAddress(index, e.target.value)}
+                                disabled={!canEdit || saving}
+                                placeholder="Company address (prints next to it on Exhibit A)"
                             />
                         </div>
                         {canEdit && companies.length > 1 ? (

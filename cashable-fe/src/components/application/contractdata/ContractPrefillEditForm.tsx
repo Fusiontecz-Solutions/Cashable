@@ -321,6 +321,16 @@ const FIELD_LABELS = {
     exhibitAValue8: "Exhibit A company 8",
     exhibitAValue9: "Exhibit A company 9",
     exhibitAValue10: "Exhibit A company 10",
+    exhibitAAddress1: "Exhibit A company 1 address",
+    exhibitAAddress2: "Exhibit A company 2 address",
+    exhibitAAddress3: "Exhibit A company 3 address",
+    exhibitAAddress4: "Exhibit A company 4 address",
+    exhibitAAddress5: "Exhibit A company 5 address",
+    exhibitAAddress6: "Exhibit A company 6 address",
+    exhibitAAddress7: "Exhibit A company 7 address",
+    exhibitAAddress8: "Exhibit A company 8 address",
+    exhibitAAddress9: "Exhibit A company 9 address",
+    exhibitAAddress10: "Exhibit A company 10 address",
 } as const satisfies Record<ContractPrefillFormFieldKey, string>;
 
 /** Matches Create Client / application business entity options. */
@@ -597,6 +607,20 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
                         "exhibitAValue8",
                         "exhibitAValue9",
                         "exhibitAValue10",
+                    ],
+                },
+                {
+                    keys: [
+                        "exhibitAAddress1",
+                        "exhibitAAddress2",
+                        "exhibitAAddress3",
+                        "exhibitAAddress4",
+                        "exhibitAAddress5",
+                        "exhibitAAddress6",
+                        "exhibitAAddress7",
+                        "exhibitAAddress8",
+                        "exhibitAAddress9",
+                        "exhibitAAddress10",
                     ],
                 },
             ],

@@ -1,4 +1,5 @@
 import {
+    EXHIBIT_A_ADDRESS_FIELD_KEYS,
     EXHIBIT_A_VALUE_COUNT,
     EXHIBIT_A_VALUE_FIELD_KEYS,
     type BuildContractPrefillFieldsArgs,
@@ -16,13 +17,31 @@ export function companiesFromPrefill(
     return loaded.length > 0 ? loaded : [""];
 }
 
+/** Addresses in the same order as companiesFromPrefill (one per company row). */
+export function companyAddressesFromPrefill(
+    prefill: Partial<BuildContractPrefillFieldsArgs> | null | undefined,
+): string[] {
+    const out: string[] = [];
+    for (let i = 0; i < EXHIBIT_A_VALUE_COUNT; i++) {
+        const name = String(prefill?.[EXHIBIT_A_VALUE_FIELD_KEYS[i]] ?? "").trim();
+        if (name) out.push(String(prefill?.[EXHIBIT_A_ADDRESS_FIELD_KEYS[i]] ?? "").trim());
+    }
+    return out.length > 0 ? out : [""];
+}
+
 export function companiesToPrefillPayload(
     companies: readonly string[],
+    addresses: readonly string[] = [],
 ): Partial<BuildContractPrefillFieldsArgs> {
     const out: Partial<BuildContractPrefillFieldsArgs> = {};
+    // Rows without a name are dropped (with their address), so a removed company leaves no gap.
+    const rows = companies
+        .map((name, i) => ({ name: String(name ?? "").trim(), address: String(addresses[i] ?? "").trim() }))
+        .filter((r) => r.name);
     for (let i = 0; i < EXHIBIT_A_VALUE_COUNT; i++) {
         const key = EXHIBIT_A_VALUE_FIELD_KEYS[i] as ExhibitAValueFieldKey;
-        out[key] = String(companies[i] ?? "").trim();
+        out[key] = rows[i]?.name ?? "";
+        out[EXHIBIT_A_ADDRESS_FIELD_KEYS[i]] = rows[i]?.address ?? "";
     }
     return out;
 }

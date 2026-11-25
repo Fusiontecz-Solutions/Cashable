@@ -33,3 +33,22 @@ describe('COJ names: one space after each comma', () => {
     expect(f.purchase).toBe('$34,100.00');
   });
 });
+
+describe('Exhibit A companies flow into every COJ', () => {
+  const base = { business_name_with_dba: 'AZURE HOME HEALTHCARE LLC', client_legal_name: 'AZURE HOME HEALTHCARE LLC' };
+  it('lists every Exhibit A company, then typed names, without duplicates or the merchant itself', () => {
+    const f = cojFacts({
+      ...base,
+      exhibit_a_value_1: 'SLJ INVESTMENTS CORPORATION',
+      exhibit_a_value_2: 'Azure Home Healthcare LLC',
+      exhibit_a_value_3: 'COZY SKATE COMPANY',
+      exhibit_a_address_1: '123 MAIN ST, NORFOLK, VA 23510',
+      coj_additional_names: 'cozy skate company; PEOPLEFIRST MANAGEMENT',
+    });
+    expect(f.extraNames).toEqual(['SLJ INVESTMENTS CORPORATION', 'COZY SKATE COMPANY', 'PEOPLEFIRST MANAGEMENT']);
+    expect(f.merchant).not.toMatch(/MAIN ST/); // addresses never reach the COJ
+  });
+  it('a company removed from Exhibit A is gone from the COJ', () => {
+    expect(cojFacts({ ...base, exhibit_a_value_1: '' }).extraNames).toEqual([]);
+  });
+});
