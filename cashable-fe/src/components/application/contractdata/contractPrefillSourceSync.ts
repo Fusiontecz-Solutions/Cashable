@@ -3,7 +3,7 @@ import type { BuildContractPrefillFieldsArgs } from "./Contract";
 import { sanitizePaymentFrequencyForPersist } from "./Contract";
 import type { UpdateBankDetailPayload } from "@/types/bankDetailTypes";
 import { parseNumberUS } from "@/lib/utils";
-import { recalculateOfferFields } from "@/lib/offerRepaymentCalculations";
+import { computeMonthlyPayment, recalculateOfferFields } from "@/lib/offerRepaymentCalculations";
 import type { AppDispatch } from "@/redux/store";
 import { getApplicationById } from "@/redux/actions/applicationActions";
 import { getClientById, updateClient } from "@/redux/actions/clientActions";
@@ -406,8 +406,22 @@ export function buildOfferDecisionUpsertFromPrefill(
             "advance",
         );
         if (stack) {
-            payload.repayPerPeriod = stack.daily;
-            payload.monthlyPayment = stack.monthlyPayment;
+            // Total Remit is entered by hand and is Scrubbing's Repay: keep it as typed; only
+            // fall back to payback ÷ term when the prefill has none.
+            const repay = repayPerPeriod != null && repayPerPeriod > 0 ? repayPerPeriod : stack.daily;
+            payload.repayPerPeriod = repay;
+            const termCount = Number(String(term).replace(/[^0-9.]/g, ""));
+            payload.monthlyPayment =
+                (repayPerPeriod != null &&
+                    repayPerPeriod > 0 &&
+                    Number.isFinite(termCount) &&
+                    termCount > 0 &&
+                    computeMonthlyPayment({
+                        payback: repay * termCount,
+                        term,
+                        frequency: frequency || str(existing.frequency) || "Daily",
+                    })) ||
+                stack.monthlyPayment;
         }
     } else if ("monthlyPayment" in existing && existing.monthlyPayment != null) {
         payload.monthlyPayment = existing.monthlyPayment;

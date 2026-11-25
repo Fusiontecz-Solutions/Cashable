@@ -42,6 +42,7 @@ import {
     parseDocumentTemplatePrefillByMappingId,
     getDocumentTemplatePrefillFieldRowsForEditor,
     usesCoordinateLayoutTemplate,
+    withOfferDecisionSnapshot,
 } from "./documentTemplateMappingPrefill";
 import { stripAchAuthorizationKeysFromRecord } from "./documentPrefillScope";
 import { COJ_BOLD_GROUPS, COJ_LINE_SPACINGS, cojBoldSet, isCojBoldKey, isCojLineSpacingKey, toggleCojBold } from "@/lib/cojBold";
@@ -272,7 +273,7 @@ export function TemplateMappingPrefillEditDialog({
             let nextBlob: Record<string, Record<string, string>> = {
                 ...existingBlob,
                 ...documentTemplatePrefillByMappingId,
-                [row.id]: tabValues,
+                [row.id]: withOfferDecisionSnapshot(tabValues, offerDecision),
             };
 
             const achCamel = coordinateLayout ? achTabValuesToCamelPartial(tabValues) : null;

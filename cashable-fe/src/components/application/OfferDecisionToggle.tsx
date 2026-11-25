@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { formatNumberUS, formatNumberUSForInput, formatRateUS } from "@/lib/utils";
-import { deriveOfferRepaymentStack } from "@/lib/offerRepaymentCalculations";
+import { computeMonthlyPayment, deriveOfferRepaymentStack } from "@/lib/offerRepaymentCalculations";
 import {
   feesPercentToDollarsFromFunded,
   resolveOfferDecisionFeesRaw,
@@ -412,10 +412,24 @@ function mapApiOfferDecisionToLocalData(
       frequency: next.frequency || "Daily",
     });
     if (stack) {
+      // A saved Repay is kept as entered (it can differ from payback ÷ term); only fill
+      // repay / monthly when they were never saved.
+      const savedRepay = parseNum(next.daysWeeks);
       next = {
         ...next,
-        daysWeeks: formatNumberUS(stack.perPeriodPayment),
-        monthlyPayment: formatNumberUS(stack.monthlyPayment),
+        daysWeeks: savedRepay > 0 ? next.daysWeeks : formatNumberUS(stack.perPeriodPayment),
+        monthlyPayment:
+          savedRepay > 0 && parseNum(next.monthlyPayment) > 0
+            ? next.monthlyPayment
+            : formatNumberUS(
+                (savedRepay > 0 &&
+                  computeMonthlyPayment({
+                    payback: savedRepay * parseNum(termStr),
+                    term: termStr,
+                    frequency: next.frequency || "Daily",
+                  })) ||
+                  stack.monthlyPayment,
+              ),
       };
     }
   }
@@ -993,13 +1007,9 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
               ? "Monthly"
               : "Daily";
 
-      // daysWeeksNum is the per‑period payment
+      // daysWeeksNum is the per‑period payment. Repay is a manual entry: it never changes the
+      // offer, rate, term or repayment (it goes to the contract as Total Remit as typed).
       const totalRepayment = daysWeeksNum * termNum;
-      const newOfferNum = totalRepayment / rateNum;
-
-      if (!Number.isFinite(newOfferNum) || newOfferNum <= 0) {
-        return;
-      }
 
       // Convert per‑period back to a monthly equivalent
       let newMonthlyNumForRemit = 0;
@@ -1032,9 +1042,8 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
       setLocalData((prev) => {
         const next: OfferFormValue = {
           ...prev,
-          offer: formatNumberUS(newOfferNum),
           monthlyPayment: newMonthlyStr,
-          daysWeeks: formatNumberUS(daysWeeksNum),
+          daysWeeks: prev.daysWeeks,
           ourRemit:
             ourRemitFromMonthly != null
               ? formatNumberUS(ourRemitFromMonthly)
@@ -1430,15 +1439,20 @@ const OfferDecisionToggle: React.FC<OfferDecisionToggleProps> = (props) => {
       ? formatNumberUS(derivedRepaymentStack.payback)
       : "";
 
+  // Repay can be entered by hand (it never changes the offer): show the saved / typed value.
   const perPeriodRepayDisplay =
-    derivedRepaymentStack && derivedRepaymentStack.perPeriodPayment > 0
-      ? formatNumberUS(derivedRepaymentStack.perPeriodPayment)
-      : "";
+    parseNum(localData.daysWeeks) > 0
+      ? formatNumberUS(parseNum(localData.daysWeeks))
+      : derivedRepaymentStack && derivedRepaymentStack.perPeriodPayment > 0
+        ? formatNumberUS(derivedRepaymentStack.perPeriodPayment)
+        : "";
 
   const monthlyPaymentDisplay =
-    derivedRepaymentStack && derivedRepaymentStack.monthlyPayment > 0
-      ? formatNumberUS(derivedRepaymentStack.monthlyPayment)
-      : "";
+    parseNum(localData.monthlyPayment) > 0
+      ? formatNumberUS(parseNum(localData.monthlyPayment))
+      : derivedRepaymentStack && derivedRepaymentStack.monthlyPayment > 0
+        ? formatNumberUS(derivedRepaymentStack.monthlyPayment)
+        : "";
 
   /**
    * Our Position = positions still outstanding + 1, derived from the live

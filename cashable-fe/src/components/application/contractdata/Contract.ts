@@ -4708,6 +4708,8 @@ export function offerDecisionTermsFingerprint(
         text(od.frequency),
         money(od.fees),
         money(od.refinanceAmount ?? od.RefinanceAmount),
+        // Repay (per payment) → the contract's Total Remit.
+        money(od.repayPerPeriod ?? od.daysWeeks),
     ];
     return parts.some(Boolean) ? parts.join("|") : "";
 }
@@ -4777,6 +4779,12 @@ export function stripStaleOfferOverridesFromPersisted(
         ),
     );
     if (liveFee != null && liveFee > 0 && savedFee != null && Math.abs(liveFee - savedFee) > 0.009) {
+        return dropMoney();
+    }
+    // And Total Remit follows Scrubbing's Repay.
+    const liveRemit = coerceToFiniteNumber(live.remittance);
+    const savedRemit = coerceToFiniteNumber(out.remittance);
+    if (liveRemit != null && liveRemit > 0 && savedRemit != null && Math.abs(liveRemit - savedRemit) > 0.009) {
         return dropMoney();
     }
     if (!liveOfferFaceAmountChanged(live, out) && !liveOfferFrequencyChanged(live, out)) {

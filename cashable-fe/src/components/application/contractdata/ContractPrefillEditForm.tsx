@@ -2041,7 +2041,14 @@ export function ContractPrefillEditForm({
                     ...(buildOfferDecisionUpsertFromPrefill(payload, odRecord) ?? {}),
                 };
                 const snapshot = offerDecisionTermsFingerprint(expectedOfferDecision);
-                if (snapshot) contractPrefillOverrides[OFFER_DECISION_SNAPSHOT_KEY] = snapshot;
+                if (snapshot) {
+                    contractPrefillOverrides[OFFER_DECISION_SNAPSHOT_KEY] = snapshot;
+                    // The disclosure's amounts are based on the same terms.
+                    const disclosureId = linkedDisclosureMapping?.id;
+                    if (disclosureId && nextBlob[disclosureId]) {
+                        nextBlob[disclosureId] = { ...nextBlob[disclosureId], [OFFER_DECISION_SNAPSHOT_KEY]: snapshot };
+                    }
+                }
             }
             const netToMerchantRaw = String(
                 (payload as { netToMerchant?: unknown }).netToMerchant ?? "",

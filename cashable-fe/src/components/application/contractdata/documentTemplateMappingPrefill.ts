@@ -24,6 +24,8 @@ import {
     resolveOfferFrequencyLabel,
     resolveRemittancePrefillValue,
     coercePaymentFrequencyLabel,
+    OFFER_DECISION_SNAPSHOT_KEY,
+    offerDecisionTermsFingerprint,
 } from "./Contract";
 import {
     isAchAuthorizationPrefillKey,
@@ -789,6 +791,44 @@ function resolveOfferAmountFromMappingOverrides(
  * Also strips when *any* offer-derived money field (e.g. receivable_purchase_1)
  * still holds an old amount even if another key was already updated to the live offer.
  */
+/** Saved on a document's values: the Scrubbing terms they were calculated from. */
+export function withOfferDecisionSnapshot(
+    values: Record<string, string>,
+    offerDecision: Record<string, unknown> | null | undefined,
+    snapshot?: string,
+): Record<string, string> {
+    const fp = snapshot || offerDecisionTermsFingerprint(offerDecision);
+    return fp ? { ...values, [OFFER_DECISION_SNAPSHOT_KEY]: fp } : { ...values };
+}
+
+/**
+ * A disclosure's saved amounts (prefill edits / Disclosure Calculation) follow Scrubbing: when
+ * Scrubbing's terms changed since they were saved, the amounts are dropped and recalculated from
+ * the live deal; names, dates and other non-money edits stay. Saved before snapshots existed:
+ * a total payment that no longer matches the live payback counts as a Scrubbing change.
+ */
+function dropDisclosureMoneyWhenScrubbingChanged(
+    saved: Record<string, string> | null | undefined,
+    isDisclosure: boolean,
+    offerDecision: Record<string, unknown> | null,
+    livePayback: number | null,
+): Record<string, string> | null | undefined {
+    if (!saved) return saved;
+    const { [OFFER_DECISION_SNAPSHOT_KEY]: snapshot, ...rest } = saved;
+    if (!isDisclosure) return rest;
+    const live = offerDecisionTermsFingerprint(offerDecision);
+    if (snapshot && live) return snapshot === live ? rest : keepNonMoneyDisclosureEdits(rest);
+    if (livePayback != null && livePayback > 0) {
+        for (const [key, value] of Object.entries(rest)) {
+            const base = normalizeMappingFieldKey(key).replace(/_\d+$/, "");
+            if (!/^(disclosure_total_payment|total_repayment_amount|total_of_payments|total_amount_tobe_paid_to_provider)$/.test(base)) continue;
+            const n = parsePrefillMoneyForMerge(value);
+            if (n != null && n > 0 && Math.abs(n - livePayback) > 0.009) return keepNonMoneyDisclosureEdits(rest);
+        }
+    }
+    return rest;
+}
+
 /** A disclosure's saved edits without any amount (offer-derived or calculated) — for merging a new calculation. */
 export function keepNonMoneyDisclosureEdits(
     saved: Record<string, string> | null | undefined,
@@ -2224,12 +2264,18 @@ export function getDocumentTemplatePrefillFieldRowsForEditor(options: {
         templateName: options.templateName,
         contract: effectiveContract,
     });
+    const savedForScrubbing = dropDisclosureMoneyWhenScrubbingChanged(
+        options.savedOverridesForMapping,
+        docType === "disclosure",
+        options.offerDecision ?? null,
+        livePaybackAmount ?? null,
+    );
     const savedOverridesForMapping = isAchForm
-        ? (options.savedOverridesForMapping ?? null)
+        ? (savedForScrubbing ?? null)
         : stripStaleFrequencyFromMappingOverrides(
               stripStaleClientIdentityFromMappingOverrides(
                   stripStaleOfferMoneyFromMappingOverrides(
-                      options.savedOverridesForMapping,
+                      savedForScrubbing,
                       liveOfferAmount,
                       liveRemitAmount,
                       livePaybackAmount,

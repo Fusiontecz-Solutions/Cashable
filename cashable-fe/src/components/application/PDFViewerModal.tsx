@@ -232,6 +232,7 @@ import {
     DOCUMENT_TEMPLATE_PREFILL_BY_MAPPING_ID_KEY,
     hasAddendumPrefillFieldMap,
     keepNonMoneyDisclosureEdits,
+    withOfferDecisionSnapshot,
     mergeExpandedDisclosurePrefillIntoPayload,
     parseDocumentSendHistory,
     parseDocumentTemplateEnvelopeByMappingId,
@@ -5822,10 +5823,13 @@ const PDFViewerModal = ({
 
             const priorBlob = { ...documentTemplatePrefillByMappingId };
             // New calculation replaces the amounts; other disclosure edits (names, dates, …) stay.
-            priorBlob[mappingId] = {
-                ...keepNonMoneyDisclosureEdits(priorBlob[mappingId]),
-                ...fieldOverrides,
-            };
+            priorBlob[mappingId] = withOfferDecisionSnapshot(
+                {
+                    ...keepNonMoneyDisclosureEdits(priorBlob[mappingId]),
+                    ...fieldOverrides,
+                },
+                (offerDecisionData as Record<string, unknown> | null) ?? null,
+            );
 
             const existingOverrides =
                 resolvedContract != null &&
