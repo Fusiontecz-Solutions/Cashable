@@ -8,13 +8,8 @@ const FIELD_IDS = {
     dealIdPrefix: ["deal_id_prefix"],
     totalAmountBusinessFund: ["total_amount_business_fund"],
     totalAmountBusinessFund2: ["total_amount_business_fund_2"],
-    totalAmountOfFundDisbursed: [
-        "total_amount_of_fund_disbursed",
-        "funding_provided",
-        "disclosure_purchase_price",
-        "purchase_amount",
-        "total_amount_business_fund",
-    ],
+    // "The disbursement amount" = net (offer − fees); the offer slots come from totalAmountBusinessFund.
+    totalAmountOfFundDisbursed: ["total_amount_of_fund_disbursed"],
     totalAmountTobePaidToProvider: ["total_amount_tobe_paid_to_provider"],
     totalDollarCost: ["total_dollar_cost"],
     estimatedTerm: ["estimated_term"],

@@ -13,7 +13,6 @@ import {
     mapUtahDisclosureCalculatorToPdfFields,
 } from "./daily_utah";
 import { buildNewYorkDisclosurePage3Amounts } from "./new_york_disclosure";
-import { isTexasDisclosureState } from "./texas_disclosure";
 import { isVirginiaDisclosureState } from "./virginia_disclosure";
 import { buildCaliforniaDisclosurePage3Amounts } from "./california_disclosure";
 import { PLATFORM_DISCLOSURE_FUNDER_NAME } from "./platformDocumentConfig";
@@ -380,14 +379,8 @@ export function expandDisclosureEditorValuesToPdfFields(
     for (const [editorId, rawValue] of Object.entries(editorValues)) {
         const value = String(rawValue ?? "").trim();
         if (!value) continue;
-        const texas = isTexasDisclosureState(options?.disclosureState);
-        const pdfIds = (EDITOR_TO_PDF_FIELD_IDS[editorId] ?? [editorId]).filter((pdfId) => {
-            if (texas && editorId === "disclosure_funding_disbursed") {
-                return (
-                    pdfId !== "total_amount_of_fund_disbursed" &&
-                    pdfId !== "total_amount_fund_disbursed"
-                );
-            }
+        // Every state (Texas included): fund disbursed / disbursement amount = net.
+        const pdfIds = (EDITOR_TO_PDF_FIELD_IDS[editorId] ?? [editorId]).filter(() => {
             return true;
         });
         for (const pdfId of pdfIds) {
@@ -499,27 +492,19 @@ export function expandDisclosureEditorValuesToPdfFields(
         disbursedFinal = formatDisclosureUsd(Math.max(0, offerN - feesN));
     }
     if (disbursedFinal) {
-        const texas = isTexasDisclosureState(options?.disclosureState);
         const virginia = isVirginiaDisclosureState(options?.disclosureState);
         for (const pdfId of EDITOR_TO_PDF_FIELD_IDS.disclosure_funding_disbursed ?? []) {
-            if (
-                texas &&
-                (pdfId === "total_amount_of_fund_disbursed" || pdfId === "total_amount_fund_disbursed")
-            ) {
-                continue;
-            }
             if (virginia && pdfId === "disbursement_amount") {
                 continue;
             }
             out[pdfId] = disbursedFinal;
         }
+        // Every state (Texas included): the disbursement amount is the net.
         for (let i = 1; i <= 40; i += 1) {
-            if (!texas) {
-                out[`total_amount_of_fund_disbursed_${i}`] = disbursedFinal;
-                out[`disclosure_total_amount_of_fund_disbursed_${i}`] = disbursedFinal;
-                out[`total_amount_fund_disbursed_${i}`] = disbursedFinal;
-                out[`disclosure_total_amount_fund_disbursed_${i}`] = disbursedFinal;
-            }
+            out[`total_amount_of_fund_disbursed_${i}`] = disbursedFinal;
+            out[`disclosure_total_amount_of_fund_disbursed_${i}`] = disbursedFinal;
+            out[`total_amount_fund_disbursed_${i}`] = disbursedFinal;
+            out[`disclosure_total_amount_fund_disbursed_${i}`] = disbursedFinal;
             out[`total_amount_business_fund_2_${i}`] = disbursedFinal;
             out[`disclosure_total_amount_business_fund_2_${i}`] = disbursedFinal;
         }
@@ -553,35 +538,6 @@ export function expandDisclosureEditorValuesToPdfFields(
                 out[key] = subtotalStr;
             } else if (/^disclosure_page3_net_\d+$/i.test(key)) {
                 out[key] = netStr;
-            }
-        }
-    }
-
-    // Texas page-1 `total_amount_of_fund_disbursed` = offer (not net like KS/LA).
-    if (isTexasDisclosureState(options?.disclosureState)) {
-        const texasOffer =
-            String(
-                editorValues.funding_provided ??
-                    editorValues.disclosure_purchase_price ??
-                    editorValues.purchase_amount ??
-                    out.funding_provided ??
-                    out.total_amount_business_fund ??
-                    "",
-            ).trim() || fundingProvided;
-        if (texasOffer) {
-            const texasOfferSlots = [
-                "total_amount_of_fund_disbursed",
-                "total_amount_fund_disbursed",
-            ] as const;
-            for (const slot of texasOfferSlots) {
-                out[slot] = texasOffer;
-                out[`disclosure_${slot}`] = texasOffer;
-                out[`disclosure_pdf__${slot}`] = texasOffer;
-                for (let i = 1; i <= 40; i += 1) {
-                    out[`${slot}_${i}`] = texasOffer;
-                    out[`disclosure_${slot}_${i}`] = texasOffer;
-                    out[`disclosure_pdf__${slot}_${i}`] = texasOffer;
-                }
             }
         }
     }

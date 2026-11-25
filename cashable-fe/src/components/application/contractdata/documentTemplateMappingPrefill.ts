@@ -79,7 +79,6 @@ import {
     collapsePdfFieldsToDisclosureEditorValues,
     expandDisclosureEditorValuesToPdfFields,
 } from "./disclosureEditorFields";
-import { isTexasDisclosureState } from "./texas_disclosure";
 import { isVirginiaDisclosureState } from "./virginia_disclosure";
 import { formatDisclosureUsd } from "./disclosureAprCalculator";
 import { isUtahDisclosureState } from "./daily_utah";
@@ -873,13 +872,11 @@ export function stripStaleOfferMoneyFromMappingOverrides(
                 continue;
             }
             // Fund disbursed / net = offer − fees — must not equal offer when fees exist.
-            // Texas page-1 `total_amount_of_fund_disbursed` = offer face amount (not net).
             // Virginia `total_amount_sales_based_financing` = offer; `disbursement_amount` = net.
             const isDisbursedNet =
                 base === "disclosure_funding_disbursed" ||
-                (!isTexasDisclosureState(disclosureState) &&
-                    (base === "total_amount_of_fund_disbursed" ||
-                        base === "total_amount_fund_disbursed")) ||
+                base === "total_amount_of_fund_disbursed" ||
+                base === "total_amount_fund_disbursed" ||
                 base === "disbursement_amount" ||
                 base === "total_amount_business_fund_2" ||
                 base === "total_commerical_financing" ||
@@ -2823,37 +2820,8 @@ export function buildExpandedDisclosurePrefillFieldsForMapping(args: {
     });
 
     const templateState = String(row.template?.state ?? "").trim();
-    if (isTexasDisclosureState(templateState)) {
-        const liveOfferAmount =
-            parsePrefillMoneyForMerge(
-                String(
-                    editorValues.funding_provided ??
-                        editorValues.disclosure_purchase_price ??
-                        (args.mainPrefillOverrides as { purchaseAmount?: unknown } | null | undefined)
-                            ?.purchaseAmount ??
-                        (args.offerDecision as { offer?: unknown } | null | undefined)?.offer ??
-                        "",
-                ),
-            ) ??
-            resolveOfferAmountDollarsForUnderwritingFees({
-                contract: args.contract ?? null,
-                application: args.application ?? undefined,
-                offerDecision: args.offerDecision ?? null,
-            });
-        if (liveOfferAmount != null && liveOfferAmount > 0) {
-            const texasOffer = formatDisclosureUsd(liveOfferAmount);
-            for (const slot of ["total_amount_of_fund_disbursed", "total_amount_fund_disbursed"] as const) {
-                expanded[slot] = texasOffer;
-                expanded[`disclosure_${slot}`] = texasOffer;
-                expanded[`disclosure_pdf__${slot}`] = texasOffer;
-                for (let i = 1; i <= 40; i += 1) {
-                    expanded[`${slot}_${i}`] = texasOffer;
-                    expanded[`disclosure_${slot}_${i}`] = texasOffer;
-                    expanded[`disclosure_pdf__${slot}_${i}`] = texasOffer;
-                }
-            }
-        }
-    }
+    // Texas "disbursement amount" (total_amount_of_fund_disbursed) is the net like every state —
+    // no offer override here.
     if (isVirginiaDisclosureState(templateState)) {
         const liveOfferAmount =
             parsePrefillMoneyForMerge(

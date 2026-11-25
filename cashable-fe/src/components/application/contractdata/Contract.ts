@@ -4687,6 +4687,31 @@ export function finalCalculationPrefillSyncKey(anyApp: unknown): string {
         .join("|");
 }
 
+/** Saved with the prefill: the Scrubbing (Offer Decision) terms the prefill amounts were based on. */
+export const OFFER_DECISION_SNAPSHOT_KEY = "_offerDecisionSnapshot";
+
+/** Scrubbing terms that drive the prefill amounts (offer, factor rate, term, frequency, fees, refinance). */
+export function offerDecisionTermsFingerprint(
+    offerDecision: Record<string, unknown> | null | undefined,
+): string {
+    const od = offerDecisionEffectiveRecordForNet(offerDecision ?? undefined) ?? offerDecision ?? null;
+    if (!od) return "";
+    const money = (v: unknown) => {
+        const n = coerceToFiniteNumber(v);
+        return n == null ? "" : (Math.round(n * 10000) / 10000).toString();
+    };
+    const text = (v: unknown) => String(v ?? "").trim().toLowerCase();
+    const parts = [
+        money(od.offer ?? od.approvedAmount),
+        money(od.rate ?? od.factorRate),
+        text(od.term),
+        text(od.frequency),
+        money(od.fees),
+        money(od.refinanceAmount ?? od.RefinanceAmount),
+    ];
+    return parts.some(Boolean) ? parts.join("|") : "";
+}
+
 /**
  * Drop saved money overrides only when the offer *face amount* (purchaseAmount) changed
  * vs live Offer / Final Calculation — e.g. scrubbing updated the approved advance.
@@ -4704,10 +4729,56 @@ export function stripStaleOfferOverridesFromPersisted(
         Record<string, unknown>;
     if (!hasLiveOfferPrefillSource(anyApp, offerDecision)) return out;
 
+    const dropMoney = () => {
+        for (const key of LIVE_OFFER_MONEY_PREFILL_KEYS) {
+            delete out[key];
+        }
+        delete out._manualNetToMerchant;
+        delete (out as Record<string, unknown>).paymentTerms;
+        return out;
+    };
+
+    // The prefill records the Scrubbing (Offer Decision) terms it was saved against. Scrubbing
+    // changed since then → its new terms win; unchanged → the prefill's own edits stay
+    // (manual remit / fees included).
+    const savedSnapshot = str((out as Record<string, unknown>)[OFFER_DECISION_SNAPSHOT_KEY]);
+    const odForSnapshot =
+        offerDecision ??
+        ((anyApp as Record<string, unknown> | null)?.offerDecision as Record<string, unknown> | undefined) ??
+        ((anyApp as Record<string, unknown> | null)?.OfferDecision as Record<string, unknown> | undefined) ??
+        null;
+    const liveSnapshot = offerDecisionTermsFingerprint(odForSnapshot);
+    if (savedSnapshot && liveSnapshot) {
+        return savedSnapshot === liveSnapshot ? out : dropMoney();
+    }
+
     const live = getLiveOfferPrefillArgs(anyApp, {
         offerDecision: offerDecision ?? null,
         contract: contract ?? null,
     });
+    // Saved before snapshots existed: a payback that no longer matches Scrubbing means its
+    // rate / term changed (the prefill never writes payback back to the offer).
+    const livePayback = coerceToFiniteNumber(live.purchasePrice);
+    const savedPayback = coerceToFiniteNumber(out.purchasePrice);
+    if (
+        livePayback != null &&
+        livePayback > 0 &&
+        savedPayback != null &&
+        Math.abs(livePayback - savedPayback) > 0.009
+    ) {
+        return dropMoney();
+    }
+    // Same for the underwriting / origination fee: it follows the fees on Scrubbing.
+    const liveFee = coerceToFiniteNumber(live.appendixUnderwritingFees);
+    const savedFee = coerceToFiniteNumber(
+        resolveAppendixUnderwritingFeesDisplay(
+            out.appendixUnderwritingFees,
+            coerceToFiniteNumber(out.purchaseAmount) ?? coerceToFiniteNumber(live.purchaseAmount),
+        ),
+    );
+    if (liveFee != null && liveFee > 0 && savedFee != null && Math.abs(liveFee - savedFee) > 0.009) {
+        return dropMoney();
+    }
     if (!liveOfferFaceAmountChanged(live, out) && !liveOfferFrequencyChanged(live, out)) {
         return out;
     }

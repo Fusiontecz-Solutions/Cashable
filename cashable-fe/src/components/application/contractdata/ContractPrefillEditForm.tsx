@@ -53,6 +53,8 @@ import {
     contractPrefillToContractColumnUpdate,
     finalCalculationPrefillSyncKey,
     finalizeContractPrefillMoneyFields,
+    OFFER_DECISION_SNAPSHOT_KEY,
+    offerDecisionTermsFingerprint,
     getContractPrefillEditDefaultsFromApplication,
     getLiveClientIdentityPrefillArgs,
     applyCanonicalBankFieldsToPrefill,
@@ -96,7 +98,7 @@ import type { AppDispatch } from "@/redux/store";
 import { getByApplicationIdContract, updateContract } from "@/redux/actions/contractActions";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
-import { syncContractPrefillToSourceRecords } from "./contractPrefillSourceSync";
+import { buildOfferDecisionUpsertFromPrefill, syncContractPrefillToSourceRecords } from "./contractPrefillSourceSync";
 import { toPrefillUppercase } from "./prefillUppercase";
 import { MANUAL_NET_TO_MERCHANT_KEY } from "../contractRecipientFundsSync";
 import { SpaCalculationModal } from "./SpaCalculationModal";
@@ -2026,6 +2028,21 @@ export function ContractPrefillEditForm({
                 ...(payload as Record<string, unknown>),
                 [DOCUMENT_TEMPLATE_PREFILL_BY_MAPPING_ID_KEY]: nextBlob,
             };
+            // The Scrubbing terms these amounts are based on, as the save leaves them (it copies
+            // offer / frequency / fees to the Offer Decision): a later Scrubbing change refreshes them.
+            {
+                const odRecord = (offerDecision ?? null) as Record<string, unknown> | null;
+                const odInner =
+                    odRecord?.offer && typeof odRecord.offer === "object" && !Array.isArray(odRecord.offer)
+                        ? (odRecord.offer as Record<string, unknown>)
+                        : odRecord;
+                const expectedOfferDecision = {
+                    ...(odInner ?? {}),
+                    ...(buildOfferDecisionUpsertFromPrefill(payload, odRecord) ?? {}),
+                };
+                const snapshot = offerDecisionTermsFingerprint(expectedOfferDecision);
+                if (snapshot) contractPrefillOverrides[OFFER_DECISION_SNAPSHOT_KEY] = snapshot;
+            }
             const netToMerchantRaw = String(
                 (payload as { netToMerchant?: unknown }).netToMerchant ?? "",
             ).trim();

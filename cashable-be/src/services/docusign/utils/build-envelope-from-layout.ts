@@ -1077,11 +1077,12 @@ export function expandPrefillValues(
       }
     }
     if (disbursedAmount) {
-      const texasLayout = isTexasDisclosureLayoutKey(options?.layoutKey);
+      // Every state (Texas included): the disbursement amount is the net (offer − fees − refinance).
       const virginiaLayout = isVirginiaDisclosureLayoutKey(options?.layoutKey);
       const disbursedSlots = [
         'disclosure_funding_disbursed',
-        ...(texasLayout ? [] : (['total_amount_of_fund_disbursed', 'total_amount_fund_disbursed'] as const)),
+        'total_amount_of_fund_disbursed',
+        'total_amount_fund_disbursed',
         ...(virginiaLayout ? [] : (['total_amount_sales_based_financing'] as const)),
         'total_amount_business_fund_2',
         'total_commerical_financing',
@@ -1093,7 +1094,8 @@ export function expandPrefillValues(
         out[`disclosure_${slot}`] = disbursedAmount;
       }
       for (const slot of [
-        ...(texasLayout ? [] : (['total_amount_of_fund_disbursed', 'total_amount_fund_disbursed'] as const)),
+        'total_amount_of_fund_disbursed',
+        'total_amount_fund_disbursed',
         'disclosure_funding_disbursed',
         ...(virginiaLayout ? (['disbursement_amount'] as const) : []),
       ] as const) {
@@ -1107,24 +1109,6 @@ export function expandPrefillValues(
     }
   }
 
-  // Texas page-1 `total_amount_of_fund_disbursed` = offer face amount (not net like KS/LA).
-  if (isTexasDisclosureLayoutKey(options?.layoutKey) && offerAmount) {
-    const texasOfferSlots = [
-      'total_amount_of_fund_disbursed',
-      'total_amount_fund_disbursed',
-    ] as const;
-    for (const slot of texasOfferSlots) {
-      out[slot] = offerAmount;
-      out[toDisclosureScopedPrefillId(slot)] = offerAmount;
-      out[`disclosure_${slot}`] = offerAmount;
-      for (let i = 1; i <= 40; i += 1) {
-        const numbered = `${slot}_${i}`;
-        out[numbered] = offerAmount;
-        out[`disclosure_${numbered}`] = offerAmount;
-        out[toDisclosureScopedPrefillId(numbered)] = offerAmount;
-      }
-    }
-  }
 
   // Virginia: sales-based financing = offer; disbursement amount = net (offer − fees).
   if (isVirginiaDisclosureLayoutKey(options?.layoutKey) && offerAmount) {
@@ -1878,24 +1862,6 @@ function resolveTextPlacementValue(
       return '';
     }
     if (
-      isTexasDisclosureLayoutKey(layoutKey) &&
-      /total_amount_of_fund_disbursed/.test(fundingSlotToken)
-    ) {
-      const offerForFunding =
-        String(values.purchase_amount || '').trim() ||
-        String(values.addendum_dated_principal_owner_amount || '').trim() ||
-        String(values.disclosure_purchase_price || '').trim() ||
-        String(values.total_amount_business_fund || '').trim() ||
-        String(values.funding_provided || '').trim() ||
-        String(values[toDisclosureScopedPrefillId('funding_provided')] || '').trim() ||
-        String(values.total_amount_commercial_financing || '').trim() ||
-        String(values.approved_amount || '').trim();
-      if (offerForFunding) return formatIfMoney(offerForFunding);
-      const fromBusinessFund = String(values.total_amount_business_fund || '').trim();
-      if (fromBusinessFund) return formatIfMoney(fromBusinessFund);
-      return '';
-    }
-    if (
       isVirginiaDisclosureLayoutKey(layoutKey) &&
       /total_amount_sales_based_financing/.test(fundingSlotToken)
     ) {
@@ -1922,10 +1888,8 @@ function resolveTextPlacementValue(
       if (disbursed) return formatIfMoney(disbursed);
       return '';
     }
-    const texasDisbursedAsOffer =
-      isTexasDisclosureLayoutKey(layoutKey) &&
-      (/total_amount_of_fund_disbursed/.test(fundingSlotToken) ||
-        /total_amount_fund_disbursed/.test(fundingSlotToken));
+    // Texas "disbursement amount" is the net like every other state (never the offer).
+    const texasDisbursedAsOffer = false;
     const virginiaSalesBasedAsOffer =
       isVirginiaDisclosureLayoutKey(layoutKey) &&
       /total_amount_sales_based_financing/.test(fundingSlotToken);

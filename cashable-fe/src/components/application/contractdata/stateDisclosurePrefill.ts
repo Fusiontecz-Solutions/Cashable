@@ -372,10 +372,10 @@ const REGISTRY: Record<string, StateDisclosureBuilder> = {
             clientName: ctx.recipientName,
             funderName: ctx.funderName,
             dealIdPrefix: ctx.dealIdPrefix,
-            // Texas page-1 `total_amount_of_fund_disbursed` = offer face amount (PDF label).
+            // Texas page 1: financing provided = offer; disbursement amount = net (offer − fees).
             totalAmountBusinessFund: ctx.fundingProvided,
             totalAmountBusinessFund2: ctx.fundingDisbursed,
-            totalAmountOfFundDisbursed: ctx.fundingProvided,
+            totalAmountOfFundDisbursed: ctx.fundingDisbursed,
             totalAmountTobePaidToProvider: ctx.totalRepayment,
             totalDollarCost: ctx.totalDollarCost,
             estimatedTerm: ctx.estimatedTermDays ?? ctx.estimatedTerm,
@@ -392,7 +392,7 @@ const REGISTRY: Record<string, StateDisclosureBuilder> = {
             dealIdPrefix: ctx.dealIdPrefix,
             totalAmountBusinessFund: ctx.fundingProvided,
             totalAmountBusinessFund2: ctx.fundingDisbursed,
-            totalAmountOfFundDisbursed: ctx.fundingProvided,
+            totalAmountOfFundDisbursed: ctx.fundingDisbursed,
             totalAmountTobePaidToProvider: ctx.totalRepayment,
             totalDollarCost: ctx.totalDollarCost,
             estimatedTerm: ctx.estimatedTermDays ?? ctx.estimatedTerm,
