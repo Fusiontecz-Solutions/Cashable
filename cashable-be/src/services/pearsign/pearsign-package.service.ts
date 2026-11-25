@@ -1025,11 +1025,19 @@ export function boldSignSignersFor(
           ...(f.fontSize ? { fontSize: Math.round(f.fontSize * BOLDSIGN_PX_PER_PT) } : {}),
           ...(value
             ? { value, isReadOnly: true, isRequired: false }
-            : { isReadOnly: false, isRequired: f.required }),
+            : ALWAYS_READ_ONLY_FIELD.test(f.fieldName)
+              ? { isReadOnly: true, isRequired: false } // the team fills it in the editor; the merchant cannot change it
+              : { isReadOnly: false, isRequired: f.required }),
         };
       }),
   }));
 }
+
+/**
+ * ACH payment terms the merchant must never edit, even when left empty for the team to fill in
+ * BoldSign's editor: the payment amount, the percentage, the debit day and the weekly-bounce note.
+ */
+const ALWAYS_READ_ONLY_FIELD = /^d\d+_(remittance|purchase_percent|ach_following_days(?:_day)?)_p\d+(?:_\d+)?$/i;
 
 /** Always copied on every BoldSign contract (env BOLDSIGN_ALWAYS_CC overrides, comma-separated). */
 const BOLDSIGN_ALWAYS_CC_DEFAULT = ['office@cashablefunding.com', 'ariel@cashablefunding.com', 'edward@cashablefunding.com'];

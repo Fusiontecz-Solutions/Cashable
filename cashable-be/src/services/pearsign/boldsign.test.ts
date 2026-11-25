@@ -149,3 +149,26 @@ describe('contract values print in capitals', () => {
     expect(contractValueCase('enc:v1:AbC')).toBe('enc:v1:AbC');
   });
 });
+
+describe('ACH payment terms are read-only for the merchant', () => {
+  it('amount, percentage, debit day and note stay read-only even when empty; other empty boxes stay editable', () => {
+    const [signer] = boldSignSignersFor({
+      pkg: { recipients: [{ roleId: 'signer-1', roleName: 'Owner 1', name: 'Jane', email: 'jane@example.com' }] } as never,
+      createFields: [
+        { fieldName: 'd1_ach_following_days_day_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 138, y: 490, width: 56, height: 14 } },
+        { fieldName: 'd1_ach_following_days_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 200, y: 490, width: 300, height: 14 } },
+        { fieldName: 'd1_purchase_percent_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 429, y: 474, width: 60, height: 14 } },
+        { fieldName: 'd1_remittance_p12', type: 'text', required: false, roleId: 'signer-1', position: { page: 12, x: 133, y: 473, width: 90, height: 14 } },
+        { fieldName: 'd1_exhibit_a_tax_id_1_p17', type: 'text', required: false, roleId: 'signer-1', position: { page: 17, x: 405, y: 145, width: 145, height: 14 } },
+      ],
+      fieldValues: { d1_remittance_p12: '2,306.00' },
+    });
+    expect(signer.formFields.map((f) => [f.name, f.isReadOnly])).toEqual([
+      ['d1_ach_following_days_day_p12', true],
+      ['d1_ach_following_days_p12', true],
+      ['d1_purchase_percent_p12', true],
+      ['d1_remittance_p12', true],
+      ['d1_exhibit_a_tax_id_1_p17', false],
+    ]);
+  });
+});
