@@ -39,6 +39,8 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 import { Input } from "@/components/ui/input";
+import { applyContractDocumentDate, usDateToYmd, ymdToUsDate } from "@/lib/contractDateSync";
+import { formatYmdET } from "@/lib/dateTime";
 import {
     Select,
     SelectContent,
@@ -4868,6 +4870,49 @@ const PDFViewerModal = ({
         }
     }, [applicationIdForLookup, dispatch]);
 
+    /** Info Required → "Contract date": one date on every document of this contract. */
+    const [contractSyncDate, setContractSyncDate] = useState<string>("");
+    const [syncingContractDate, setSyncingContractDate] = useState(false);
+    const handleSyncContractDate = async () => {
+        const cid = effectiveContractId;
+        if (cid == null) {
+            toast.error("Save the contract before setting its date.");
+            return;
+        }
+        // The date shown in the picker: the one picked, else the current agreement date, else today (ET).
+        const shown =
+            contractSyncDate ||
+            usDateToYmd((resolvedContract?.contractPrefillOverrides as Record<string, unknown> | null | undefined)?.agreementDate) ||
+            formatYmdET();
+        const usDate = ymdToUsDate(shown);
+        if (!usDate) {
+            toast.error("Pick a date first.");
+            return;
+        }
+        setSyncingContractDate(true);
+        try {
+            const raw =
+                resolvedContract?.contractPrefillOverrides &&
+                typeof resolvedContract.contractPrefillOverrides === "object" &&
+                !Array.isArray(resolvedContract.contractPrefillOverrides)
+                    ? (resolvedContract.contractPrefillOverrides as Record<string, unknown>)
+                    : {};
+            await dispatch(
+                updateContract({
+                    id: cid,
+                    data: { contractPrefillOverrides: applyContractDocumentDate(raw, usDate) },
+                }),
+            ).unwrap();
+            invalidateDocuSignPdfCache();
+            await reloadContractPrefillSnapshots();
+            toast.success(`Contract date set to ${usDate} on every document.`);
+        } catch (err) {
+            toast.error((err as { message?: string })?.message || "Could not update the contract date.");
+        } finally {
+            setSyncingContractDate(false);
+        }
+    };
+
     const lastDocuSignSyncAtRef = useRef(0);
     /** Last time CRM contract status changed (webhook or CRM refetch) — drives stale Dropbox Sign fallback. */
     const lastCrmStatusChangeAtRef = useRef(Date.now());
@@ -7731,6 +7776,38 @@ const PDFViewerModal = ({
                                                     Link {signingProviderName()} templates, set contract state and funder, then capture
                                                     addendum and ACH details for sending.
                                                 </p>
+                                                {canEditContractPrefill ? (
+                                                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                                        <label htmlFor="contract-sync-date" className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                                            Contract date
+                                                        </label>
+                                                        <Input
+                                                            id="contract-sync-date"
+                                                            type="date"
+                                                            value={
+                                                                contractSyncDate ||
+                                                                usDateToYmd(
+                                                                    (resolvedContract?.contractPrefillOverrides as Record<string, unknown> | null | undefined)
+                                                                        ?.agreementDate,
+                                                                ) ||
+                                                                formatYmdET()
+                                                            }
+                                                            onChange={(e) => setContractSyncDate(e.target.value)}
+                                                            className="h-8 w-[170px] bg-white text-xs dark:bg-slate-950"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 border-[var(--brand)]/30 text-xs text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                                                            disabled={syncingContractDate}
+                                                            onClick={() => void handleSyncContractDate()}
+                                                            title="Sets the agreement date and every document's date (contract, COJ, ACH, addendum, disclosure)"
+                                                        >
+                                                            {syncingContractDate ? "Syncing…" : "Sync date to all documents"}
+                                                        </Button>
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                     ) : activeStep === "sent" ? (
