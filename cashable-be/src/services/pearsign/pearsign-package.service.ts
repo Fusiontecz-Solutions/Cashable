@@ -427,13 +427,8 @@ export async function stagePearSignPackage(input: {
     throw new PearSignContractError('Save the contract before preparing a PearSign package.');
   }
   const contract = await loadContract(contractId);
-  const state = readState(contract.contractPrefillOverrides);
-  if (state?.envelopeId && isActivePearSignStatus(state.status)) {
-    throw new PearSignContractError(
-      'A PearSign envelope is already out for signature for this contract. Void it first to send a new one.',
-      409,
-    );
-  }
+  // A document already out (unsigned) does not block a new send: the new one becomes current and
+  // the old one stays in the contract's history ("Replaced").
 
   const { env, mergedBytes, pageCount, documents, recipients, fields, crmValues } = await convertEnvelopeToPearSignPackage(
     input.envelopeDefinition,
@@ -775,9 +770,6 @@ export async function getPearSignPackageReview(contractId: number) {
   if (new Set(pkg.recipients.map((r) => r.email)).size !== pkg.recipients.length) {
     blockers.push('Each owner needs a different email address.');
   }
-  if (state?.envelopeId && isActivePearSignStatus(state.status)) {
-    blockers.push('A PearSign envelope is already out for signature for this contract. Void it first to send a new one.');
-  }
 
   return {
     mode: 'package' as const,
@@ -810,10 +802,7 @@ export async function getPearSignPackageReview(contractId: number) {
 }
 
 export async function savePearSignPackageOverrides(contractId: number, body: { overrides?: unknown; styles?: unknown }) {
-  const { pkg, state } = await requirePackage(contractId);
-  if (state?.envelopeId && isActivePearSignStatus(state.status)) {
-    throw new PearSignContractError('This contract is out for signature in PearSign; void it before editing values.', 409);
-  }
+  const { pkg } = await requirePackage(contractId);
   const keys = new Set([...pkg.fields.map((f) => f.key), ...(pkg.typedCojs ?? []).flatMap((c) => c.inputs.map((i) => i.key))]);
   const next = { ...pkg.overrides };
   for (const [k, v] of Object.entries((body.overrides && typeof body.overrides === 'object' ? body.overrides : {}) as Record<string, unknown>)) {
@@ -851,9 +840,6 @@ async function preparePackageSend(contractId: number, body: { message?: string; 
   const { contract, pkg, state } = await requirePackage(contractId);
   if (!contract.applicationId) throw new PearSignContractError('Contract has no application.');
   // Recording a document BoldSign already sent (from its editor): it replaces any older one.
-  if (!body.recordingSentDocument && state?.envelopeId && isActivePearSignStatus(state.status)) {
-    throw new PearSignContractError('This contract already has a PearSign envelope out for signature. Void it first.', 409);
-  }
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   for (const r of pkg.recipients) {
     if (!r.name || !emailRe.test(r.email)) throw new PearSignContractError(`Enter a name and valid email for ${r.roleName}.`);

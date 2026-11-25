@@ -649,7 +649,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                             styles={drawStyles}
                             activeKey={activeKey}
                             activeFromPdf={activeFromPdf}
-                            editable={!ctl.isActive}
+                            editable
                             editValue={activeKey ? (activeKey in draft ? draft[activeKey] : live[activeKey] ?? "") : ""}
                             onSelect={selectFromPdf}
                             onEdit={change}
@@ -733,7 +733,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                         {isCojLineSpacingKey(f.key) ? (
                                                             <select
                                                                 value={String(value || "normal")}
-                                                                disabled={ctl.isActive}
+                                                                disabled={false}
                                                                 onFocus={() => {
                                                                     setActiveFromPdf(false);
                                                                     setActiveKey(f.key);
@@ -756,7 +756,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                             key={g}
                                                                             type="button"
                                                                             aria-pressed={on}
-                                                                            disabled={ctl.isActive}
+                                                                            disabled={false}
                                                                             onClick={(e) => {
                                                                                 e.preventDefault();
                                                                                 setActiveFromPdf(false);
@@ -780,7 +780,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 <input
                                                                     type="checkbox"
                                                                     checked={Boolean(String(value).trim())}
-                                                                    disabled={ctl.isActive}
+                                                                    disabled={false}
                                                                     onFocus={() => {
                                                                         setActiveFromPdf(false);
                                                                         setActiveKey(f.key);
@@ -801,7 +801,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                     setActiveFromPdf(false);
                                                                     setActiveKey(f.key);
                                                                 }}
-                                                                disabled={ctl.isActive}
+                                                                disabled={false}
                                                                 onChange={(e) => change(f.key, e.target.value)}
                                                                 className="h-8 min-w-0 flex-1 text-xs"
                                                             />
@@ -809,7 +809,7 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                                                                 aria-label={`Font size for ${f.label}`}
                                                                 title="Font size (Auto fits the box)"
                                                                 value={styles[f.key]?.fontSize ?? ""}
-                                                                disabled={ctl.isActive}
+                                                                disabled={false}
                                                                 onFocus={() => {
                                                                     setActiveFromPdf(false);
                                                                     setActiveKey(f.key);
@@ -865,13 +865,11 @@ export function PearSignReviewModal({ ctl, onDone }: { ctl: PearSignController; 
                             type="button"
                             className="bg-[var(--brand)] text-white hover:opacity-90"
                             onClick={() => void done()}
-                            disabled={finishing || !!ctl.busy || ctl.isActive || review.blockers.length > 0}
+                            disabled={finishing || !!ctl.busy || review.blockers.length > 0}
                             title={
                                 review.blockers.length
                                     ? review.blockers[0]
-                                    : ctl.isActive
-                                      ? "An envelope is already out for signature"
-                                      : `Close the review and send via ${signingProviderName()}`
+                                    : `Close the review and send via ${signingProviderName()}`
                             }
                         >
                             {finishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}

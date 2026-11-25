@@ -456,9 +456,6 @@ export async function getPearSignReview(contractId: number, body: PearSignReview
   for (const rcp of r.crm.recipients) {
     if (!rcp.name) blockers.push(`${rcp.roleName} has no name in Contract Signers.`);
   }
-  if (r.state?.envelopeId && isActivePearSignStatus(r.state.status)) {
-    blockers.push('A PearSign envelope is already out for signature for this contract. Void it first to send a new one.');
-  }
 
   return {
     funderProfileId: r.row.funderProfileId,
@@ -620,12 +617,6 @@ export async function sendPearSignContract(
   if (crm.reverseDisbursementEnabled) {
     throw new PearSignContractError(
       'This contract has a reverse disbursement schedule page, which a PearSign template cannot carry. Send it with Dropbox Sign.',
-    );
-  }
-  if (r.state?.envelopeId && isActivePearSignStatus(r.state.status)) {
-    throw new PearSignContractError(
-      'This contract already has a PearSign envelope out for signature. Void it first to send a new one.',
-      409,
     );
   }
 
