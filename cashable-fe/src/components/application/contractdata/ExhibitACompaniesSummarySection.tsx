@@ -92,18 +92,41 @@ export function ExhibitACompaniesSummarySection({
         setAddresses((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
     }, []);
 
-    const handleSave = async () => {
+    /** Rows as they will be saved (blank rows dropped), for comparing with what the deal has. */
+    const rowsSignature = (names: readonly string[], addrs: readonly string[]) => {
+        const payload = companiesToPrefillPayload(names, addrs);
+        return JSON.stringify([companiesFromPrefill(payload), companyAddressesFromPrefill(payload)]);
+    };
+
+    // Auto-save: added / edited / removed companies reach the deal (prefill Exhibit A, every COJ
+    // and the contract sent to BoldSign) without a separate Save click.
+    const latestRowsRef = useRef({ companies, addresses });
+    latestRowsRef.current = { companies, addresses };
+    useEffect(() => {
+        if (!prefillOverridesReady || !canEdit || saving) return;
+        if (parsePositiveContractId(contractId) == null) return;
+        if (loadedSignatureRef.current == null) return;
+        if (rowsSignature(companies, addresses) === loadedSignatureRef.current) return;
+        const timer = window.setTimeout(() => void handleSave(true), 800);
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companies, addresses, prefillOverridesReady, canEdit, saving, contractId]);
+
+    const handleSave = async (silent = false) => {
         const cid = parsePositiveContractId(contractId);
         if (cid == null) {
             toast.error("Create or open a contract for this application before saving Exhibit A names.");
             return;
         }
+        // What is being saved — so the deal's refreshed copy is not loaded back over newer typing.
+        const savingRows = latestRowsRef.current;
+        loadedSignatureRef.current = rowsSignature(savingRows.companies, savingRows.addresses);
         setSaving(true);
         try {
             const base =
                 stripDocumentTemplateBlobFromPrefillOverrides(persistedPrefillOverrides) ??
                 ({} as Partial<BuildContractPrefillFieldsArgs>);
-            const exhibitPayload = companiesToPrefillPayload(companies, addresses);
+            const exhibitPayload = companiesToPrefillPayload(savingRows.companies, savingRows.addresses);
             const contractPrefillOverrides: Record<string, unknown> = {
                 ...base,
                 ...exhibitPayload,
@@ -128,17 +151,25 @@ export function ExhibitACompaniesSummarySection({
             onPersistedPrefillChange?.(mainSaved);
             onPersistedPrefillFullChange?.(fullSaved);
             onDraftInvalidate?.();
-            setCompanies(companiesFromPrefill(mainSaved));
-            setAddresses(companyAddressesFromPrefill(mainSaved));
+            loadedSignatureRef.current = JSON.stringify([
+                companiesFromPrefill(mainSaved),
+                companyAddressesFromPrefill(mainSaved),
+            ]);
+            if (!silent) {
+                // Manual save: show the rows exactly as saved (blank rows dropped).
+                setCompanies(companiesFromPrefill(mainSaved));
+                setAddresses(companyAddressesFromPrefill(mainSaved));
+            }
             // Refresh the deal in the background (the local snapshot is already up to date).
             const appKey = String(applicationUuid ?? "").trim();
             if (appKey) void dispatch(getByApplicationIdContract(appKey));
-            toast.success("Exhibit A company names saved.");
+            if (!silent) toast.success("Exhibit A company names saved.");
         } catch (e: unknown) {
             const msg =
                 typeof e === "string"
                     ? e
                     : String((e as { message?: string })?.message ?? "Failed to save Exhibit A names.");
+            // Not saved: the next edit tries again (no automatic retry loop on a persistent error).
             toast.error(msg);
         } finally {
             setSaving(false);

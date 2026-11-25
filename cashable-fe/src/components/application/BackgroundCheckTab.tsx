@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import type { AppDispatch, RootState } from "@/redux/store";
+import { getByApplicationIdContract } from "@/redux/actions/contractActions";
+import { emitContractPrefillUpdated } from "@/lib/contractPrefillSync";
 import {
   BACKGROUND_CHECK_RESOURCES,
   resolveBackgroundCheckHref,
@@ -362,6 +364,13 @@ export default function BackgroundCheckTab() {
     setMappingToExhibit(true);
     try {
       const result = await dispatch(mapClearCorporationsToExhibit(itemId)).unwrap();
+      // Let an open contract / prefill pick up the new Exhibit A names right away.
+      if (result.added > 0 && applicationUuid) {
+        void dispatch(getByApplicationIdContract(applicationUuid))
+          .unwrap()
+          .then((res) => emitContractPrefillUpdated(applicationUuid, (res as { data?: unknown })?.data ?? res))
+          .catch(() => undefined);
+      }
       toast.success(
         result.added > 0
           ? `Exhibit A filled with ${result.added} CLEAR corporation name(s).`
@@ -372,7 +381,7 @@ export default function BackgroundCheckTab() {
     } finally {
       setMappingToExhibit(false);
     }
-  }, [dispatch]);
+  }, [dispatch, applicationUuid]);
 
   const runClear = useCallback(async () => {
     const itemId = itemIdByResource.current.tlo;

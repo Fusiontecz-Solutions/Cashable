@@ -790,6 +790,23 @@ function resolveOfferAmountFromMappingOverrides(
  * Also strips when *any* offer-derived money field (e.g. receivable_purchase_1)
  * still holds an old amount even if another key was already updated to the live offer.
  */
+/** A disclosure's saved edits without any amount (offer-derived or calculated) — for merging a new calculation. */
+export function keepNonMoneyDisclosureEdits(
+    saved: Record<string, string> | null | undefined,
+): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(saved ?? {})) {
+        const base = normalizeMappingFieldKey(key).replace(/_\d+$/, "");
+        if (isOfferDerivedMappingFieldId(key) || DISCLOSURE_CALCULATION_RESULT_KEY.test(base)) continue;
+        if (/amount|payment|price|charge|cost|apr|rate|fee|financ|fund|disburs|remit|percent|term|frequency|days/i.test(base)) continue;
+        out[key] = value;
+    }
+    return out;
+}
+
+const DISCLOSURE_CALCULATION_RESULT_KEY =
+    /^(disclosure_(apr|annual_percentage_rate|finance_charge|monthly_cost|estimated_monthly_cost|estimated_payment|total_payment|amount_financed|fees_deducted)|finance_charge|total_dollar_cost|estimated_annual_percentage_rate|estimated_monthly_cost)$/;
+
 export function stripStaleOfferMoneyFromMappingOverrides(
     saved: Record<string, string> | null | undefined,
     liveOfferAmount: number | null | undefined,
@@ -810,6 +827,12 @@ export function stripStaleOfferMoneyFromMappingOverrides(
             const n = parsePrefillMoneyForMerge(value);
             if (n == null || !(n > 0)) continue;
             const base = normalizeMappingFieldKey(key).replace(/_\d+$/, "");
+            // Disclosure calculation results (Info column → Calculate disclosure): APR, finance
+            // charge, monthly cost, estimated payment, total payment, amount financed. They are
+            // calculated, not copies of the offer / payback / remit, so comparing them with those
+            // always "failed" and threw the calculation away. A real offer change is still caught
+            // by the saved-offer check above.
+            if (DISCLOSURE_CALCULATION_RESULT_KEY.test(base)) continue;
             const isPayment =
                 base === "remittance" ||
                 base === "daily_payment" ||
