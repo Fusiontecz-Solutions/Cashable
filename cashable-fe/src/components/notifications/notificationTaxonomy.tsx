@@ -152,12 +152,16 @@ export function isHiddenBySnooze(n: Notification): boolean {
 }
 
 /** Sort: urgent first, then unread, then newest. */
+/**
+ * Newest first, so every category shows its latest updates at the top under "All categories"
+ * (importance is the coloured dot and its own filter); same moment: more important first.
+ */
 export function compareNotifications(a: Notification, b: Notification): number {
+    const byTime = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (byTime !== 0) return byTime;
     const ra = IMPORTANCE_RANK[(a.importance ?? "normal") as NotificationImportance] ?? 2;
     const rb = IMPORTANCE_RANK[(b.importance ?? "normal") as NotificationImportance] ?? 2;
-    if (ra !== rb) return ra - rb;
-    if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return ra - rb;
 }
 
 /** Short relative time, e.g. "3h ago". */
