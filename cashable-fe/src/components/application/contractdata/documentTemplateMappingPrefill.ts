@@ -26,6 +26,8 @@ import {
     coercePaymentFrequencyLabel,
     OFFER_DECISION_SNAPSHOT_KEY,
     offerDecisionTermsFingerprint,
+    getLiveOfferMoneyPrefillArgs,
+    LIVE_OFFER_MONEY_PREFILL_KEYS,
 } from "./Contract";
 import {
     isAchAuthorizationPrefillKey,
@@ -598,6 +600,7 @@ function buildEffectiveContractForTemplatePrefill(options: {
     agreementDate?: string;
     mainPrefillOverrides?: Partial<BuildContractPrefillFieldsArgs> | null;
     bankDetail?: Record<string, unknown> | null;
+    offerDecision?: Record<string, unknown> | null;
 }): Record<string, unknown> {
     const contract = options.contract ?? {};
     const merged = getContractPrefillEditDefaultsFromApplication(options.application ?? null, {
@@ -605,9 +608,25 @@ function buildEffectiveContractForTemplatePrefill(options: {
         contractRecords: { contract, bankDetail: options.bankDetail ?? null },
     });
     const liveBank = bankDetailRowToPrefillPartial(options.bankDetail ?? null);
+    // Deal amounts come from Scrubbing (live Offer Decision) unless the prefill has its own current
+    // values (saved overrides, already reset when Scrubbing changed). The contract record's amount
+    // columns are only a copy of the last prefill save and go stale when Scrubbing changes.
+    const liveMoney: Record<string, string> = {};
+    const contractWithoutStaleMoney: Record<string, unknown> = { ...contract };
+    const live = getLiveOfferMoneyPrefillArgs(options.application ?? null, {
+        offerDecision: options.offerDecision ?? null,
+        contract,
+    }) as Record<string, unknown>;
+    for (const key of LIVE_OFFER_MONEY_PREFILL_KEYS) {
+        const v = String(live[key] ?? "").trim();
+        if (!v) continue;
+        liveMoney[key] = v;
+        delete contractWithoutStaleMoney[key];
+    }
     const base = {
         ...merged,
-        ...contract,
+        ...contractWithoutStaleMoney,
+        ...liveMoney,
         ...(options.mainPrefillOverrides ?? {}),
         // Scrubbing BankDetail must win over stale authorization* bank columns on Contract.
         ...liveBank,
@@ -2184,6 +2203,7 @@ export function getDocumentTemplatePrefillFieldRowsForEditor(options: {
         agreementDate: options.agreementDate,
         mainPrefillOverrides: options.mainPrefillOverrides,
         bankDetail: options.bankDetail ?? null,
+        offerDecision: options.offerDecision ?? null,
     });
 
     const sctx = buildStateDisclosurePrefillContextFromContract({
@@ -2711,6 +2731,7 @@ export function mergeStateDisclosurePrefillFallback(args: {
         agreementDate: args.agreementDate,
         mainPrefillOverrides: args.mainPrefillOverrides,
         bankDetail: args.bankDetail ?? null,
+        offerDecision: args.offerDecision ?? null,
     });
 
     const { state, frequency } = resolveDisclosureStateAndFrequency({

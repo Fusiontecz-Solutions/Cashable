@@ -384,15 +384,17 @@ export function buildDisclosureCalculatorInputsFromSources(args: {
     firstPaymentDate?: string;
 }): DisclosureCalculatorInputs {
     const contract = args.contract ?? {};
+    // Scrubbing (live Offer Decision) first: the contract's own amounts are only a copy of the
+    // last prefill save and go stale when Scrubbing changes.
     const offer =
-        (contract.offer as Record<string, unknown> | null) ??
         args.offerDecision ??
+        (contract.offer as Record<string, unknown> | null) ??
         null;
 
     const purchasePrice =
-        parseMoney(contract.purchaseAmount) ||
         parseMoney(offer?.offer) ||
         parseMoney(offer?.approvedAmount) ||
+        parseMoney(contract.purchaseAmount) ||
         parseMoney(contract.approvedAmount);
 
     const factorRate = resolveOfferFactorRate({
@@ -468,9 +470,9 @@ export function buildDisclosureCalculatorInputsFromSources(args: {
 
     const originationFee =
         resolveAppendixUnderwritingFeesDollars(
-            contract.appendixUnderwritingFees ?? offer?.fees,
+            offer?.fees ?? contract.appendixUnderwritingFees,
             purchasePrice,
-        ) ?? parseMoney(contract.appendixUnderwritingFees ?? offer?.fees);
+        ) ?? parseMoney(offer?.fees ?? contract.appendixUnderwritingFees);
 
     const app = args.application ?? {};
     const client = (app.client as Record<string, unknown> | null) ?? null;

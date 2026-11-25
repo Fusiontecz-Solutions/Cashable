@@ -4818,6 +4818,17 @@ export function omitLiveOfferMoneyPrefillKeys(
     return out;
 }
 
+/** Deal amounts from Scrubbing (live Offer Decision / Final Calculation) — never prefill copies. */
+export function getLiveOfferMoneyPrefillArgs(
+    anyApp: unknown,
+    options?: {
+        offerDecision?: Record<string, unknown> | null;
+        contract?: Record<string, unknown> | null;
+    },
+): Partial<BuildContractPrefillFieldsArgs> {
+    return getLiveOfferPrefillArgs(anyApp, options);
+}
+
 function getLiveOfferPrefillArgs(
     anyApp: unknown,
     options?: {
