@@ -1959,10 +1959,12 @@ function addendumComputed(
         const bizZip = pick("businessAddressZip", "securityBusinessAddressZip", "businessZip", "zip");
         // Sole props often have no separate owner address — fall back to business
         // address (mirrors BE platform-layout-envelope derivation).
-        const ownStreet = pick("guarantorAddress", "businessAddressContract") || bizStreet;
-        const ownCity = pick("guarantorAddressCity", "businessAddressContractCity") || bizCity;
-        const ownState = pick("guarantorAddressState", "businessAddressContractState") || bizState;
-        const ownZip = pick("guarantorAddressZip", "businessAddressContractZip") || bizZip;
+        // Owner address = the prefill's mailing address (owner), then the guarantor / contact
+        // address, then the business address.
+        const ownStreet = pick("mailingAddress", "guarantorAddress", "businessAddressContract") || bizStreet;
+        const ownCity = pick("mailingAddressCity", "guarantorAddressCity", "businessAddressContractCity") || bizCity;
+        const ownState = pick("mailingAddressState", "guarantorAddressState", "businessAddressContractState") || bizState;
+        const ownZip = pick("mailingAddressZip", "guarantorAddressZip", "businessAddressContractZip") || bizZip;
         const purchaseAmount = pick("purchaseAmount");
         // COJ amounts are the repayment (RTR / purchase price), not the funded amount.
         const repaymentAmount = pick("purchasePrice") || purchaseAmount;

@@ -642,12 +642,43 @@ type PrefillSyncGroup = {
     keys: ContractPrefillFormFieldKey[];
 };
 
+/** Address fields linked documents (COJs, waiver, deposit control …) read while the prefill is open. */
+const LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS = [
+    "businessAddress",
+    "businessAddressCity",
+    "businessAddressState",
+    "businessAddressZip",
+    "mailingAddress",
+    "mailingAddressCity",
+    "mailingAddressState",
+    "mailingAddressZip",
+    ...CANONICAL_OWNER_ADDRESS_STREET_KEYS,
+    ...CANONICAL_OWNER_ADDRESS_CITY_KEYS,
+    ...CANONICAL_OWNER_ADDRESS_STATE_KEYS,
+    ...CANONICAL_OWNER_ADDRESS_ZIP_KEYS,
+    // Merchant identity: DBA, legal name, entity, EIN, owner names.
+    "legalName",
+    "doingBusinessAs",
+    "securityDoingBusinessAs",
+    "achAuthorizationAccountHolderDba",
+    "entityType",
+    "securityTaxEin",
+    "clientName",
+    "owner1GuarantorName",
+    "owner2GuarantorName",
+] as const satisfies readonly (keyof BuildContractPrefillFieldsArgs)[];
+
 /** Shared logical values repeated across contract sections — synced via “Sync to all”. */
 const PREFILL_SYNC_GROUPS: PrefillSyncGroup[] = [
     {
         id: "ein",
         label: "EIN / Tax ID",
         keys: ["securityTaxEin", "authorizationClientTaxId"],
+    },
+    {
+        id: "dba",
+        label: "DBA",
+        keys: ["doingBusinessAs", "securityDoingBusinessAs", "achAuthorizationAccountHolderDba"],
     },
     {
         id: "bankName",
@@ -1250,6 +1281,10 @@ export function ContractPrefillEditForm({
             achAuthorizationAccountHolderBankNumberOfTransactions:
                 values.achAuthorizationAccountHolderBankNumberOfTransactions ||
                 base.achAuthorizationAccountHolderBankNumberOfTransactions,
+            // Addresses as typed / synced here (COJ owner address = mailing address, etc.).
+            ...Object.fromEntries(
+                LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS.map((k) => [k, values[k] || base[k] || ""]),
+            ),
         } as Partial<BuildContractPrefillFieldsArgs>;
         return applyLiveClientIdentitySyncToPrefillPartial(
             withMoney,
@@ -1268,6 +1303,8 @@ export function ContractPrefillEditForm({
         values.addendumDatedPrincipalOwnerAmount2,
         values.achAuthorizationAccountHolderBankTransactionFee,
         values.achAuthorizationAccountHolderBankNumberOfTransactions,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS.map((k) => values[k] ?? "").join("|"),
     ]);
 
     const addendumEditorRowsByMappingId = useMemo(() => {
@@ -1674,6 +1711,8 @@ export function ContractPrefillEditForm({
         values.netToMerchant,
         values.appendixUnderwritingFees,
         values.frequency,
+        // An address sync / edit refreshes the COJs and other linked documents too.
+        ...LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS.map((k) => values[k] ?? ""),
     ].join("|");
     const prevLinkedDocsMoneyFingerprintRef = useRef("");
     useEffect(() => {
