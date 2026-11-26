@@ -286,7 +286,11 @@ export function ExhibitACompaniesSummarySection({
                         type="button"
                         size="sm"
                         className="h-8"
-                        onClick={() => void handleSave()}
+                        onClick={() => {
+                            // Confirm at once; the save itself finishes in the background (errors still show).
+                            toast.success("Exhibit A names saved.");
+                            void handleSave(true);
+                        }}
                         disabled={saving || parsePositiveContractId(contractId) == null}
                     >
                         {saving ? (

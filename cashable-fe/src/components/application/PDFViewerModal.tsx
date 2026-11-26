@@ -572,6 +572,29 @@ function disclosureMappingMatchesState(
     return Boolean(templateState) && templateState === picked;
 }
 
+/**
+ * True when the linked disclosure is the version for the deal's payment frequency (daily /
+ * weekly …). Unknown template frequency counts as a match (nothing to compare).
+ */
+function disclosureMappingMatchesFrequency(
+    row: ContractDocumentTemplateMappingRow | null | undefined,
+    frequency: string,
+): boolean {
+    if (!row) return false;
+    const wanted = normalizeFrequencyForTemplateLookup(frequency);
+    const fromColumn = String(
+        (row.template as { frequency?: string | null } | null | undefined)?.frequency ?? "",
+    ).trim();
+    // Layout keys end in "_disclosure_<state>_<frequency>"; names read like "California (daily)".
+    const fromKey = /_disclosure_[a-z0-9_]+?_(daily|weekly|bi_weekly|biweekly|monthly)$/i.exec(
+        templateLayoutKeyToken(row.template),
+    )?.[1];
+    const fromName = /\b(daily|weekly|bi-?weekly|monthly)\b/i.exec(String(row.template?.name ?? ""))?.[1];
+    const raw = fromColumn || String(fromKey ?? "").replace(/_/g, "-") || String(fromName ?? "");
+    if (!raw) return true;
+    return normalizeFrequencyForTemplateLookup(raw) === wanted;
+}
+
 function templateLayoutKeyToken(template: {
     layoutKey?: string | null;
     templateId?: string | null;
@@ -723,7 +746,16 @@ function pickDisclosureTemplateIdForFunder(
         const exact = scoped.find(
             (row) => templateLayoutKeyToken(row) === exactKey,
         );
-        const match = exact ?? scoped[0];
+        // Never fall back to a disclosure for another payment frequency (daily ≠ weekly): with no
+        // match the old disclosure is removed and the team is told none is configured.
+        const wantedFrequency = normalizeFrequencyForTemplateLookup(frequency);
+        const sameFrequency = scoped.find((row) => {
+            const m = /_disclosure_[a-z0-9_]+?_(daily|weekly|bi_weekly|biweekly|monthly)$/i.exec(
+                templateLayoutKeyToken(row),
+            );
+            return !m || normalizeFrequencyForTemplateLookup(m[1].replace(/_/g, "-")) === wantedFrequency;
+        });
+        const match = exact ?? sameFrequency;
         return match?.id ? String(match.id) : null;
     }
 
@@ -6277,6 +6309,8 @@ const PDFViewerModal = ({
         if (
             linkedDisclosureMapping &&
             disclosureMappingMatchesState(linkedDisclosureMapping, picked) &&
+            // Daily vs weekly disclosure follows the deal's payment frequency (Scrubbing).
+            disclosureMappingMatchesFrequency(linkedDisclosureMapping, contractDisclosureFrequency) &&
             disclosureMappingMatchesFunderDocuments(
                 linkedDisclosureMapping,
                 disclosureDocsLayoutFunderId,
@@ -6287,8 +6321,18 @@ const PDFViewerModal = ({
         const key = `${effectiveContractId}:${picked}:${contractDisclosureFrequency}:${docsKey}`;
         if (disclosureAutoLinkKeyRef.current === key) return;
         disclosureAutoLinkKeyRef.current = key;
+        const frequencyChanged = Boolean(
+            linkedDisclosureMapping &&
+                !disclosureMappingMatchesFrequency(linkedDisclosureMapping, contractDisclosureFrequency),
+        );
+        if (frequencyChanged) {
+            toast.info(
+                `Payment frequency is ${contractDisclosureFrequency}: replacing the state disclosure with the ${contractDisclosureFrequency} version.`,
+            );
+        }
         void syncDisclosureTemplateForState(picked, {
-            silent: true,
+            // Tell the team when the old disclosure is removed and no new one is configured.
+            silent: !frequencyChanged,
             docsLayoutFunderId: disclosureDocsLayoutFunderId,
         });
     }, [
