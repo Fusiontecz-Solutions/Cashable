@@ -50,6 +50,10 @@ import {
     CANONICAL_BUSINESS_ADDRESS_STATE_KEYS,
     CANONICAL_BUSINESS_ADDRESS_STREET_KEYS,
     CANONICAL_BUSINESS_ADDRESS_ZIP_KEYS,
+    CANONICAL_OWNER_ADDRESS_STREET_KEYS,
+    CANONICAL_OWNER_ADDRESS_CITY_KEYS,
+    CANONICAL_OWNER_ADDRESS_STATE_KEYS,
+    CANONICAL_OWNER_ADDRESS_ZIP_KEYS,
     contractPrefillToContractColumnUpdate,
     finalCalculationPrefillSyncKey,
     finalizeContractPrefillMoneyFields,
@@ -397,9 +401,12 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
                 "Street, city, state, ZIP — joined into the physical / mailing address lines on pages 1, 10, and 16.",
             Icon: Building2,
             groups: [
-                { keys: ["businessAddress", "businessAddressCity", "businessAddressState", "businessAddressZip"] },
                 {
-                    heading: "Mailing address (blank = physical address)",
+                    heading: "Business (physical) address",
+                    keys: ["businessAddress", "businessAddressCity", "businessAddressState", "businessAddressZip"],
+                },
+                {
+                    heading: "Mailing address — owner (blank = physical address)",
                     keys: [
                         "mailingAddress",
                         "mailingAddressCity",
@@ -682,6 +689,27 @@ const PREFILL_SYNC_GROUPS: PrefillSyncGroup[] = [
         id: "zip",
         label: "Business ZIP",
         keys: [...CANONICAL_BUSINESS_ADDRESS_ZIP_KEYS],
+    },
+    // Mailing address = the owner's address: kept apart from the business address.
+    {
+        id: "mailingStreet",
+        label: "Mailing / owner street",
+        keys: ["mailingAddress", ...CANONICAL_OWNER_ADDRESS_STREET_KEYS],
+    },
+    {
+        id: "mailingCity",
+        label: "Mailing / owner city",
+        keys: ["mailingAddressCity", ...CANONICAL_OWNER_ADDRESS_CITY_KEYS],
+    },
+    {
+        id: "mailingState",
+        label: "Mailing / owner state",
+        keys: ["mailingAddressState", ...CANONICAL_OWNER_ADDRESS_STATE_KEYS],
+    },
+    {
+        id: "mailingZip",
+        label: "Mailing / owner ZIP",
+        keys: ["mailingAddressZip", ...CANONICAL_OWNER_ADDRESS_ZIP_KEYS],
     },
     {
         id: "ssn",
@@ -1904,9 +1932,12 @@ export function ContractPrefillEditForm({
         offerDecision,
     ]);
 
-    const handleSyncSectionToAll = () => {
+    /** `onlyKeys`: sync just these fields' groups (e.g. only the business or only the mailing address). */
+    const handleSyncSectionToAll = (onlyKeys?: readonly string[]) => {
         if (readOnly || !activeSection) return;
-        const keysInSection = new Set<string>(activeSection.groups.flatMap((g) => g.keys));
+        const keysInSection = new Set<string>(
+            onlyKeys && onlyKeys.length ? onlyKeys : activeSection.groups.flatMap((g) => g.keys),
+        );
         const isHiddenTarget = (k: keyof BuildContractPrefillFieldsArgs) =>
             (activeOwnerCount < 2 && owner2KeySet.has(k)) ||
             (activeGuarantorCount < 2 && guarantor2KeySet.has(k));
@@ -1914,8 +1945,9 @@ export function ContractPrefillEditForm({
         const syncedLabels: string[] = [];
         let foundFilledSharedField = false;
         // Prefer groups that appear on this stage so we always copy from the visible fields.
-        const groupsToSync =
-            activeSectionSyncGroups.length > 0 ? activeSectionSyncGroups : PREFILL_SYNC_GROUPS;
+        const groupsToSync = (
+            activeSectionSyncGroups.length > 0 ? activeSectionSyncGroups : PREFILL_SYNC_GROUPS
+        ).filter((group) => group.keys.some((k) => keysInSection.has(k)));
         for (const group of groupsToSync) {
             const sourceKey = group.keys.find(
                 (k) => keysInSection.has(k) && String(values[k] ?? "").trim() !== "",
@@ -2611,12 +2643,14 @@ export function ContractPrefillEditForm({
                                                 </h4>
                                             </div>
                                         </div>
-                                        {!readOnly && activeSectionSyncGroups.length > 0 ? (
+                                        {!readOnly &&
+                                        activeSectionSyncGroups.length > 0 &&
+                                        activeSection.id !== "business_address" ? (
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={handleSyncSectionToAll}
+                                                onClick={() => handleSyncSectionToAll()}
                                                 disabled={saving}
                                                 title={`Copy this stage's shared fields (${activeSectionSyncGroups
                                                     .map((g) => g.label)
@@ -2832,9 +2866,30 @@ export function ContractPrefillEditForm({
                                                 )}
                                             >
                                                 {group.heading ? (
-                                                    <h5 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                                                        {group.heading}
-                                                    </h5>
+                                                    <div className="mb-2 flex items-center justify-between gap-2">
+                                                        <h5 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                                            {group.heading}
+                                                        </h5>
+                                                        {/* Business vs mailing (owner) address: each syncs on its own. */}
+                                                        {!readOnly && activeSection.id === "business_address" ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleSyncSectionToAll(group.keys)}
+                                                                disabled={saving}
+                                                                title={
+                                                                    groupIdx === 0
+                                                                        ? "Copy this business address to the Security Agreement and ACH business address fields"
+                                                                        : "Copy this mailing address to the owner / contact address fields"
+                                                                }
+                                                                className="h-7 shrink-0 gap-1.5 border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                                                            >
+                                                                <CopyCheck className="h-3.5 w-3.5" aria-hidden />
+                                                                {groupIdx === 0 ? "Sync business address" : "Sync mailing address"}
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
                                                 ) : null}
                                                 <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-3">
                                                     {group.keys.map((key) => (
