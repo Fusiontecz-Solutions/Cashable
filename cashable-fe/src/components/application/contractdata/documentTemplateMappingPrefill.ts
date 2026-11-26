@@ -2004,6 +2004,11 @@ function addendumComputed(
                     : "",
             agreement_date: toUsDateOnly(pick("agreementDate", "contractDate")),
             coj_date: toUsDateOnly(pick("agreementDate", "contractDate")),
+            // Every Exhibit A company of the deal (the COJ prints them after the business name,
+            // separated by ", "). Typed extra names are added on top when sending.
+            coj_additional_names: Array.from({ length: 10 }, (_, i) => str(c[`exhibitAValue${i + 1}`]))
+                .filter(Boolean)
+                .join("; "),
         };
         const docKey = kind.slice("cashable:".length);
         return (CASHABLE_PLATFORM_DOC_FIELDS[docKey] ?? [])

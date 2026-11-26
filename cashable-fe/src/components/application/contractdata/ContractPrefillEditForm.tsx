@@ -666,6 +666,17 @@ const LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS = [
     "clientName",
     "owner1GuarantorName",
     "owner2GuarantorName",
+    // Exhibit A companies → every COJ's additional names.
+    "exhibitAValue1",
+    "exhibitAValue2",
+    "exhibitAValue3",
+    "exhibitAValue4",
+    "exhibitAValue5",
+    "exhibitAValue6",
+    "exhibitAValue7",
+    "exhibitAValue8",
+    "exhibitAValue9",
+    "exhibitAValue10",
 ] as const satisfies readonly (keyof BuildContractPrefillFieldsArgs)[];
 
 /** Shared logical values repeated across contract sections — synced via “Sync to all”. */

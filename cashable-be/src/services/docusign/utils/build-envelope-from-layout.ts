@@ -723,10 +723,24 @@ function clearsValueAtSend(
   return isWoodmereContractFillAtSigningPlacement(layoutKey, placement);
 }
 
+/**
+ * Exhibit A "Tax ID" box for company row N (`exhibit_a_tax_id_N`): the merchant fills it at
+ * signing, it is required, and it appears only on rows that list a company.
+ */
+export function exhibitATaxIdRow(labelOrVariable: string | undefined | null): number | null {
+  const m = /(?:^|_)exhibit_a_tax(?:_id)?_(\d+)(?:$|__)/i.exec(String(labelOrVariable ?? '').trim());
+  return m ? Number(m[1]) : null;
+}
+
+function exhibitATaxIdRowOfPlacement(placement: DocumentLayoutPlacement): number | null {
+  return exhibitATaxIdRow(placement.variable) ?? exhibitATaxIdRow(placement.sourceTabLabel);
+}
+
 function isSignerEditableTextPlacement(
   layoutKey: string | undefined,
   placement: DocumentLayoutPlacement,
 ): boolean {
+  if (exhibitATaxIdRowOfPlacement(placement) != null) return true;
   // Page-1 client_phone stays signer-editable (optional) on every contract layout.
   if (isOptionalSignerEditablePlacement(placement)) return true;
   if (isRequiredSignerEditablePlacement(placement)) return true;
@@ -740,6 +754,7 @@ function isRequiredSignerTextField(
   layoutKey?: string,
 ): boolean {
   if (placement.type !== 'text') return false;
+  if (exhibitATaxIdRowOfPlacement(placement) != null) return true;
   if (isRequiredSignerEditablePlacement(placement)) return true;
   return isWoodmereContractFillAtSigningPlacement(layoutKey, placement);
 }
@@ -756,6 +771,7 @@ export function isFillAtSigningTabRef(tab: {
     .trim()
     .toLowerCase();
   const label = stripUnique(raw);
+  if (exhibitATaxIdRow(label) != null) return true;
   if (
     label &&
     (OPTIONAL_SIGNER_EDITABLE_VARIABLES.has(label) ||
@@ -2029,6 +2045,11 @@ function placementAllowed(
   values: Record<string, string> = {},
   layoutKey?: string,
 ): boolean {
+  // Exhibit A Tax ID: one box per listed company — none on empty rows.
+  const exhibitTaxRow = exhibitATaxIdRowOfPlacement(placement);
+  if (exhibitTaxRow != null) {
+    return String(values[`exhibit_a_value_${exhibitTaxRow}`] ?? '').trim() !== '';
+  }
   const when = String(placement.when || '').trim();
   if (when === 'owners >= 2' && counts.ownerCount < 2) return false;
   if (when === 'guarantors >= 2' && counts.ownerCount < 2) return false;
