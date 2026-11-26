@@ -2041,6 +2041,22 @@ export function ContractPrefillEditForm({
             toast.info("Fill a shared field on this stage first, then sync.");
             return;
         }
+        // One-line addresses in documents (Prepay Discount "Business address (one line)", COJ owner
+        // address line): rebuilt from the synced parts.
+        {
+            const merged = { ...values, ...updates } as Record<string, unknown>;
+            const join = (...keys: string[]) =>
+                keys.map((k) => String(merged[k] ?? "").trim()).filter(Boolean).join(", ");
+            const syncedIds = new Set(groupsToSync.map((g) => g.id));
+            if (["street", "city", "addressState", "zip"].some((id) => syncedIds.has(id))) {
+                const line = join("businessAddress", "businessAddressCity", "businessAddressState", "businessAddressZip");
+                if (line) docValues.business_address_full = line;
+            }
+            if (["mailingStreet", "mailingCity", "mailingState", "mailingZip"].some((id) => syncedIds.has(id))) {
+                const line = join("mailingAddress", "mailingAddressCity", "mailingAddressState", "mailingAddressZip");
+                if (line) docValues.guarantor_address_full = line;
+            }
+        }
         // Sync also overwrites the same value saved inside each linked document (COJ owner address,
         // Deposit Control DBA, …) — a document's own saved value would otherwise keep winning.
         const docUpdatesByMapping: Record<string, Record<string, string>> = {};
