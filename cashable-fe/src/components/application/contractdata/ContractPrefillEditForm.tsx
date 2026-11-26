@@ -679,6 +679,19 @@ const LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS = [
     "exhibitAValue10",
 ] as const satisfies readonly (keyof BuildContractPrefillFieldsArgs)[];
 
+/** Linked-document (COJ, Deposit Control, …) field ids that each sync group also overwrites. */
+const SYNC_GROUP_DOCUMENT_FIELDS: Record<string, readonly string[]> = {
+    street: ["business_address"],
+    city: ["business_address_city"],
+    addressState: ["business_address_state"],
+    zip: ["business_address_zip"],
+    mailingStreet: ["guarantor_address"],
+    mailingCity: ["guarantor_address_city"],
+    mailingState: ["guarantor_address_state"],
+    mailingZip: ["guarantor_address_zip"],
+    dba: ["doing_business_as"],
+};
+
 /** Shared logical values repeated across contract sections — synced via “Sync to all”. */
 const PREFILL_SYNC_GROUPS: PrefillSyncGroup[] = [
     {
@@ -1652,11 +1665,16 @@ export function ContractPrefillEditForm({
         liveContractSignerOverrides,
     ]);
 
+    /** Values a Sync wrote into linked documents this session — re-applied over every refresh. */
+    const syncedDocFieldsRef = useRef<Record<string, Record<string, string>>>({});
     const resetAddendumFromSources = useCallback(() => {
         const next: Record<string, Record<string, string>> = {};
         for (const mapping of resolvedAddendumMappings) {
             const rows = addendumEditorRowsByMappingId[mapping.id] ?? [];
-            next[mapping.id] = Object.fromEntries(rows.map((r) => [r.id, r.value ?? ""]));
+            next[mapping.id] = {
+                ...Object.fromEntries(rows.map((r) => [r.id, r.value ?? ""])),
+                ...(syncedDocFieldsRef.current[mapping.id] ?? {}),
+            };
         }
         setAddendumFieldValuesByMappingId(next);
     }, [resolvedAddendumMappings, addendumEditorRowsByMappingId]);
@@ -1686,6 +1704,7 @@ export function ContractPrefillEditForm({
             openedHydratedRef.current = false;
             prevActiveOwnerCountRef.current = activeOwnerCount;
             prevClientIdentitySyncKeyRef.current = "";
+            syncedDocFieldsRef.current = {};
             return;
         }
         if (!formReady) return;
@@ -1994,6 +2013,8 @@ export function ContractPrefillEditForm({
         const updates: Partial<Record<keyof BuildContractPrefillFieldsArgs, string>> = {};
         const syncedLabels: string[] = [];
         let foundFilledSharedField = false;
+        /** Linked-document field id → synced value (see SYNC_GROUP_DOCUMENT_FIELDS). */
+        const docValues: Record<string, string> = {};
         // Prefer groups that appear on this stage so we always copy from the visible fields.
         const groupsToSync = (
             activeSectionSyncGroups.length > 0 ? activeSectionSyncGroups : PREFILL_SYNC_GROUPS
@@ -2014,14 +2035,43 @@ export function ContractPrefillEditForm({
                 }
             }
             if (changed) syncedLabels.push(group.label);
+            for (const fieldId of SYNC_GROUP_DOCUMENT_FIELDS[group.id] ?? []) docValues[fieldId] = value;
         }
         if (!foundFilledSharedField) {
             toast.info("Fill a shared field on this stage first, then sync.");
             return;
         }
-        if (!syncedLabels.length) {
+        // Sync also overwrites the same value saved inside each linked document (COJ owner address,
+        // Deposit Control DBA, …) — a document's own saved value would otherwise keep winning.
+        const docUpdatesByMapping: Record<string, Record<string, string>> = {};
+        for (const [mappingId, rows] of Object.entries(addendumEditorRowsByMappingId)) {
+            const current = addendumFieldValuesByMappingId[mappingId] ?? {};
+            for (const row of rows) {
+                const value = docValues[row.id];
+                if (value === undefined || String(current[row.id] ?? "").trim() === value) continue;
+                (docUpdatesByMapping[mappingId] ??= {})[row.id] = value;
+            }
+        }
+        const documentsChanged = Object.keys(docUpdatesByMapping).length;
+        if (!syncedLabels.length && !documentsChanged) {
             toast.info("Shared fields on this stage already match every other stage.");
             return;
+        }
+        if (documentsChanged) {
+            for (const [mappingId, fields] of Object.entries(docUpdatesByMapping)) {
+                syncedDocFieldsRef.current[mappingId] = {
+                    ...(syncedDocFieldsRef.current[mappingId] ?? {}),
+                    ...fields,
+                };
+            }
+            setAddendumFieldValuesByMappingId((prev) => {
+                const next = { ...prev };
+                for (const [mappingId, fields] of Object.entries(docUpdatesByMapping)) {
+                    next[mappingId] = { ...(next[mappingId] ?? {}), ...fields };
+                }
+                return next;
+            });
+            if (!syncedLabels.length) syncedLabels.push("linked documents");
         }
         setValues((prev) => ({ ...prev, ...updates }));
         setFieldErrors((prev) => {

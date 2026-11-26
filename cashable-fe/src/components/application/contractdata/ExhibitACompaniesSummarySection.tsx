@@ -1,3 +1,4 @@
+import { trackContractSave } from "@/lib/pendingContractSaves";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,14 +104,18 @@ export function ExhibitACompaniesSummarySection({
     const latestRowsRef = useRef({ companies, addresses });
     latestRowsRef.current = { companies, addresses };
     useEffect(() => {
-        if (!prefillOverridesReady || !canEdit || saving) return;
+        if (!prefillOverridesReady || !canEdit) return;
         if (parsePositiveContractId(contractId) == null) return;
         if (loadedSignatureRef.current == null) return;
         if (rowsSignature(companies, addresses) === loadedSignatureRef.current) return;
         const timer = window.setTimeout(() => void handleSave(true), 800);
         return () => window.clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [companies, addresses, prefillOverridesReady, canEdit, saving, contractId]);
+    }, [companies, addresses, prefillOverridesReady, canEdit, contractId]);
+
+    /** Background saves never block typing: one at a time, the latest rows always win. */
+    const savingRef = useRef(false);
+    const pendingSaveRef = useRef(false);
 
     const handleSave = async (silent = false) => {
         const cid = parsePositiveContractId(contractId);
@@ -118,10 +123,16 @@ export function ExhibitACompaniesSummarySection({
             toast.error("Create or open a contract for this application before saving Exhibit A names.");
             return;
         }
+        if (savingRef.current) {
+            // A save is on its way: save again (with whatever is typed then) once it lands.
+            pendingSaveRef.current = true;
+            return;
+        }
+        savingRef.current = true;
         // What is being saved — so the deal's refreshed copy is not loaded back over newer typing.
         const savingRows = latestRowsRef.current;
         loadedSignatureRef.current = rowsSignature(savingRows.companies, savingRows.addresses);
-        setSaving(true);
+        if (!silent) setSaving(true);
         try {
             const base =
                 stripDocumentTemplateBlobFromPrefillOverrides(persistedPrefillOverrides) ??
@@ -132,12 +143,14 @@ export function ExhibitACompaniesSummarySection({
                 ...exhibitPayload,
                 [DOCUMENT_TEMPLATE_PREFILL_BY_MAPPING_ID_KEY]: documentTemplatePrefillByMappingId,
             };
-            const updateRes = await dispatch(
-                updateContract({
-                    id: cid,
-                    data: { contractPrefillOverrides },
-                }),
-            ).unwrap();
+            const updateRes = await trackContractSave(
+                dispatch(
+                    updateContract({
+                        id: cid,
+                        data: { contractPrefillOverrides },
+                    }),
+                ).unwrap(),
+            );
             const updatedContract = (updateRes as { data?: unknown })?.data ?? updateRes;
             const fromUpdate = (updatedContract as { contractPrefillOverrides?: unknown } | null)
                 ?.contractPrefillOverrides;
@@ -172,7 +185,15 @@ export function ExhibitACompaniesSummarySection({
             // Not saved: the next edit tries again (no automatic retry loop on a persistent error).
             toast.error(msg);
         } finally {
-            setSaving(false);
+            savingRef.current = false;
+            if (!silent) setSaving(false);
+            if (pendingSaveRef.current) {
+                pendingSaveRef.current = false;
+                const now = latestRowsRef.current;
+                if (rowsSignature(now.companies, now.addresses) !== loadedSignatureRef.current) {
+                    void handleSave(true);
+                }
+            }
         }
     };
 

@@ -185,6 +185,26 @@ export const getByApplicationIdContract = createAsyncThunk(
     },
 );
 
+/**
+ * The server keeps the staged BoldSign package / signing state on the contract by itself when a
+ * save leaves them out (`mergePreservingDocuSignEnvelopeMeta`), and they are most of the prefill
+ * (~58 of ~68 KB). Prefill saves send everything else only, so each save uploads far less.
+ */
+const SERVER_KEPT_PREFILL_META_KEYS = ["pearsignPackage", "pearsignMainContract"] as const;
+
+function withoutServerKeptPrefillMeta(data: UpdateContractData): UpdateContractData {
+    const overrides = (data as { contractPrefillOverrides?: unknown }).contractPrefillOverrides;
+    if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) return data;
+    const o = overrides as Record<string, unknown>;
+    if (!SERVER_KEPT_PREFILL_META_KEYS.some((k) => o[k] != null && typeof o[k] === "object")) return data;
+    const slim: Record<string, unknown> = { ...o };
+    for (const k of SERVER_KEPT_PREFILL_META_KEYS) {
+        // Only an existing object is dropped (kept by the server); an explicit null still clears it.
+        if (slim[k] != null && typeof slim[k] === "object") delete slim[k];
+    }
+    return { ...data, contractPrefillOverrides: slim } as UpdateContractData;
+}
+
 export const updateContract = createAsyncThunk(
     "contract/update",
     async (
@@ -192,7 +212,10 @@ export const updateContract = createAsyncThunk(
         { rejectWithValue },
     ) => {
         try {
-            const response = await axiosPut(`${CONTRACT_BASE}/update_contract/${id}`, data);
+            const response = await axiosPut(
+                `${CONTRACT_BASE}/update_contract/${id}`,
+                withoutServerKeptPrefillMeta(data),
+            );
             return response.data;
         } catch (error: any) {
             return rejectWithValue(getErrorMessage(error, "Failed to update contract"));
