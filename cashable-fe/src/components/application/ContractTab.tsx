@@ -1654,6 +1654,35 @@ export default function ContractTab({
      */
     const tryOpenExistingDraftViewer = async (): Promise<boolean> => {
         if (!applicationUuid) return false;
+        // The contract is usually loaded already: open it at once and refresh it in the background
+        // (each server round trip costs about a second).
+        const loaded = fetchedContract as Record<string, unknown> | null;
+        const loadedId = Number(loaded?.id);
+        if (
+            Number.isFinite(loadedId) &&
+            loadedId > 0 &&
+            String(loaded?.applicationId ?? (loaded?.application as { id?: unknown } | undefined)?.id ?? applicationUuid) ===
+                String(applicationUuid)
+        ) {
+            setSelectedContractId(loadedId);
+            setPdfUrl(globalTemplateUrl || "platform://contract");
+            setPdfName(globalTemplateName || "Contract.pdf");
+            const loadedEnvelopeId = String(
+                ((loaded?.application as { document?: { envelopeId?: unknown } } | undefined)?.document?.envelopeId as string | undefined) ?? "",
+            ).trim();
+            setPdfViewerInitialRightPaneTab(loadedEnvelopeId ? "prefilled" : "template");
+            setPdfViewerOpen(true);
+            void dispatch(getByApplicationIdContract(String(applicationUuid)))
+                .unwrap()
+                .then((byApp) => {
+                    const fresh = (byApp as { data?: unknown })?.data ?? byApp;
+                    if (fresh && typeof fresh === "object" && Number((fresh as { id?: unknown }).id) === loadedId) {
+                        setFetchedContract(fresh);
+                    }
+                })
+                .catch(() => undefined);
+            return true;
+        }
         try {
             const byApp = await dispatch(
                 getByApplicationIdContract(String(applicationUuid)),
@@ -2304,7 +2333,8 @@ export default function ContractTab({
 
         const anyApp = applicationData as any;
 
-        await persistContractGeneratedStage();
+        // Moves the deal to "Contract Generated" alongside the create (not before it).
+        const stagePromise = persistContractGeneratedStage();
 
         const userFromRedux = loginData?.user as { _id?: string; id?: string } | undefined;
         const userFromStorage = (() => {
@@ -2345,7 +2375,7 @@ export default function ContractTab({
 
         setCreatingEnvelope(true);
         try {
-            await dispatch(
+            const created = await dispatch(
                 createContract({
                     applicationId: String(applicationUuid),
                     clientId: anyApp?.clientId ?? anyApp?.client?._id ?? anyApp?.client?.id,
@@ -2369,22 +2399,40 @@ export default function ContractTab({
                 }),
             ).unwrap();
 
+            // Application refresh waits for the stage update; neither blocks opening the viewer.
             const numericAppId = anyApp?.applicationId;
-            if (numericAppId != null && String(numericAppId).trim() !== "" && !Number.isNaN(Number(numericAppId))) {
-                void dispatch(getApplicationByApplicationId(Number(numericAppId)));
-            } else if (applicationUuid) {
-                void dispatch(getApplicationById(String(applicationUuid)));
-            }
+            void stagePromise.finally(() => {
+                if (numericAppId != null && String(numericAppId).trim() !== "" && !Number.isNaN(Number(numericAppId))) {
+                    void dispatch(getApplicationByApplicationId(Number(numericAppId)));
+                } else if (applicationUuid) {
+                    void dispatch(getApplicationById(String(applicationUuid)));
+                }
+            });
 
-            try {
-                const byApp = await dispatch(
-                    getByApplicationIdContract(String(applicationUuid)),
-                ).unwrap();
-                const contract = (byApp as any)?.data ?? byApp;
-                const byAppContractId = Number((contract as any)?.id);
-                setSelectedContractId(Number.isFinite(byAppContractId) ? byAppContractId : null);
-            } catch {
-                /* contract id may already be set from create response */
+            const createdContract = (created as { data?: unknown })?.data ?? created;
+            const createdId = Number((createdContract as { id?: unknown } | null)?.id);
+            if (Number.isFinite(createdId) && createdId > 0) {
+                setSelectedContractId(createdId);
+                if (createdContract && typeof createdContract === "object") setFetchedContract(createdContract);
+                // Full contract (with relations) in the background.
+                void dispatch(getByApplicationIdContract(String(applicationUuid)))
+                    .unwrap()
+                    .then((byApp) => {
+                        const fresh = (byApp as { data?: unknown })?.data ?? byApp;
+                        if (fresh && typeof fresh === "object") setFetchedContract(fresh);
+                    })
+                    .catch(() => undefined);
+            } else {
+                try {
+                    const byApp = await dispatch(
+                        getByApplicationIdContract(String(applicationUuid)),
+                    ).unwrap();
+                    const contract = (byApp as any)?.data ?? byApp;
+                    const byAppContractId = Number((contract as any)?.id);
+                    setSelectedContractId(Number.isFinite(byAppContractId) ? byAppContractId : null);
+                } catch {
+                    /* contract id may already be set from create response */
+                }
             }
             setPdfUrl(globalTemplateUrl || "platform://contract");
             setPdfName(globalTemplateName || "Contract.pdf");
