@@ -1,6 +1,6 @@
 
 import { formatDateET } from "@/lib/dateTime";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -528,19 +528,35 @@ export default function DealPipeline() {
     void dispatch(fetchOperationsDashboardSummary());
   }, [dispatch]);
 
-  /** Warm cache for every stage (page 1, no search) so circle clicks usually hit session cache. */
+  /**
+   * Warm cache for the other stages (page 1, no search) so circle clicks usually hit session cache.
+   * Starts only after the stage on screen has loaded, two at a time — six list requests at once used
+   * to compete with (and slow down) the list being looked at.
+   */
+  const stagePrefetchStartedRef = useRef(false);
+  // Stop warming other stages when the page closes (not when the visible stage changes).
+  const prefetchAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => prefetchAbortRef.current?.abort(), []);
   useEffect(() => {
+    if (listLoading || stagePrefetchStartedRef.current) return;
+    stagePrefetchStartedRef.current = true;
     const userId = getTokenUserId();
     if (!userId) return;
     const ctrl = new AbortController();
+    const shownOps = STAGE_OPERATIONS_STATUS[activeStage];
     const run = async () => {
-      await new Promise((r) => {
-        window.setTimeout(r, 200);
-      });
-      if (ctrl.signal.aborted) return;
-      await Promise.all(
-        STAGE_CONFIG.map(async ({ value }) => {
-          const ops = STAGE_OPERATIONS_STATUS[value];
+      const queue = STAGE_CONFIG.map(({ value }) => STAGE_OPERATIONS_STATUS[value]).filter(
+        (ops) => ops !== shownOps,
+      );
+      const worker = async () => {
+        for (let ops = queue.shift(); ops !== undefined; ops = queue.shift()) {
+          if (ctrl.signal.aborted) return;
+          await prefetchStage(ops);
+        }
+      };
+      await Promise.all([worker(), worker()]);
+    };
+    const prefetchStage = async (ops: string) => {
           if (readDealPipelineListCache(userId, ops, 1, DEAL_PIPELINE_FETCH_LIMIT, "")) {
             return;
           }
@@ -563,12 +579,12 @@ export default function DealPipeline() {
           } catch {
             /* prefetch is best-effort */
           }
-        }),
-      );
     };
+    prefetchAbortRef.current = ctrl;
     void run();
-    return () => ctrl.abort();
-  }, [buildListQueryString]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listLoading]);
+
 
   useEffect(() => {
     let cancelled = false;

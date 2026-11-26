@@ -1,6 +1,8 @@
 import './config/timezone'; // must stay first: the server runs on Eastern Time
 import express, { Application, NextFunction, Request, Response } from 'express';
 import './config/loadEnv';
+import { performance } from 'perf_hooks';
+import { dbTiming } from './config/prismaClient';
 import { runWithDefaultCcRemoved } from './config/mandatoryCc';
 import 'reflect-metadata';
 import { createServer } from 'http';
@@ -36,10 +38,32 @@ const PORT = process.env.PORT || 4001;
 // Create HTTP server for Socket.IO
 const httpServer = createServer(app);
 
+// `Server-Timing: app;dur=<server ms>, db;dur=<ms waiting on the database>;desc="<n> queries"` on
+// every response, so slow screens can be measured from the browser (network vs server vs database).
+app.use((req, res, next) => {
+  const store = { ms: 0, count: 0 };
+  const started = performance.now();
+  const writeHead = res.writeHead;
+  res.writeHead = function patchedWriteHead(this: Response, ...args: unknown[]) {
+    try {
+      if (!res.headersSent) {
+        res.setHeader(
+          'Server-Timing',
+          `app;dur=${Math.round(performance.now() - started)}, db;dur=${Math.round(store.ms)};desc="${store.count} queries"`,
+        );
+      }
+    } catch {
+      /* never block a response */
+    }
+    return (writeHead as (...a: unknown[]) => Response).apply(this, args);
+  } as typeof res.writeHead;
+  dbTiming.run(store, next);
+});
+
 app.use(
   cors({
     // Allow the browser to read Content-Disposition on blob responses (Gmail attachment filename).
-    exposedHeaders: ['Content-Disposition'],
+    exposedHeaders: ['Content-Disposition', 'Server-Timing'],
   })
 );
 // Middleware

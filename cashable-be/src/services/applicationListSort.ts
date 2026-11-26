@@ -61,18 +61,23 @@ export async function fetchPaginatedApplicationsForList(
     const sortBy = String(args.sortBy ?? 'createdAt').trim();
     const sortOrder = normalizeSortOrder(args.sortOrder);
 
-    const total = await prisma.application.count({ where: args.where });
+    // Count and page run together (each is a database round trip).
+    const totalPromise = prisma.application.count({ where: args.where });
 
     if (sortBy !== 'status') {
-        const apps = await prisma.application.findMany({
-            where: args.where,
-            orderBy: buildApplicationListOrderBy(args.sortBy, args.sortOrder),
-            skip: args.skip,
-            take: args.take,
-            include: args.include,
-        });
+        const [total, apps] = await Promise.all([
+            totalPromise,
+            prisma.application.findMany({
+                where: args.where,
+                orderBy: buildApplicationListOrderBy(args.sortBy, args.sortOrder),
+                skip: args.skip,
+                take: args.take,
+                include: args.include,
+            }),
+        ]);
         return { apps, total };
     }
+    const total = await totalPromise;
 
     const candidates = await prisma.application.findMany({
         where: args.where,

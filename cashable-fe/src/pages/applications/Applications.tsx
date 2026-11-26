@@ -1944,12 +1944,8 @@ const Applications = ({ mode = "default" }: ApplicationsProps) => {
     navigate,
   ]);
 
-  /** Warm cache only for the active list filter (DB-filtered key). No bulk stage prefetch. */
-  useEffect(() => {
-    if (!isListFilterInitialized) return;
-    prefetchApplicationsList(listFetchParams);
-    // listFetchKey encodes operationsStatus / queue / search — one request per filter change
-  }, [isListFilterInitialized, listFetchKey, listFetchParams]);
+  // (No separate prefetch for the active filter: the list query above already fetches it, and a
+  // prefetch here sent the same request twice on every page open / filter change.)
 
   // Initialize list filter from dashboard query params
   useEffect(() => {
