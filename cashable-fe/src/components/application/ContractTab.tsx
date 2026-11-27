@@ -2234,7 +2234,7 @@ export default function ContractTab({
                 }),
             ).unwrap();
             await reloadFetchedContract();
-            toast.success(`Signing email resent for ${row.label}.`);
+            toast.success(`${signingProviderName()} reminder emailed for ${row.label} (signers who have not signed yet).`);
         } catch (err: unknown) {
             const msg =
                 typeof err === "string"

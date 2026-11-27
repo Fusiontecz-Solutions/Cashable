@@ -31,10 +31,10 @@ export function loadSigningProvider(): Promise<SigningProviderInfo | null> {
     return pending;
 }
 
-/** Display name of the active e-signature service ("PearSign" until the server says otherwise). */
+/** Display name of the e-signature service (BoldSign). */
 export function signingProviderName(): string {
     if (!cached) void loadSigningProvider();
-    return cached?.name ?? "PearSign";
+    return cached?.name ?? "BoldSign";
 }
 
 /** Re-renders the component once the provider name is known. */
@@ -54,7 +54,7 @@ export function useSigningProviderName(): string {
 /** True when new contracts go through BoldSign. */
 export function isBoldSignActive(): boolean {
     if (!cached) void loadSigningProvider();
-    return cached?.provider === "boldsign";
+    return cached?.provider !== "pearsign";
 }
 
 /**

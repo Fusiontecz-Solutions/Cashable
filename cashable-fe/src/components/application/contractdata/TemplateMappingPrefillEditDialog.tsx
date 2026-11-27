@@ -525,7 +525,7 @@ export function TemplateMappingPrefillEditDialog({
                                         ) : (
                                         <Input
                                             id={`tmpl-field-${r.id}`}
-                                            value={fieldValues[r.id] ?? ""}
+                                            value={toPrefillUppercase(fieldValues[r.id] ?? "", r.id)}
                                             onChange={(e) =>
                                                 setFieldValues((prev) => ({ ...prev, [r.id]: toPrefillUppercase(e.target.value, r.id) }))
                                             }

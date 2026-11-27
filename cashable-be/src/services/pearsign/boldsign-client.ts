@@ -29,9 +29,9 @@ export function isBoldSignConfigured(): boolean {
   return apiKey().length > 0;
 }
 
-/** Which service new contracts are sent through: `SIGNING_PROVIDER=boldsign`, else PearSign. */
+/** Contracts go through BoldSign (PearSign only if SIGNING_PROVIDER=pearsign is set explicitly). */
 export function signingProvider(): 'pearsign' | 'boldsign' {
-  return String(process.env.SIGNING_PROVIDER || '').trim().toLowerCase() === 'boldsign' ? 'boldsign' : 'pearsign';
+  return String(process.env.SIGNING_PROVIDER || '').trim().toLowerCase() === 'pearsign' ? 'pearsign' : 'boldsign';
 }
 
 /** BoldSign test documents (not legally binding, no allowance used). */
@@ -362,6 +362,17 @@ export async function boldSignDownload(documentId: string): Promise<Buffer> {
 export async function boldSignRevoke(documentId: string, message = 'Voided from the Cashable CRM.'): Promise<void> {
   await request('POST', '/v1/document/revoke', { params: { documentId }, data: { message } });
   propertiesCache.delete(documentId);
+}
+
+/**
+ * Email a signing reminder to every signer who has not signed yet (BoldSign skips signers who
+ * already signed). One API call.
+ */
+export async function boldSignRemind(
+  documentId: string,
+  message = 'Reminder: your contract is waiting for your signature.',
+): Promise<void> {
+  await request('POST', '/v1/document/remind', { params: { documentId }, data: { message } });
 }
 
 const isoFromEpoch = (s?: number | null) => (s && Number.isFinite(s) ? new Date(s * 1000).toISOString() : null);

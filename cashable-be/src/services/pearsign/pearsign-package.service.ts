@@ -376,7 +376,7 @@ export async function convertEnvelopeToPearSignPackage(envelopeDefinition: Envel
     }
   });
   if (!fields.some((f) => f.type === 'signature' || f.type === 'initials')) {
-    throw new PearSignContractError('No signature placements found in the package; cannot send via PearSign.');
+    throw new PearSignContractError('No signature placements found in the package; cannot send via BoldSign.');
   }
 
   return { env, mergedBytes, pageCount: merged.getPageCount(), documents, recipients, fields, crmValues };
@@ -427,7 +427,7 @@ export async function stagePearSignPackage(input: {
   }
   const contractId = Number(input.contractId);
   if (!Number.isFinite(contractId) || contractId <= 0) {
-    throw new PearSignContractError('Save the contract before preparing a PearSign package.');
+    throw new PearSignContractError('Save the contract before preparing a BoldSign package.');
   }
   const contract = await loadContract(contractId);
   // A document already out (unsigned) does not block a new send: the new one becomes current and
@@ -502,7 +502,7 @@ export async function stagePearSignPackage(input: {
     envelopeId: '',
     documentId: '',
     sendUrl: null,
-    message: 'PearSign package prepared. Review it in the CRM and send.',
+    message: 'BoldSign package prepared. Review it in the CRM and send.',
     data: { provider: 'pearsign', documents: documents.length, fields: fields.length },
   };
 }
@@ -532,7 +532,7 @@ async function writePackage(contractId: number, pkg: PearSignStagedPackage) {
 async function requirePackage(contractId: number) {
   const contract = await loadContract(contractId);
   const pkg = readPackage(contract.contractPrefillOverrides);
-  if (!pkg) throw new PearSignContractError('No PearSign package is prepared for this contract. Click "Review & send in PearSign" again.', 404);
+  if (!pkg) throw new PearSignContractError('No BoldSign package is prepared for this contract. Click "Review & send in BoldSign" again.', 404);
   return { contract, pkg, state: readState(contract.contractPrefillOverrides) };
 }
 
@@ -1277,7 +1277,7 @@ export function editorOrigin(raw: unknown): string {
   }
   const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
   if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) {
-    throw new PearSignContractError('The PearSign editor only opens on an https CRM address.');
+    throw new PearSignContractError('The BoldSign editor only opens on an https CRM address.');
   }
   return url.origin;
 }
@@ -1363,7 +1363,7 @@ export async function openPearSignPackageEditor(
     throw e;
   }
   if (!session.sessionId || !session.editorUrl) {
-    throw new PearSignContractError('PearSign did not return an editor link. Try again.', 502);
+    throw new PearSignContractError('BoldSign did not return an editor link. Try again.', 502);
   }
   await writeEditorSession(contractId, {
     sessionId: session.sessionId,
@@ -1600,7 +1600,7 @@ export async function finishPearSignPackageEditor(
   const record = readEditorSession(contract.contractPrefillOverrides);
   const sessionId = String(body.sessionId ?? '').trim();
   if (!record || !sessionId || record.sessionId !== sessionId) {
-    throw new PearSignContractError('That PearSign editor session does not belong to this contract.', 404);
+    throw new PearSignContractError('That BoldSign editor session does not belong to this contract.', 404);
   }
   if (isBoldSignEnvelopeId(sessionId)) return finishBoldSignPackageEditor(contractId, actorUserId, record, sessionId);
   const session = await getPearSignEditorSession(sessionId);

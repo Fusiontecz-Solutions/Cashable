@@ -97,7 +97,7 @@ export async function loadBoldSignTemplatePdfBlob(options: {
         getBoldSignTemplateMappingRef(options.template);
     if (!downloadRef) {
         throw new Error(
-            "This template has no PDF URL or PearSign template id.",
+            "This template has no PDF URL or BoldSign template id.",
         );
     }
 

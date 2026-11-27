@@ -9,6 +9,7 @@ import {
 } from '../dropboxsign/dropboxsign.contract';
 import * as dropboxSignService from '../dropboxsign/dropboxsign.service';
 import { downloadPearSignEnvelopePdf, looksLikePearSignEnvelopeId } from '../pearsign/pearsign-client';
+import { boldSignDocumentId, boldSignRemind, isBoldSignEnvelopeId } from '../pearsign/boldsign-client';
 import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
 import {
   downloadPearSignContractPdf,
@@ -27,7 +28,7 @@ const docusignService = new DocusignService();
 async function pearSignContractIdFor(envelopeId: string): Promise<number> {
   const contractId = await findContractIdByPearSignEnvelopeId(envelopeId);
   if (!contractId) {
-    throw Object.assign(new Error('No contract holds this PearSign envelope.'), { statusCode: 404 });
+    throw Object.assign(new Error('No contract holds this signing document.'), { statusCode: 404 });
   }
   return contractId;
 }
@@ -47,7 +48,7 @@ async function loadPearSignEnvelopePdf(envelopeId: string): Promise<Buffer> {
     select: { signedPdfUrl: true },
   });
   if (!doc) {
-    throw Object.assign(new Error('No contract or document holds this PearSign envelope.'), {
+    throw Object.assign(new Error('No contract or document holds this signing document.'), {
       statusCode: 404,
     });
   }
@@ -320,7 +321,9 @@ export const getEmbeddedSignLink = async (req: Request, res: Response) => {
     }
     if (looksLikePearSignEnvelopeId(documentId)) {
       return res.status(400).json({
-        message: 'PearSign contracts are signed from the email PearSign sends each owner; there is no embedded signing link.',
+        message: isBoldSignEnvelopeId(String(documentId))
+          ? 'BoldSign contracts are signed from the email BoldSign sends each owner. Use Resend to email them a reminder.'
+          : 'This contract is signed from the email sent to each owner; there is no embedded signing link.',
       });
     }
     const result = await docusignService.getEmbeddedSignLink(
@@ -355,7 +358,12 @@ export const voidDocument = async (req: Request, res: Response) => {
     }
     if (looksLikePearSignEnvelopeId(documentId)) {
       await voidPearSignContract(await pearSignContractIdFor(String(documentId)));
-      return res.json({ success: true, message: 'Envelope voided in PearSign.', provider: 'pearsign' });
+      const boldSign = isBoldSignEnvelopeId(String(documentId));
+      return res.json({
+        success: true,
+        message: boldSign ? 'Contract voided in BoldSign.' : 'Contract voided.',
+        provider: boldSign ? 'boldsign' : 'pearsign',
+      });
     }
     const contractIdNum = Number(contractId);
     const result = await docusignService.voidDocument(
@@ -404,10 +412,18 @@ export const resendEnvelopeNotification = async (req: Request, res: Response) =>
           : 'All signers have already signed.',
       });
     }
+    if (isBoldSignEnvelopeId(id)) {
+      // BoldSign emails every signer who has not signed yet (one API call).
+      await boldSignRemind(boldSignDocumentId(id));
+      return res.json({
+        success: true,
+        provider: 'boldsign',
+        message: 'Reminder emailed via BoldSign to every signer who has not signed yet.',
+      });
+    }
     if (looksLikePearSignEnvelopeId(id)) {
       return res.status(400).json({
-        message:
-          'PearSign has no reminder API. Remind the signer from the PearSign dashboard, or void and send the contract again.',
+        message: 'This older contract cannot be re-sent. Void it and send the contract again (it goes out with BoldSign).',
       });
     }
     const contractIdNum = Number(contractId);
@@ -846,7 +862,7 @@ export const getSenderView = async (req: Request, res: Response) => {
     if (looksLikePearSignEnvelopeId(envelopeId)) {
       return res.status(400).json({
         message:
-          'This contract was sent with PearSign. To change values, void it, correct them in Review, and send again.',
+          'This contract was sent with BoldSign. To change values, correct them in Review and send again: the earlier unsigned contract is voided automatically.',
       });
     }
     if (!envelopeId || !returnUrl) {

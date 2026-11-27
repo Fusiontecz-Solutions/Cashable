@@ -25,7 +25,7 @@ export function formatDocuSignSyncErrorMessage(err: unknown, context: string): s
         (typeof fromAxios === "string" && fromAxios.trim()) ||
         (err instanceof Error ? err.message : String(err ?? ""));
     if (isDocuSignPollingLimitError(raw)) {
-        return `PearSign polling/API limit reached for ${context}. Status updates via webhook — wait about an hour, then use Refresh once.`;
+        return `BoldSign API limit reached for ${context}. Status updates via webhook — wait about an hour, then use Refresh once.`;
     }
     if (raw.trim()) return raw.trim();
     return `Could not refresh ${context} status.`;

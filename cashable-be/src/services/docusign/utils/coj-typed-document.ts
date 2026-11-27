@@ -217,15 +217,15 @@ function cojFactsFrom(rawValues: Values) {
     businessCounty: upper(v(values, 'business_county', 'owner_county')),
     purchase,
     judgment,
-    agreementDate: longDate(v(values, 'agreement_date', 'signature_date')),
+    agreementDate: upper(longDate(v(values, 'agreement_date', 'signature_date'))),
     /** "Date:" under the signature block (COJ mapping / Review "COJ date"; default the agreement date). */
     cojDate: (() => {
       const raw = v(values, 'coj_date', 'agreement_date', 'signature_date').trim();
       const d = parseDate(raw);
       return d ? `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}` : raw;
     })(),
-    dayOrdinal: date ? ordinal(date.getDate()) : '',
-    month: date ? MONTHS[date.getMonth()] : '',
+    dayOrdinal: date ? upper(ordinal(date.getDate())) : '',
+    month: date ? upper(MONTHS[date.getMonth()]) : '',
     year: date ? String(date.getFullYear()) : '',
   };
 }

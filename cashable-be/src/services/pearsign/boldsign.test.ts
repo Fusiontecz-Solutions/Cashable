@@ -22,11 +22,13 @@ describe('signingProvider', () => {
   afterEach(() => {
     process.env.SIGNING_PROVIDER = prev;
   });
-  it('is PearSign unless SIGNING_PROVIDER=boldsign', () => {
+  it('is BoldSign unless SIGNING_PROVIDER=pearsign', () => {
     delete process.env.SIGNING_PROVIDER;
-    expect(signingProvider()).toBe('pearsign');
+    expect(signingProvider()).toBe('boldsign');
     process.env.SIGNING_PROVIDER = 'BoldSign';
     expect(signingProvider()).toBe('boldsign');
+    process.env.SIGNING_PROVIDER = 'PearSign';
+    expect(signingProvider()).toBe('pearsign');
   });
 });
 

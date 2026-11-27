@@ -53,7 +53,7 @@ export function primeBasePdfCache(url: string | null | undefined, buf: Buffer): 
 export async function loadBasePdf(url: string | null | undefined): Promise<Buffer> {
   const key = String(url || '').trim();
   if (!key) {
-    throw new PearSignPreviewError('The PearSign template has no source PDF recorded, so a preview cannot be built.', 404);
+    throw new PearSignPreviewError('The template has no source PDF recorded, so a preview cannot be built.', 404);
   }
   const hit = pdfCache.get(key);
   if (hit && Date.now() - hit.at < PDF_TTL_MS) return hit.buf;

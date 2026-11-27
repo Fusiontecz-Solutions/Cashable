@@ -2800,11 +2800,11 @@ export function ContractPrefillEditForm({
                                                 </Label>
                                                 <Input
                                                     id={`addendum-prefill-${activeLinkedAddendumMappingId}-${row.id}`}
-                                                    value={activeAddendumFieldValues[row.id] ?? ""}
+                                                    value={toPrefillUppercase(activeAddendumFieldValues[row.id] ?? "", row.id)}
                                                     onChange={(e) => {
                                                         const mappingId = activeLinkedAddendumMappingId;
                                                         if (!mappingId) return;
-                                                        const nextValue = e.target.value;
+                                                        const nextValue = toPrefillUppercase(e.target.value, row.id);
                                                         setAddendumFieldValuesByMappingId((prev) => ({
                                                             ...prev,
                                                             [mappingId]: {
@@ -2842,11 +2842,11 @@ export function ContractPrefillEditForm({
                                                         </Label>
                                                         <Input
                                                             id={`disclosure-prefill-${r.id}`}
-                                                            value={disclosureFieldValues[r.id] ?? ""}
+                                                            value={toPrefillUppercase(disclosureFieldValues[r.id] ?? "", r.id)}
                                                             onChange={(e) =>
                                                                 setDisclosureFieldValues((prev) => ({
                                                                     ...prev,
-                                                                    [r.id]: e.target.value,
+                                                                    [r.id]: toPrefillUppercase(e.target.value, r.id),
                                                                 }))
                                                             }
                                                             disabled={readOnly}

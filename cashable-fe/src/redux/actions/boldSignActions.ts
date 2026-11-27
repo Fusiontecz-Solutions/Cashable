@@ -121,7 +121,7 @@ export const sendBoldSignDocument = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send PearSign document"
+        error.response?.data?.message || "Failed to send BoldSign document"
       );
     }
   }
@@ -191,7 +191,7 @@ export const sendBoldSignTemplate = createAsyncThunk(
     } catch (error: any) {
       console.log("sendBoldSignTemplate error:", error);
       return rejectWithValue(
-        error.response?.data?.message || "Failed to send PearSign template"
+        error.response?.data?.message || "Failed to send BoldSign template"
       );
     }
   }
@@ -256,7 +256,7 @@ export const resendDocusignEnvelope = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || "Failed to resend PearSign email",
+        error.response?.data?.message || "Failed to send the BoldSign reminder",
       );
     }
   },

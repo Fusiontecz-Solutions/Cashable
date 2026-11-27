@@ -28,8 +28,8 @@ describe('cojFacts', () => {
     const f = cojFacts(values);
     expect(f.purchase).toBe('$31,000.00');
     expect(f.judgment).toBe('$38,500.00'); // purchase + $7,500 default fee
-    expect(f.agreementDate).toBe('November 19, 2026');
-    expect(f.dayOrdinal).toBe('19th');
+    expect(f.agreementDate).toBe('NOVEMBER 19, 2026');
+    expect(f.dayOrdinal).toBe('19TH');
     expect(f.owner).toBe('JANE Q PUBLIC');
     expect(f.ownerState).toBe('MARYLAND');
   });

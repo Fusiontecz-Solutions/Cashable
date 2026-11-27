@@ -14,7 +14,7 @@ export const connectDocusign = createAsyncThunk(
     } catch (error: any) {
       console.error("Connect PearSign error:", error);
       return rejectWithValue(
-        error.response?.data?.message || "Failed to connect PearSign"
+        error.response?.data?.message || "Failed to connect BoldSign"
       );
     }
   }

@@ -491,7 +491,7 @@ export async function savePearSignOverrides(contractId: number, body: { override
   const contract = await loadContract(contractId);
   const prev = readState(contract.contractPrefillOverrides) ?? {};
   if (prev.envelopeId && isActivePearSignStatus(prev.status)) {
-    throw new PearSignContractError('This contract is out for signature in PearSign; void it before editing values.', 409);
+    throw new PearSignContractError('This contract is out for signature in BoldSign; void it before editing values.', 409);
   }
   const incoming = (body.overrides && typeof body.overrides === 'object' ? body.overrides : {}) as Record<string, unknown>;
   const next = { ...cleanValues(prev.overrides) };
@@ -559,7 +559,7 @@ async function createStyledContractTemplate(contractId: number, r: ResolvedRevie
   for (const f of r.template.fields ?? []) {
     const p = f.position;
     if (![p?.page, p?.x, p?.y, p?.width, p?.height].every((n) => Number.isFinite(Number(n)))) {
-      throw new PearSignContractError(`PearSign template field ${f.fieldName} has no position; cannot copy it.`, 502);
+      throw new PearSignContractError(`Template field ${f.fieldName} has no position; cannot copy it.`, 502);
     }
     const fontSize = r.signerFilled.has(f.fieldName) ? undefined : r.styles[pearSignValueKey(f.fieldName)]?.fontSize;
     fields.push({
@@ -612,7 +612,7 @@ export async function sendPearSignContract(
   const { contract, row, template, crm } = r;
   if (!contract.applicationId) throw new PearSignContractError('Contract has no application.');
   if (String(template.status).toLowerCase() !== 'active') {
-    throw new PearSignContractError(`PearSign template "${template.name}" is not active.`);
+    throw new PearSignContractError(`Template "${template.name}" is not active.`);
   }
   if (crm.reverseDisbursementEnabled) {
     throw new PearSignContractError(
@@ -1199,10 +1199,11 @@ export const PEARSIGN_ENVELOPE_NOT_FOUND = 'PEARSIGN_ENVELOPE_NOT_FOUND';
 export async function voidPearSignContract(contractId: number, opts: { releaseIfMissing?: boolean } = {}) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
-  if (!state?.envelopeId) throw new PearSignContractError('No PearSign envelope to void.');
+  if (!state?.envelopeId) throw new PearSignContractError('No signing document to void.');
   if (!isActivePearSignStatus(state.status)) {
     throw new PearSignContractError(`Envelope is already ${state.status}; nothing to void.`);
   }
+  const P = isBoldSignEnvelopeId(state.envelopeId) ? 'BoldSign' : 'PearSign';
   try {
     await voidPearSignEnvelope(state.envelopeId);
   } catch (e) {
@@ -1216,7 +1217,7 @@ export async function voidPearSignContract(contractId: number, opts: { releaseIf
         return { state: synced.state, alreadyEnded: remoteStatus };
       }
       throw new PearSignContractError(
-        `PearSign had a problem voiding this envelope (${e.message}) and it still shows as ${remoteStatus || 'unknown'}. Click Void again in a minute, or Refresh status.`,
+        `${P} had a problem voiding this envelope (${e.message}) and it still shows as ${remoteStatus || 'unknown'}. Click Void again in a minute, or Refresh status.`,
         502,
       );
     }
@@ -1236,14 +1237,14 @@ export async function voidPearSignContract(contractId: number, opts: { releaseIf
     }
     if (remote) {
       throw new PearSignContractError(
-        `PearSign refused to void this envelope (${e.message}). Void it in the PearSign dashboard, then click Refresh status here.`,
+        `${P} refused to void this envelope (${e.message}). Void it in the ${P} dashboard, then click Refresh status here.`,
         400,
       );
     }
     if (!opts.releaseIfMissing) {
       throw Object.assign(
         new PearSignContractError(
-          `PearSign cannot find this envelope with the CRM's API key (${e.message}). It may have been created under another PearSign account or deleted.`,
+          `${P} cannot find this envelope with the CRM's API key (${e.message}). It may have been created under another ${P} account or deleted.`,
           409,
         ),
         { code: PEARSIGN_ENVELOPE_NOT_FOUND },
@@ -1288,7 +1289,7 @@ export async function downloadPearSignContractPdf(
 ) {
   const contract = await loadContract(contractId);
   const state = readState(contract.contractPrefillOverrides);
-  if (!state?.envelopeId) throw new PearSignContractError('No PearSign envelope for this contract.', 404);
+  if (!state?.envelopeId) throw new PearSignContractError('No signing document for this contract.', 404);
   const wanted = String(requestedEnvelopeId || '').trim();
   const known = new Set([state.envelopeId, ...(state.history ?? []).map((h) => h.envelopeId)]);
   if (wanted && !known.has(wanted)) throw new PearSignContractError('That envelope does not belong to this contract.', 404);
