@@ -4,7 +4,6 @@ import {
   CLIENT_PROVIDED_STIPS,
   COMPANY_HANDLED_STIPS,
   escapeHtml,
-  escapeHrefAttribute,
   resolveApplicationApprovalEmailFields,
 } from "./applicationApprovalEmailShared";
 
@@ -69,7 +68,6 @@ export function renderApplicationApprovalEmailHtml(
     .trim()
     .replace(/\s+funding$/i, "") || "Cashable";
   const brand = escapeHtml(brandRaw);
-  const isoApprovalHref = escapeHrefAttribute(fields.isoApprovalUrl);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -80,7 +78,7 @@ export function renderApplicationApprovalEmailHtml(
 </head>
 <body style="margin:0;padding:0;background-color:#F1F5F2;font-family:${FONT};-webkit-font-smoothing:antialiased;">
 <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#F1F5F2;">
-Good news – ${companyName} has been approved by ${brand} Funding. Calculate your approval now.
+Good news – ${companyName} has been approved by ${brand} Funding. See the approved amount and the documents we need.
 </div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F5F2;">
 <tr><td align="center" style="padding:20px 10px;">
@@ -116,16 +114,8 @@ Good news – ${companyName} has been approved by ${brand} Funding. Calculate yo
       <td style="padding:14px 28px 0 28px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0F8F3;border:1px solid #CFE6D8;border-radius:12px;">
           <tr>
-            <td align="center" style="padding:14px 12px 16px 12px;">
+            <td align="center" style="padding:14px 12px 12px 12px;">
               ${OFFER_TERMS_SLOT}
-              <div style="font-size:13px;color:#4B5F55;margin:10px 0 10px 0;">No ${brand} login needed &middot; Anyone on your team can use this link</div>
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="center" bgcolor="#166534" style="background-color:#166534;background-image:linear-gradient(90deg,#0B3D22 0%,#166534 60%,#1F8A4C 100%);border-radius:10px;">
-                    <a href="${isoApprovalHref}" target="_blank" style="display:inline-block;padding:10px 26px;font-size:14px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">Calculate Your Approval &rarr;</a>
-                  </td>
-                </tr>
-              </table>
             </td>
           </tr>
         </table>
