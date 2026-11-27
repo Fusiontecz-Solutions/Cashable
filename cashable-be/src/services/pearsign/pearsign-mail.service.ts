@@ -299,7 +299,7 @@ export async function notifyPearSignContractSent(
       await logExternalSigningInvites({
         applicationId: input.applicationId,
         groupId: input.envelopeId,
-        subject: `PearSign requested your signature on "${input.title}"`,
+        subject: `${/^bs-/i.test(String(input.envelopeId || '')) ? 'BoldSign' : 'PearSign'} requested your signature on "${input.title}"`,
         signers: input.signers,
       });
     } else if (crmSendsSignerInvites()) {

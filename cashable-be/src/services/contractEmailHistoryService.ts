@@ -219,7 +219,8 @@ export async function logExternalSigningInvites(input: {
           recipientName: s.name ?? null,
           roleDetail: s.roleName ?? null,
           groupId: input.groupId,
-          provider: 'pearsign',
+          // BoldSign documents are stored as "bs-<id>"; everything else came from PearSign.
+          provider: /^bs-/i.test(String(input.groupId || '')) ? 'boldsign' : 'pearsign',
           template: KIND_LOG.signing_invite.template,
           emailSentTo: [to],
           status: 'sent',
@@ -273,7 +274,13 @@ export async function listContractEmailHistory(applicationId: string): Promise<C
   return rows.map((row) => {
     const meta = asMeta(row.metadata);
     const tracking = asMeta(meta.tracking);
-    const provider = String(meta.provider || '').trim() || null;
+    const groupIdRaw = String(meta.groupId || '').trim();
+    // Older invites of BoldSign documents ("bs-…") were logged as PearSign: show the real sender.
+    const sentByBoldSign = /^bs-/i.test(groupIdRaw);
+    const storedProvider = String(meta.provider || '').trim() || null;
+    const provider = storedProvider === 'pearsign' && sentByBoldSign ? 'boldsign' : storedProvider;
+    const subjectRaw = String(row.subject || '');
+    const subject = sentByBoldSign ? subjectRaw.replace(/^PearSign requested/i, 'BoldSign requested') : subjectRaw;
     const failed = meta.status === 'failed';
     const hasResend = Boolean(row.body) && Object.keys(asMeta(meta.resend)).length > 0;
     return {
@@ -284,7 +291,7 @@ export async function listContractEmailHistory(applicationId: string): Promise<C
       roleDetail: String(meta.roleDetail || '').trim() || null,
       name: String(meta.recipientName || '').trim() || null,
       kind: String(meta.kind || 'cc_copy') as ContractEmailKind,
-      subject: String(row.subject || ''),
+      subject,
       status: failed ? 'failed' : String(row.status || 'sent'),
       groupId: String(meta.groupId || '').trim() || null,
       outboundId: row.id,
@@ -343,8 +350,8 @@ export async function resendContractEmail(applicationId: string, emailId: string
   const resend = asMeta(meta.resend) as Partial<ContractEmailResendPayload>;
   if (!row.body || !resend.contractId || !resend.envelopeId) {
     throw new ContractEmailHistoryError(
-      meta.provider === 'pearsign'
-        ? 'PearSign sent this invite. Use Resend on the contract to send the signing link again.'
+      meta.provider === 'pearsign' || meta.provider === 'boldsign'
+        ? `${/^bs-/i.test(String(meta.groupId || '')) ? 'BoldSign' : 'PearSign'} sent this invite. Use Resend on the contract to send the signing link again.`
         : 'This email cannot be resent.',
     );
   }

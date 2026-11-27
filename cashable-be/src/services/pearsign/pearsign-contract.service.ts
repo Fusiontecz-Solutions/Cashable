@@ -849,7 +849,7 @@ async function announceStatus(
     documentName: `${crmValue(state.values, 'client_legal_name') || 'Merchant'} contract`,
     merchantName: crmValue(state.values, 'client_legal_name') || null,
     contractAmount: crmMoney(crmValue(state.values, 'purchase_amount')) || null,
-    provider: 'pearsign',
+    provider: /^bs-/i.test(String(envelopeId || '')) ? 'boldsign' : 'pearsign',
   }).catch((err) => console.error('[PearSign] in-app status notification failed', err));
 
   if (!EMAILED_NOTICE_GROUPS.has(group) || !crmSignedEmail) return;

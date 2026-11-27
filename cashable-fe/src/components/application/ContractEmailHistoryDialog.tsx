@@ -76,6 +76,7 @@ const PROVIDER_LABEL: Record<string, string> = {
     sendgrid: "SendGrid",
     smtp: "SMTP",
     pearsign: "PearSign",
+    boldsign: "BoldSign",
 };
 
 function providerClass(provider: string | null): string {
@@ -85,6 +86,7 @@ function providerClass(provider: string | null): string {
         case "sendgrid":
             return "bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-200";
         case "pearsign":
+        case "boldsign":
             return "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200";
         default:
             return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200";
@@ -131,7 +133,7 @@ function statusClass(status: string): string {
 function statusTitle(row: ContractEmailHistoryRow): string {
     if (row.failureReason && row.status === "failed") return row.failureReason;
     if (!row.tracked) {
-        if (row.provider === "pearsign") return `Sent by ${signingProviderName()} — delivery is not tracked here.`;
+        if ((row.provider === "pearsign" || row.provider === "boldsign")) return `Sent by ${signingProviderName()} — delivery is not tracked here.`;
         if (row.provider === "gmail") return "Sent from the connected Gmail mailbox — opens are not tracked.";
         return "Delivery is not tracked for this email.";
     }
@@ -147,7 +149,7 @@ function statusTitle(row: ContractEmailHistoryRow): string {
 }
 
 function resendDisabledReason(row: ContractEmailHistoryRow): string {
-    if (row.provider === "pearsign") return `${signingProviderName()} sent this invite — use Resend on the contract.`;
+    if ((row.provider === "pearsign" || row.provider === "boldsign")) return `${signingProviderName()} sent this invite — use Resend on the contract.`;
     return "This email cannot be resent.";
 }
 
