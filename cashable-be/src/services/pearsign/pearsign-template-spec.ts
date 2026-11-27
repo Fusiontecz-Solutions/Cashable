@@ -116,17 +116,29 @@ export function mergeStyles(
  * PearSign rejects a text box shorter than its font size needs. Grow it downward
  * (top edge stays put) so the chosen size always fits. Mirrored in the Review modal.
  */
-export function pearSignHeightForFont(height: number, fontSize?: number | null): number {
-  // PearSign's rule: a box must be at least ceil(fontSize / 0.75) tall.
-  return fontSize ? Math.max(height, Math.ceil(fontSize / 0.75)) : height;
+export function pearSignHeightForFont(height: number, fontSize?: number | null, lines = 1): number {
+  if (!fontSize) return height;
+  // PearSign's rule: a box must be at least ceil(fontSize / 0.75) tall. A value on several lines
+  // (Exhibit A: company, then address) needs a line height per line plus a little padding.
+  const need = lines > 1 ? Math.ceil(lines * fontSize * 1.2 + 3) : Math.ceil(fontSize / 0.75);
+  return Math.max(height, need);
+}
+
+/** Lines a value prints on: it breaks only where it has a line break. */
+export function pearSignValueLines(text: unknown): string[] {
+  return String(text ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 }
 
 /**
  * A box tall enough for `fontSize` (pearSignHeightForFont), grown evenly above and below so the
  * value stays centred on the printed line. Mirrored in the Review modal.
  */
-export function pearSignBoxForFont<T extends { y: number; height: number }>(box: T, fontSize?: number | null): T {
-  const height = pearSignHeightForFont(box.height, fontSize);
+export function pearSignBoxForFont<T extends { y: number; height: number }>(
+  box: T,
+  fontSize?: number | null,
+  text?: string | null,
+): T {
+  const height = pearSignHeightForFont(box.height, fontSize, Math.max(1, pearSignValueLines(text).length));
   if (height === box.height) return box;
   return { ...box, y: Math.max(0, box.y - (height - box.height) / 2), height };
 }
@@ -145,7 +157,8 @@ export function pearSignWidthFitFontSize(
   max: number = PEARSIGN_VALUE_FONT_MAX,
 ): number {
   const room = Math.max(4, width - 4);
-  const t = String(text ?? '').trim();
+  // A value on several lines fits when its longest line does.
+  const t = pearSignValueLines(text).reduce((a, b) => (b.length > a.length ? b : a), '');
   let size = max;
   if (!t) return size;
   while (size > PEARSIGN_VALUE_FONT_MIN && measure(t, size) > room) size -= 0.5;

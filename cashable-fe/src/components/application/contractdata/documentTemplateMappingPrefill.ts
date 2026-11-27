@@ -849,6 +849,31 @@ function dropDisclosureMoneyWhenScrubbingChanged(
     return rest;
 }
 
+/** COJ amounts that come from Scrubbing (repayment / RTR, judgment total, purchase amount). */
+const COJ_MONEY_KEY = /^(coj_repayment_amount|coj_sum_with_default|purchase_amount|purchase_price)$/;
+
+/**
+ * A COJ's saved amounts follow Scrubbing like a disclosure's: a blank amount, or one saved before
+ * Scrubbing's terms last changed (or before snapshots existed), is dropped so the COJ shows the
+ * live repayment and judgment total. An amount edited after the latest Scrubbing change stays.
+ */
+function dropCojMoneyWhenScrubbingChanged(
+    saved: Record<string, string> | null | undefined,
+    savedSnapshot: string | undefined,
+    offerDecision: Record<string, unknown> | null,
+): Record<string, string> | null | undefined {
+    if (!saved) return saved;
+    const live = offerDecisionTermsFingerprint(offerDecision);
+    const current = Boolean(savedSnapshot && live && savedSnapshot === live);
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(saved)) {
+        const base = normalizeMappingFieldKey(key);
+        if (COJ_MONEY_KEY.test(base) && (!String(value ?? "").trim() || !current)) continue;
+        out[key] = value;
+    }
+    return out;
+}
+
 /** A disclosure's saved edits without any amount (offer-derived or calculated) — for merging a new calculation. */
 export function keepNonMoneyDisclosureEdits(
     saved: Record<string, string> | null | undefined,
@@ -2295,12 +2320,21 @@ export function getDocumentTemplatePrefillFieldRowsForEditor(options: {
         templateName: options.templateName,
         contract: effectiveContract,
     });
-    const savedForScrubbing = dropDisclosureMoneyWhenScrubbingChanged(
-        options.savedOverridesForMapping,
-        docType === "disclosure",
-        options.offerDecision ?? null,
-        livePaybackAmount ?? null,
+    const isCojDoc = /(^|_)coj(_|$)|\bcoj\b|confession/i.test(
+        `${options.templateLayoutKey ?? ""} ${options.templateName ?? ""}`,
     );
+    const savedForScrubbing = isCojDoc
+        ? dropCojMoneyWhenScrubbingChanged(
+              dropDisclosureMoneyWhenScrubbingChanged(options.savedOverridesForMapping, false, null, null),
+              options.savedOverridesForMapping?.[OFFER_DECISION_SNAPSHOT_KEY],
+              options.offerDecision ?? null,
+          )
+        : dropDisclosureMoneyWhenScrubbingChanged(
+              options.savedOverridesForMapping,
+              docType === "disclosure",
+              options.offerDecision ?? null,
+              livePaybackAmount ?? null,
+          );
     const savedOverridesForMapping = isAchForm
         ? (savedForScrubbing ?? null)
         : stripStaleFrequencyFromMappingOverrides(

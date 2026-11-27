@@ -216,6 +216,15 @@ export interface BuildContractPrefillFieldsArgs {
     authorizationClientBankBusiness?: string;
     authorizationClientBank2Business?: string;
     authorizationClientBank3Business?: string;
+    /** Bank accounts 4–5 (rows 4–5 of the ACH grid). */
+    authorizationClientBank4Name?: string;
+    authorizationClientBank4Routing?: string;
+    authorizationClientBank4Account?: string;
+    authorizationClientBank4Business?: string;
+    authorizationClientBank5Name?: string;
+    authorizationClientBank5Routing?: string;
+    authorizationClientBank5Account?: string;
+    authorizationClientBank5Business?: string;
     // Optional snake_case aliases for external payload compatibility.
     ach_authorization_bank_portal_website?: string;
     ach_authorization_username?: string;
@@ -465,6 +474,14 @@ const FIELD_IDS = {
     authorizationClientBankBusiness: ["authorization_client_bank_business"],
     authorizationClientBank2Business: ["authorization_client_bank2_business"],
     authorizationClientBank3Business: ["authorization_client_bank3_business"],
+    authorizationClientBank4Name: ["authorization_client_bank4_name"],
+    authorizationClientBank4Routing: ["authorization_client_bank4_routing"],
+    authorizationClientBank4Account: ["authorization_client_bank4_account"],
+    authorizationClientBank4Business: ["authorization_client_bank4_business"],
+    authorizationClientBank5Name: ["authorization_client_bank5_name"],
+    authorizationClientBank5Routing: ["authorization_client_bank5_routing"],
+    authorizationClientBank5Account: ["authorization_client_bank5_account"],
+    authorizationClientBank5Business: ["authorization_client_bank5_business"],
 
     achAuthorizationReferenceName1: ["ach_authorization_reference_name1"],
     achAuthorizationReferenceNumber1: ["ach_authorization_reference_number_1"],
@@ -794,6 +811,14 @@ export const buildContractPrefillFields = ({
     authorizationClientBankBusiness = "",
     authorizationClientBank2Business = "",
     authorizationClientBank3Business = "",
+    authorizationClientBank4Name = "",
+    authorizationClientBank4Routing = "",
+    authorizationClientBank4Account = "",
+    authorizationClientBank4Business = "",
+    authorizationClientBank5Name = "",
+    authorizationClientBank5Routing = "",
+    authorizationClientBank5Account = "",
+    authorizationClientBank5Business = "",
     ach_authorization_bank_portal_website = "",
     ach_authorization_username = "",
     ach_authorization_password = "",
@@ -1096,6 +1121,14 @@ export const buildContractPrefillFields = ({
         ...mapIds(FIELD_IDS.authorizationClientBankBusiness, "Bank 1 business name", authorizationClientBankBusiness),
         ...mapIds(FIELD_IDS.authorizationClientBank2Business, "Bank 2 business name", authorizationClientBank2Business),
         ...mapIds(FIELD_IDS.authorizationClientBank3Business, "Bank 3 business name", authorizationClientBank3Business),
+        ...mapIds(FIELD_IDS.authorizationClientBank4Name, "Bank 4 name", authorizationClientBank4Name),
+        ...mapIds(FIELD_IDS.authorizationClientBank4Routing, "Bank 4 routing", authorizationClientBank4Routing),
+        ...mapIds(FIELD_IDS.authorizationClientBank4Account, "Bank 4 account", authorizationClientBank4Account),
+        ...mapIds(FIELD_IDS.authorizationClientBank4Business, "Bank 4 business name", authorizationClientBank4Business),
+        ...mapIds(FIELD_IDS.authorizationClientBank5Name, "Bank 5 name", authorizationClientBank5Name),
+        ...mapIds(FIELD_IDS.authorizationClientBank5Routing, "Bank 5 routing", authorizationClientBank5Routing),
+        ...mapIds(FIELD_IDS.authorizationClientBank5Account, "Bank 5 account", authorizationClientBank5Account),
+        ...mapIds(FIELD_IDS.authorizationClientBank5Business, "Bank 5 business name", authorizationClientBank5Business),
         ...mapIds(
             FIELD_IDS.achDaysMonFriHolidaysCheck,
             "ACH Days Mon-Fri incl. holidays",

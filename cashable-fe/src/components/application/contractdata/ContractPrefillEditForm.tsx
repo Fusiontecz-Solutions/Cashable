@@ -296,6 +296,14 @@ const FIELD_LABELS = {
     authorizationClientBankBusiness: "Business name (empty = legal name)",
     authorizationClientBank2Business: "Business name (empty = legal name)",
     authorizationClientBank3Business: "Business name (empty = legal name)",
+    authorizationClientBank4Name: "Bank name",
+    authorizationClientBank4Routing: "Routing number",
+    authorizationClientBank4Account: "Account number",
+    authorizationClientBank4Business: "Business name (empty = legal name)",
+    authorizationClientBank5Name: "Bank name",
+    authorizationClientBank5Routing: "Routing number",
+    authorizationClientBank5Account: "Account number",
+    authorizationClientBank5Business: "Business name (empty = legal name)",
     achAuthorizationReferenceName1: "Name",
     achAuthorizationReferenceNumber1: "Phone",
     achAuthorizationReferenceRelationship1: "Relationship",
@@ -375,6 +383,23 @@ function contractPrefillSectionKeys(section: ContractPrefillSection): ContractPr
  * verify fields section by section. Every field here maps to a variable in the
  * cashable contract layout; nothing else is shown.
  */
+/** ACH authorization grid: up to 5 bank accounts (the 5 rows printed on the ACH page). */
+const MAX_ACH_BANK_ACCOUNTS = 5;
+const ACH_EXTRA_BANK_NUMBERS = [2, 3, 4, 5] as const;
+function achBankKeys(n: number): ContractPrefillFormFieldKey[] {
+    return [
+        `authorizationClientBank${n}Name`,
+        `authorizationClientBank${n}Routing`,
+        `authorizationClientBank${n}Account`,
+        `authorizationClientBank${n}Business`,
+    ] as ContractPrefillFormFieldKey[];
+}
+/** "Bank account 4" → 4 (0 for any other group). */
+function achBankGroupNumber(heading?: string): number {
+    const m = /^Bank account (\d+)$/.exec(String(heading ?? ""));
+    return m ? Number(m[1]) : 0;
+}
+
 const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
         {
             id: "fra_merchant",
@@ -466,7 +491,7 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
             id: "ach_authorization",
             title: "Authorization Agreement — ACH",
             description:
-                "Bank grid (up to 3 bank accounts: bank, routing, account; business name and tax ID print on every filled row), printed client name, and the “on the following days” ticks (page 12).",
+                "Bank grid (up to 5 bank accounts: bank, routing, account; business name and tax ID print on every filled row), printed client name, and the “on the following days” ticks (page 12).",
             Icon: Landmark,
             groups: [
                 {
@@ -479,24 +504,11 @@ const CONTRACT_PREFILL_SECTIONS: ContractPrefillSection[] = [
                         "authorizationClientTaxId",
                     ],
                 },
-                {
-                    heading: "Bank account 2 (optional)",
-                    keys: [
-                        "authorizationClientBank2Name",
-                        "authorizationClientBank2Routing",
-                        "authorizationClientBank2Account",
-                        "authorizationClientBank2Business",
-                    ],
-                },
-                {
-                    heading: "Bank account 3 (optional)",
-                    keys: [
-                        "authorizationClientBank3Name",
-                        "authorizationClientBank3Routing",
-                        "authorizationClientBank3Account",
-                        "authorizationClientBank3Business",
-                    ],
-                },
+                // Bank accounts 2–5: shown one at a time with "+ Add bank account".
+                ...ACH_EXTRA_BANK_NUMBERS.map((n) => ({
+                    heading: `Bank account ${n}`,
+                    keys: achBankKeys(n),
+                })),
                 { heading: "Printed name", keys: ["authorizationClientNamePrint"] },
                 {
                     heading: "Debit days",
@@ -1233,6 +1245,26 @@ export function ContractPrefillEditForm({
         [applicationData, fullClientOwners],
     );
     const [values, setValues] = useState<Record<keyof BuildContractPrefillFieldsArgs, string>>(emptyValuesRecord);
+    /** ACH bank accounts shown: every filled one, plus any added with "+ Add bank account". */
+    const [bankRowsShown, setBankRowsShown] = useState(1);
+    const filledBankCount = useMemo(() => {
+        let highest = 1;
+        for (const n of ACH_EXTRA_BANK_NUMBERS) {
+            if (achBankKeys(n).some((k) => String(values[k] ?? "").trim())) highest = n;
+        }
+        return highest;
+    }, [values]);
+    const visibleBankCount = Math.min(MAX_ACH_BANK_ACCOUNTS, Math.max(filledBankCount, bankRowsShown));
+    const removeLastBankAccount = useCallback(() => {
+        const n = visibleBankCount;
+        if (n < 2) return;
+        setValues((prev) => {
+            const next = { ...prev };
+            for (const k of achBankKeys(n)) next[k] = "";
+            return next;
+        });
+        setBankRowsShown(n - 1);
+    }, [visibleBankCount]);
     const [addendumFieldValuesByMappingId, setAddendumFieldValuesByMappingId] = useState<
         Record<string, Record<string, string>>
     >({});
@@ -1512,6 +1544,8 @@ export function ContractPrefillEditForm({
         const base = CONTRACT_PREFILL_SECTIONS.map((section) => ({
             ...section,
             groups: section.groups
+                // ACH grid: only the bank accounts added so far (filled ones always show).
+                .filter((group) => achBankGroupNumber(group.heading) <= visibleBankCount)
                 .map((group) => ({
                     ...group,
                     keys: filterGroupKeys(group.keys),
@@ -1564,6 +1598,7 @@ export function ContractPrefillEditForm({
         }
         return base;
     }, [
+        visibleBankCount,
         resolvedAddendumMappings,
         addendumEditorRowsByMappingId,
         linkedDisclosureMapping,
@@ -3186,6 +3221,43 @@ export function ContractPrefillEditForm({
                                                         </div>
                                                     ))}
                                                 </div>
+                                                {/* ACH grid: add the next bank account (up to 5) under the last one shown. */}
+                                                {activeSection.id === "ach_authorization" &&
+                                                !readOnly &&
+                                                (achBankGroupNumber(group.heading) ||
+                                                    (group.heading === "Bank account" ? 1 : 0)) === visibleBankCount ? (
+                                                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                                        {visibleBankCount < MAX_ACH_BANK_ACCOUNTS ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setBankRowsShown(visibleBankCount + 1)}
+                                                                disabled={saving}
+                                                                className="h-8 gap-1.5 border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5" aria-hidden />
+                                                                Add bank account
+                                                            </Button>
+                                                        ) : null}
+                                                        {visibleBankCount >= 2 ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={removeLastBankAccount}
+                                                                disabled={saving}
+                                                                className="h-8 gap-1.5 text-slate-500 hover:text-destructive"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                                                                Remove bank account {visibleBankCount}
+                                                            </Button>
+                                                        ) : null}
+                                                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                            {visibleBankCount} of {MAX_ACH_BANK_ACCOUNTS}
+                                                        </span>
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         ))}
                                     </div>

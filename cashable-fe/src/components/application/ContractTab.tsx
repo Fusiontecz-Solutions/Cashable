@@ -1,4 +1,5 @@
 import { openDropboxSignEmbedded } from "./contractdata/dropboxSign";
+import OfferEmailDialog from "./OfferEmailDialog";
 import { formatContractDateET } from "@/lib/dateTime";
 import { signingProviderName } from "@/lib/signingProvider";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -417,6 +418,7 @@ export default function ContractTab({
     const { data: termsOffers, loading: termsOffersLoading } = useSelector(
         (state: RootState) => state.termsOffers,
     );
+    const [offerEmailOpen, setOfferEmailOpen] = useState(false);
     const { data: offerDecision, loading: offerDecisionLoading } = useSelector(
         (state: RootState) => state.offerDecision,
     );
@@ -4845,6 +4847,15 @@ export default function ContractTab({
 
     return (
         <div className="space-y-6">
+            {applicationUuid ? (
+                <OfferEmailDialog
+                    open={offerEmailOpen}
+                    onOpenChange={setOfferEmailOpen}
+                    applicationId={String(applicationUuid)}
+                    application={applicationData as Record<string, unknown> | null}
+                    offerDecision={offerDecision as Record<string, unknown> | null}
+                />
+            ) : null}
             {/* Contract Filter Section - Light blue-grey background */}
             <div
                 className={`rounded-lg border p-6 ${isDark ? "bg-[#1F2021] border-[#243a58]" : "bg-[#E8F0F8] border-[#D1D5DB]"}`}
@@ -4854,6 +4865,15 @@ export default function ContractTab({
 
                     </div>
                     <div className="flex items-center gap-3">
+                        {!isReadOnly && applicationUuid ? (
+                            <Button
+                                type="button"
+                                onClick={() => setOfferEmailOpen(true)}
+                                className="rounded-md bg-[image:var(--brand-gradient)] text-white hover:opacity-90 cursor-pointer px-6 py-2 h-10 font-medium"
+                            >
+                                Send Offer Email
+                            </Button>
+                        ) : null}
                         {!isReadOnly && applicationUuid ? (
                             <Button
                                 type="button"

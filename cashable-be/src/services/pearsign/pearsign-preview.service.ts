@@ -1,7 +1,7 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { fetchRemoteAssetBuffer } from '../cloudinaryInlinePreviewService';
 import type { PearSignTemplate, PearSignTemplateField } from './pearsign-client';
-import { pearSignBoxForFont, pearSignValueKey, type PearSignFieldStyle } from './pearsign-template-spec';
+import { pearSignBoxForFont, pearSignValueKey, pearSignValueLines, type PearSignFieldStyle } from './pearsign-template-spec';
 
 /**
  * Filled-contract preview (the "Review" step), built before anything is sent.
@@ -134,10 +134,17 @@ function drawValue(
   fontSize?: number,
   align: 'left' | 'right' = 'left',
 ) {
-  const text = encodable(font, raw.trim());
-  if (!text) return;
+  // A value with line breaks (Exhibit A: company, then address) prints one line each.
+  const given = pearSignValueLines(raw).map((l) => encodable(font, l)).filter(Boolean);
+  if (!given.length) return;
   const pageHeight = page.getHeight();
-  const { size, lines } = layout(font, text, box, fontSize);
+  const { size, lines } =
+    given.length > 1
+      ? (() => {
+          const longest = given.reduce((a, b) => (font.widthOfTextAtSize(b, 10) > font.widthOfTextAtSize(a, 10) ? b : a));
+          return { size: layout(font, longest, { ...box, height: box.height / given.length }, fontSize).size, lines: given };
+        })()
+      : layout(font, given[0], box, fontSize);
   const lineHeight = size * 1.1;
   const blockHeight = lines.length * lineHeight;
   const boxBottom = pageHeight - box.y - box.height;
@@ -250,7 +257,7 @@ export async function buildPearSignPreviewPdf(input: {
     if (!v) continue;
     const fontSize = input.fieldStyleFor?.(f.fieldName)?.fontSize ?? input.styles?.[key]?.fontSize;
     const align = input.alignRightFor?.(f.fieldName, v) ? 'right' : 'left';
-    drawValue(page, font, v, pearSignBoxForFont(box, fontSize), fontSize, align);
+    drawValue(page, font, v, pearSignBoxForFont(box, fontSize, v), fontSize, align);
     filled++;
   }
 

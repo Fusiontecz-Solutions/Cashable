@@ -908,7 +908,7 @@ async function preparePackageSend(contractId: number, body: { message?: string; 
       roleId: f.roleId,
       // Box grown evenly to the size so the value stays centred on its line.
       position: (({ y, height }) => ({ page: f.page, x: f.x, y: Math.round(y * 10) / 10, width: f.width, height }))(
-        pearSignBoxForFont({ y: f.y, height: f.height }, fontSize),
+        pearSignBoxForFont({ y: f.y, height: f.height }, fontSize, f.signerFilled ? null : values[f.key]),
       ),
       ...(fontSize ? { fontSize, fontFamily: 'helvetica' as const } : {}),
     };

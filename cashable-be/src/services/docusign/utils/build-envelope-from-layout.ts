@@ -1809,7 +1809,7 @@ function resolveDisclosureMerchantNameValue(
 }
 
 /**
- * Exhibit A row N on the contract: "<company> — <address>" when the company has an address
+ * Exhibit A row N on the contract: company, then its address on the next line, when it has one
  * (`exhibit_a_address_N`). Only this box shows the address; the COJs list the name alone.
  */
 /** Weekly ACH fallback line: the daily ACH amount is the weekly remit ÷ 5 business days. */
@@ -1826,7 +1826,8 @@ export function exhibitARowValue(key: string, values: Record<string, string>): s
   if (!row) return null;
   const name = String(values[key] ?? values[key.toLowerCase()] ?? '').trim();
   const address = String(values[`exhibit_a_address_${row[1]}`] ?? '').trim();
-  return name && address ? `${name} — ${address}` : null;
+  // Company on the first line, its address on the second.
+  return name && address ? `${name}\n${address}` : null;
 }
 
 function resolveTextPlacementValue(

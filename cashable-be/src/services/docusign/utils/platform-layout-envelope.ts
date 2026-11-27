@@ -964,10 +964,10 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     if (values[key]) values[key] = normalizeUsAddress(values[key]);
   }
   // ACH bank grid: each row's business name is the one entered for that bank, else the legal name.
-  // Rows 2–3 print a business name and tax ID only when that row has a bank.
+  // Rows 2–5 print a business name and tax ID only when that row has a bank.
   const legalName = String(values.client_legal_name ?? '');
   values.authorization_client_bank1_business_name = String(values.authorization_client_bank_business ?? '').trim() || legalName;
-  for (const n of [2, 3]) {
+  for (const n of [2, 3, 4, 5]) {
     const hasBank = ['name', 'routing', 'account'].some((k) =>
       String(values[`authorization_client_bank${n}_${k}`] ?? '').trim(),
     );

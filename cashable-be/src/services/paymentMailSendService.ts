@@ -140,11 +140,16 @@ export async function sendTrackedPaymentTemplateMail(
       },
     });
 
+    // "a@x.com, b@y.com" → separate recipients (one string would be read as a single address).
+    const splitAddresses = (v?: string | string[]) =>
+      (Array.isArray(v) ? v : String(v ?? '').split(/[,;]/)).map((s) => s.trim()).filter(Boolean);
+    const toList = splitAddresses(input.to);
+    const ccList = splitAddresses(input.cc);
     const result = await sendSendGridMail({
-      to: input.to,
+      to: toList.length > 1 ? toList : input.to,
       subject: input.subject,
       html: input.body,
-      cc: input.cc,
+      cc: ccList.length ? ccList : input.cc,
       bcc: input.bcc,
       replyTo: input.replyTo,
       from: getSendGridMailFrom(),
