@@ -22,7 +22,7 @@ import {
     updateContract,
 } from "@/redux/actions/contractActions";
 import { toast } from "react-toastify";
-import { Download, FileDown } from "lucide-react";
+import { Download, Eye, FileDown } from "lucide-react";
 import { axiosPost } from "@/redux/axios";
 import { isNewYorkCojTemplate } from "@/lib/cojBold";
 import type {
@@ -231,9 +231,9 @@ export function TemplateMappingPrefillEditDialog({
     }, [open, row?.id, editorRows]);
 
     /** The filled NY COJ as a PDF, from the values on screen (unsaved edits included). */
-    const handleDownloadNyCojPdf = useCallback(async () => {
-        if (!row || !contractId) return;
-        setDownloadingPdf(true);
+    /** Builds the filled NY COJ PDF from the values on screen (unsaved edits included). */
+    const buildNyCojPdf = useCallback(async (): Promise<{ blob: Blob; name: string } | null> => {
+        if (!row || !contractId) return null;
         try {
             const values: Record<string, string> = {};
             for (const r of editorRows) values[r.id] = String(fieldValues[r.id] ?? r.value ?? "");
@@ -244,15 +244,7 @@ export function TemplateMappingPrefillEditDialog({
             );
             const disposition = String((res.headers as Record<string, unknown>)?.["content-disposition"] ?? "");
             const name = /filename="([^"]+)"/.exec(disposition)?.[1] || "COJ - New York.pdf";
-            const url = URL.createObjectURL(res.data as Blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = name;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 10_000);
-            toast.success(`${name} downloaded.`);
+            return { blob: new Blob([res.data as Blob], { type: "application/pdf" }), name };
         } catch (error: unknown) {
             let message = "Could not build the COJ PDF.";
             const data = (error as { response?: { data?: unknown } })?.response?.data;
@@ -264,10 +256,50 @@ export function TemplateMappingPrefillEditDialog({
                 }
             }
             toast.error(message);
+            return null;
+        }
+    }, [row, contractId, editorRows, fieldValues]);
+
+    const saveBlob = (blob: Blob, name: string) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        toast.success(`${name} downloaded.`);
+    };
+
+    const handleDownloadNyCojPdf = useCallback(async () => {
+        setDownloadingPdf(true);
+        try {
+            const pdf = await buildNyCojPdf();
+            if (pdf) saveBlob(pdf.blob, pdf.name);
         } finally {
             setDownloadingPdf(false);
         }
-    }, [row, contractId, editorRows, fieldValues]);
+    }, [buildNyCojPdf]);
+
+    /** Preview: the same PDF in a viewer inside the CRM, downloadable from there. */
+    const [pdfPreview, setPdfPreview] = useState<{ url: string; blob: Blob; name: string } | null>(null);
+    const [previewingPdf, setPreviewingPdf] = useState(false);
+    const handlePreviewNyCojPdf = useCallback(async () => {
+        setPreviewingPdf(true);
+        try {
+            const pdf = await buildNyCojPdf();
+            if (pdf) setPdfPreview({ url: URL.createObjectURL(pdf.blob), ...pdf });
+        } finally {
+            setPreviewingPdf(false);
+        }
+    }, [buildNyCojPdf]);
+    const closePdfPreview = useCallback(() => {
+        setPdfPreview((cur) => {
+            if (cur) URL.revokeObjectURL(cur.url);
+            return null;
+        });
+    }, []);
 
     const handleSave = useCallback(async () => {
         const cid = contractId != null && Number.isFinite(Number(contractId)) ? Number(contractId) : null;
@@ -464,6 +496,7 @@ export function TemplateMappingPrefillEditDialog({
         : `Edit template mapping — ${titleName}`;
 
     return (
+        <>
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className="flex max-h-[90vh] w-[min(100vw-2rem,960px)] flex-col gap-0 p-0 sm:max-w-[960px]"
@@ -491,16 +524,29 @@ export function TemplateMappingPrefillEditDialog({
                                     email it yourself. The oath&rsquo;s state / county and the notary section stay
                                     blank for the notary.
                                 </div>
-                                <Button
-                                    type="button"
-                                    size="lg"
-                                    disabled={saving || downloadingPdf || !row || !contractId}
-                                    onClick={() => void handleDownloadNyCojPdf()}
-                                    className="h-11 shrink-0 gap-2 bg-amber-600 px-5 text-base font-semibold text-white shadow-md hover:bg-amber-700 focus-visible:ring-amber-500"
-                                >
-                                    <Download className="h-5 w-5" aria-hidden />
-                                    {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
-                                </Button>
+                                <div className="flex shrink-0 flex-wrap gap-2">
+                                    <Button
+                                        type="button"
+                                        size="lg"
+                                        variant="outline"
+                                        disabled={saving || previewingPdf || !row || !contractId}
+                                        onClick={() => void handlePreviewNyCojPdf()}
+                                        className="h-11 gap-2 border-2 border-amber-600 bg-white px-4 text-base font-semibold text-amber-800 hover:bg-amber-100 dark:bg-transparent dark:text-amber-200"
+                                    >
+                                        <Eye className="h-5 w-5" aria-hidden />
+                                        {previewingPdf ? "Opening…" : "Preview PDF"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="lg"
+                                        disabled={saving || downloadingPdf || !row || !contractId}
+                                        onClick={() => void handleDownloadNyCojPdf()}
+                                        className="h-11 gap-2 bg-amber-600 px-5 text-base font-semibold text-white shadow-md hover:bg-amber-700 focus-visible:ring-amber-500"
+                                    >
+                                        <Download className="h-5 w-5" aria-hidden />
+                                        {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
+                                    </Button>
+                                </div>
                             </div>
                         ) : null}
                         {editorRows.length === 0 ? (
@@ -621,15 +667,27 @@ export function TemplateMappingPrefillEditDialog({
                 </div>
                 <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
                     {isNyCoj ? (
-                        <Button
-                            type="button"
-                            disabled={saving || downloadingPdf || !row || !contractId}
-                            onClick={() => void handleDownloadNyCojPdf()}
-                            className="mr-auto gap-2 bg-amber-600 font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:ring-amber-500"
-                        >
-                            <Download className="h-4 w-4" aria-hidden />
-                            {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
-                        </Button>
+                        <div className="mr-auto flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={saving || previewingPdf || !row || !contractId}
+                                onClick={() => void handlePreviewNyCojPdf()}
+                                className="gap-2 border-amber-600 font-semibold text-amber-800 hover:bg-amber-100 dark:text-amber-200"
+                            >
+                                <Eye className="h-4 w-4" aria-hidden />
+                                {previewingPdf ? "Opening…" : "Preview PDF"}
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={saving || downloadingPdf || !row || !contractId}
+                                onClick={() => void handleDownloadNyCojPdf()}
+                                className="gap-2 bg-amber-600 font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:ring-amber-500"
+                            >
+                                <Download className="h-4 w-4" aria-hidden />
+                                {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
+                            </Button>
+                        </div>
                     ) : null}
                     <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
                         Cancel
@@ -640,5 +698,34 @@ export function TemplateMappingPrefillEditDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        <Dialog open={Boolean(pdfPreview)} onOpenChange={(next: boolean) => (next ? undefined : closePdfPreview())}>
+            <DialogContent className="flex h-[92vh] w-[min(100vw-2rem,1000px)] flex-col gap-0 p-0 sm:max-w-[1000px]">
+                <DialogHeader className="shrink-0 border-b px-6 py-3">
+                    <DialogTitle className="text-base">Preview — {pdfPreview?.name ?? "COJ"}</DialogTitle>
+                    <p className="text-muted-foreground text-xs font-normal">
+                        This is exactly the PDF that downloads. Close the preview to change a value.
+                    </p>
+                </DialogHeader>
+                <div className="min-h-0 flex-1 bg-slate-100 dark:bg-slate-900">
+                    {pdfPreview ? (
+                        <iframe title="COJ PDF preview" src={`${pdfPreview.url}#view=FitH`} className="h-full w-full border-0" />
+                    ) : null}
+                </div>
+                <DialogFooter className="shrink-0 gap-2 border-t px-6 py-3">
+                    <Button type="button" variant="outline" onClick={closePdfPreview}>
+                        Back to editing
+                    </Button>
+                    <Button
+                        type="button"
+                        onClick={() => pdfPreview && saveBlob(pdfPreview.blob, pdfPreview.name)}
+                        className="gap-2 bg-amber-600 font-semibold text-white hover:bg-amber-700"
+                    >
+                        <Download className="h-4 w-4" aria-hidden />
+                        Download PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 }
