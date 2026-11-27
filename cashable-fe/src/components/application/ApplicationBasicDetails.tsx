@@ -293,7 +293,7 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
             const d = new Date(value);
             return Number.isNaN(d.getTime())
                 ? "-"
-                : d.toLocaleDateString("en-US", { timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric" });
+                : d.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }); // value is a YYYY-MM-DD calendar day
         }
         return value;
     };
@@ -305,7 +305,7 @@ const ApplicationBasicDetails = ({ applicationId }: ApplicationBasicDetailsProps
             const d = new Date(value);
             return Number.isNaN(d.getTime())
                 ? "-"
-                : d.toLocaleDateString("en-US", { timeZone: "America/New_York", year: "numeric", month: "short", day: "numeric" });
+                : d.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" }); // value is a YYYY-MM-DD calendar day
         }
         return value;
     };

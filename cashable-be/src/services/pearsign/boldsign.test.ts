@@ -172,3 +172,12 @@ describe('ACH payment terms are read-only for the merchant', () => {
     ]);
   });
 });
+
+describe('contractValueCase – weekly ACH note', () => {
+  const { contractValueCase } = jest.requireActual('./pearsign-package.service');
+  it('keeps the note in sentence case and the day in capitals', () => {
+    const note = '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $375.00';
+    expect(contractValueCase(note, 'd1_ach_following_days_p3')).toBe(note);
+    expect(contractValueCase('Wednesday', 'd1_ach_following_days_day_p3')).toBe('WEDNESDAY');
+  });
+});

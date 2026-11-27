@@ -323,7 +323,7 @@ function formatEin(val: string): string | null {
     if (digits.length === 9) {
         return `${digits.slice(0, 2)}-${digits.slice(2)}`;
     }
-    return val.trim().slice(0, 20) || null;
+    return null; // never store a label/word as an EIN (e.g. "DateBusiness")
 }
 
 function formatSsn(val: string): string | null {
@@ -399,7 +399,8 @@ function assignValue(
     }
 
     if (rule.field === 'business_ein_number') {
-        business.business_ein_number = formatEin(v);
+        const ein = formatEin(v);
+        if (ein) business.business_ein_number = ein;
         return;
     }
     if (rule.field === 'owner_ssn') {

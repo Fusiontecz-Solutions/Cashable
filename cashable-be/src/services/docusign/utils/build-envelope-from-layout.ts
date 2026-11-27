@@ -10,6 +10,7 @@ import {
 import type { PrefillFieldInput } from './docusign-prefill';
 import { toPrefillUppercase } from './prefill-uppercase';
 import { toEnvelopeSubjectUppercase } from '../../../utils/contractEnvelopeEmailSubject';
+import { fullUsStateName } from '../../../utils/usStateNames';
 import { DOCUSIGN_DEFAULT_ROLE_NAME, DOCUSIGN_SECONDARY_ROLE_NAME } from './docusign-client';
 import {
   applyDocuSignPrefillTabStyle,
@@ -1180,6 +1181,9 @@ export function expandPrefillValues(
       out[toDisclosureScopedPrefillId(slot)] = remittanceAmount;
     }
   }
+
+  // COJ "Owner state" / "Sworn state" (STATE OF ___) is always spelled out: NY → New York.
+  if (String(out.owner_state || '').trim()) out.owner_state = fullUsStateName(out.owner_state);
 
   // ACH "On the following days" line — weekly deals only: "<DAY> - If a Weekly ACH bounces …
   // Daily ACH of $<remit ÷ 5>" (the weekly remit spread over 5 business days). The standard

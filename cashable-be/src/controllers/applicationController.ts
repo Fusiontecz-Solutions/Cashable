@@ -158,6 +158,8 @@ import {
     fromPrismaMailLogStatus,
 } from '../services/paymentMailLogService';
 import { extractPdfPlainTextForParsing } from '../services/pdfIngestionService';
+import { sanitizeEin } from '../services/einSanitizer';
+import { parseCalendarDate } from '../utils/parseCalendarDate';
 import { normalizeOcrTextForParsing } from '../services/ocrFieldExtraction';
 import { parseBusinessData } from "../services/parseBusinessData";
 import { formatOcrBusinessBlock } from "../services/ocrLineParser";
@@ -7205,12 +7207,7 @@ class ApplicationController {
             };
 
             // Helper to parse ISO-like date strings into Date objects
-            const parseDate = (dateStr: string | null | undefined): Date | null => {
-                if (!dateStr) return null;
-
-                const parsed = new Date(dateStr);
-                return isNaN(parsed.getTime()) ? null : parsed;
-            };
+            const parseDate = (dateStr: string | null | undefined): Date | null => parseCalendarDate(dateStr);
 
             const ownerSsnRaw =
                 owner.owner_ssn ||
@@ -7404,7 +7401,7 @@ class ApplicationController {
                         businessIncorporationState:
                             business.business_incorporation_state || business.business_state || null,
                         businessEntityType: business.business_type_of_entity || null,
-                        businessEinNumber: business.business_ein_number || null,
+                        businessEinNumber: sanitizeEin(business.business_ein_number),
                         businessAnnualRevenue: annualRevenue ?? null,
                         businessMonthlyRevenue: monthlyRevenue ?? null,
                         businessAddress1: business.business_address1 || null,

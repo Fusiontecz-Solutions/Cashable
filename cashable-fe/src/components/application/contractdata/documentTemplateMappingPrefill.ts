@@ -93,6 +93,7 @@ import {
     resolveAchSavedMappingOverrides,
 } from "./achFormEditConfig";
 import { CONTRACT_SIGNER_OVERRIDES_KEY } from "./templateRecipients";
+import { fullUsStateName } from "@/constants/usStates";
 
 function resolveMainContractBusinessNameFromPrefill(
     byId: Map<string, { id: string; value: string }>,
@@ -1986,7 +1987,8 @@ function addendumComputed(
             guarantor_address_state: ownState,
             guarantor_address_zip: ownZip,
             guarantor_address_full: join(ownStreet, ownCity, ownState, ownZip),
-            owner_state: pick("ownerState") || ownState,
+            // COJ "STATE OF ___": spelled out (NY → New York).
+            owner_state: fullUsStateName(pick("ownerState") || ownState),
             owner_county: pick("ownerCounty", "guarantorAddressCounty"),
             security_tax_ein: pick("securityTaxEin", "federalTaxIdEin", "authorizationClientTaxId", "taxId", "ein"),
             guaranty_owner1_ss: pick("guarantyOwner1Ss", "guarantySs", "guarantyGuarantor1Ss"),

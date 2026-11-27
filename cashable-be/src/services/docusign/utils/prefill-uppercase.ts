@@ -5,6 +5,8 @@ export function shouldSkipPrefillUppercase(fieldId?: string | null): boolean {
     .toLowerCase()
     .replace(/[\s-]+/g, '_');
   if (!k) return false;
+  // Weekly ACH note ("- If a Weekly ACH bounces …") prints as written; the day name stays in capitals.
+  if (/ach_following_days(?!_day)/.test(k)) return true;
   const compact = k.replace(/_/g, '');
   if (k.includes('email')) return true;
   if (compact.includes('password')) return true;

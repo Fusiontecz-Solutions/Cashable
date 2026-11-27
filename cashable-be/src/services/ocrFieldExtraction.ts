@@ -651,7 +651,8 @@ export function parseOcrMappedFields(rawText: string): { business: BusinessParti
     if (ein?.trim()) {
         const v = ein.trim();
         const m = v.match(/\b\d{2}[-\s]?\d{7}\b/);
-        business.business_ein_number = m ? m[0].replace(/\s/g, '') : v.replace(/\s/g, '').slice(0, 12);
+        // Only a real XX-XXXXXXX: a blank EIN box otherwise captured the next label ("DateBusiness").
+        if (m) business.business_ein_number = m[0].replace(/\s/g, '');
     }
 
     const ssnRaw = extractFieldAfterLabel(

@@ -666,6 +666,12 @@ const LIVE_ADDRESS_KEYS_FOR_LINKED_DOCS = [
     "clientName",
     "owner1GuarantorName",
     "owner2GuarantorName",
+    // Owner SSNs → Prepay Discount "SSN" and every linked document's SSN box.
+    "guarantySs",
+    "guarantyOwner1Ss",
+    "guarantyGuarantor1Ss",
+    "guarantyOwner2Ss",
+    "guarantyGuarantor2Ss",
     // Exhibit A companies → every COJ's additional names.
     "exhibitAValue1",
     "exhibitAValue2",
@@ -690,6 +696,9 @@ const SYNC_GROUP_DOCUMENT_FIELDS: Record<string, readonly string[]> = {
     mailingState: ["guarantor_address_state"],
     mailingZip: ["guarantor_address_zip"],
     dba: ["doing_business_as"],
+    ein: ["security_tax_ein"],
+    ssn: ["guaranty_owner1_ss"],
+    owner2Ssn: ["guaranty_owner2_ss"],
 };
 
 /** Shared logical values repeated across contract sections — synced via “Sync to all”. */

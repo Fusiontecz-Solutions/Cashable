@@ -620,9 +620,11 @@ async function fieldFontSizes(
  * Kept as typed: email addresses, links and encrypted values. COJ inputs are not boxes: the COJ
  * typesetter decides their case itself.
  */
-export function contractValueCase(value: string): string {
+export function contractValueCase(value: string, key?: string): string {
   const v = String(value ?? '');
   if (!v || v.includes('@') || /^(https?:|www\.|enc:v1:)/i.test(v.trim())) return v;
+  // Weekly ACH note ("- If a Weekly ACH bounces …") keeps sentence case; the day box stays capitals.
+  if (key && /ach_following_days(?!_day)/i.test(key)) return v;
   return v.toUpperCase();
 }
 
@@ -633,7 +635,7 @@ function packageValues(pkg: PearSignStagedPackage, extra?: Record<string, string
     else out[k] = pkg.crmValues[k] ?? '';
   }
   const boxKeys = new Set(pkg.fields.map((f) => f.key));
-  for (const k of Object.keys(out)) if (boxKeys.has(k)) out[k] = contractValueCase(out[k]);
+  for (const k of Object.keys(out)) if (boxKeys.has(k)) out[k] = contractValueCase(out[k], k);
   return out;
 }
 

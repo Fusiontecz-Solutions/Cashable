@@ -53,7 +53,75 @@ async function pagerenderPdfParseDefault(pageData: {
   return text;
 }
 
-async function parsePdfBufferForHybrid(buffer: Buffer): Promise<{
+type PdfWidgetAnnotation = {
+  subtype?: string;
+  fieldType?: string;
+  fieldName?: string;
+  fieldValue?: unknown;
+  rect?: number[];
+};
+
+type PositionedText = { s: string; x: number; y: number };
+
+/** Section headings that repeat the same labels (e.g. owner 1 vs owner 2 "Full Name"). */
+const FORM_SECTION_HEADING = /^(owner|partner|guarantor|principal|officer)\b[^a-z]*.*\d\s*$/i;
+
+/**
+ * Filled-in application forms (e-sign / "fillable" PDFs) keep the typed answers in form
+ * widgets, not in the page text. pdf-parse only returns the text layer, so the model saw the
+ * printed labels with no values (e.g. "Tax ID Number" next to "Business Start Date").
+ * This pairs each filled widget with the printed label just above/left of it, giving
+ * "Label: value" lines. Works even when the PDF's AcroForm index is missing.
+ */
+export function pairWidgetValuesWithLabels(
+  items: PositionedText[],
+  annotations: PdfWidgetAnnotation[],
+): string[] {
+  const headings = items.filter((i) => FORM_SECTION_HEADING.test(i.s));
+  const rows: Array<{ y: number; x: number; line: string }> = [];
+  for (const a of annotations) {
+    if (a.subtype !== "Widget" || !a.rect || a.rect.length < 4) continue;
+    if (a.fieldType !== "Tx" && a.fieldType !== "Ch") continue;
+    let v = a.fieldValue;
+    if (Array.isArray(v)) v = v.join(", ");
+    const value = String(v ?? "").replace(/\s+/g, " ").trim();
+    if (!value) continue;
+    const [x1, y1, x2, y2] = a.rect;
+    const label = items
+      .filter((i) => i.x >= x1 - 60 && i.x <= x2 && i.y >= y1 - 2 && i.y <= y2 + 25 && i.s !== value)
+      .map((i) => ({ i, score: Math.abs(i.y - y2) + Math.abs(i.x - x1) * 0.3 }))
+      .sort((p, q) => p.score - q.score)[0]?.i.s;
+    const heading = headings
+      .filter((h) => h.y > y2)
+      .sort((p, q) => p.y - q.y)[0]?.s;
+    const name = label || String(a.fieldName || "Field");
+    const prefix = heading ? `${heading.replace(/\s+/g, " ")} - ` : "";
+    rows.push({ y: y2, x: x1, line: `${prefix}${name}: ${value}` });
+  }
+  rows.sort((p, q) => (Math.abs(p.y - q.y) > 4 ? q.y - p.y : p.x - q.x));
+  return rows.map((r) => r.line);
+}
+
+async function filledFieldLinesForPage(pageData: unknown): Promise<string[]> {
+  const pd = pageData as {
+    getTextContent: (o: Record<string, boolean>) => Promise<{ items: PageTextItem[] }>;
+    getAnnotations?: () => Promise<PdfWidgetAnnotation[]>;
+  };
+  if (typeof pd.getAnnotations !== "function") return [];
+  try {
+    const annotations = await pd.getAnnotations();
+    if (!annotations?.some((a) => a.subtype === "Widget")) return [];
+    const tc = await pd.getTextContent({ normalizeWhitespace: false, disableCombineTextItems: false });
+    const items = tc.items
+      .filter((i) => i.str.trim())
+      .map((i) => ({ s: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
+    return pairWidgetValuesWithLabels(items, annotations);
+  } catch {
+    return [];
+  }
+}
+
+export async function parsePdfBufferForHybrid(buffer: Buffer): Promise<{
   combined: string;
   perPage: string[];
   numpages: number;
@@ -67,9 +135,14 @@ async function parsePdfBufferForHybrid(buffer: Buffer): Promise<{
   const perPage: string[] = [];
   const rendered = await parse(buffer, {
     pagerender: async (pageData: unknown) => {
-      const t = await pagerenderPdfParseDefault(
+      let t = await pagerenderPdfParseDefault(
         pageData as Parameters<typeof pagerenderPdfParseDefault>[0]
       );
+      const filled = await filledFieldLinesForPage(pageData);
+      if (filled.length) {
+        // Put the answers first: they are what the model must read.
+        t = `FILLED FORM FIELDS (printed label: typed value)\n${filled.join("\n")}\n\nPRINTED PAGE TEXT\n${t}`;
+      }
       perPage.push(t);
       return t;
     },

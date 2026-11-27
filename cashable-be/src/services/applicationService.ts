@@ -24,7 +24,8 @@ import {
     tryClaimPdfContentHashCreate,
 } from './gmailAutoCreateProcessedStore';
 import { getCachedDesignatedUnderwriterIds } from './underwriterRoutingService';
-import { looksLikeEin } from './einSanitizer';
+import { looksLikeEin, sanitizeEin } from './einSanitizer';
+import { parseCalendarDate } from '../utils/parseCalendarDate';
 import { syncDuplicateFlagForApplication } from './applicationIdentityDedupeService';
 
 export type UserRole = Role;
@@ -490,11 +491,7 @@ const parseNumericAmount = (value: string | number | null | undefined): number |
 };
 
 /** Helper to parse date strings */
-const parseDate = (dateStr: string | null | undefined): Date | null => {
-    if (!dateStr) return null;
-    const parsed = new Date(dateStr);
-    return isNaN(parsed.getTime()) ? null : parsed;
-};
+const parseDate = (dateStr: string | null | undefined): Date | null => parseCalendarDate(dateStr);
 
 const looksLikeEmail = (s: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(s);
 
@@ -939,7 +936,7 @@ async function createClientAndApplicationFromPDFBufferUnlocked(
                 businessIncorporationState:
                     business.business_incorporation_state || business.business_state || null,
                 businessEntityType: business.business_type_of_entity || null,
-                businessEinNumber: business.business_ein_number || null,
+                businessEinNumber: sanitizeEin(business.business_ein_number),
                 businessAnnualRevenue: annualRevenue ?? null,
                 businessMonthlyRevenue: monthlyRevenue ?? null,
                 businessAddress1: business.business_address1 || null,
@@ -1232,7 +1229,7 @@ export async function applyPdfExtractToApplicationFromStoredFile(
     assignString('businessWebsite', business.business_website);
     assignString('businessIncorporationState', business.business_incorporation_state || business.business_state);
     assignString('businessEntityType', business.business_type_of_entity);
-    assignString('businessEinNumber', business.business_ein_number);
+    assignString('businessEinNumber', sanitizeEin(business.business_ein_number));
     assignString('businessAddress1', business.business_address1);
     assignString('businessAddress2', business.business_address2);
     assignString('businessCity', business.business_city);

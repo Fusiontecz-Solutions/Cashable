@@ -18,3 +18,11 @@ describe('prefill uppercase', () => {
     );
   });
 });
+
+describe('weekly ACH note keeps sentence case', () => {
+  it('prints the note as written but keeps the day in capitals', () => {
+    const note = '- If a Weekly ACH bounces or is uncollected, the Weekly ACH will change to Daily ACH of $375.00';
+    expect(toPrefillUppercase(note, 'ach_following_days')).toBe(note);
+    expect(toPrefillUppercase('Wednesday', 'ach_following_days_day')).toBe('WEDNESDAY');
+  });
+});
