@@ -22,7 +22,7 @@ import {
     updateContract,
 } from "@/redux/actions/contractActions";
 import { toast } from "react-toastify";
-import { Download } from "lucide-react";
+import { Download, FileDown } from "lucide-react";
 import { axiosPost } from "@/redux/axios";
 import { isNewYorkCojTemplate } from "@/lib/cojBold";
 import type {
@@ -481,11 +481,26 @@ export function TemplateMappingPrefillEditDialog({
                 <div className="max-h-[min(65vh,520px)] overflow-y-auto px-6 py-4">
                     <div className="space-y-4">
                         {isNyCoj ? (
-                            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-                                <strong>New York COJ: PDF only.</strong> It is never sent through BoldSign with the
-                                contract. Fill the values below, then use <strong>Download PDF</strong> and email the
-                                filled COJ yourself. The state / county of the oath and the notary section stay blank
-                                for the notary.
+                            <div className="flex flex-col gap-3 rounded-lg border-2 border-amber-400 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-700 dark:bg-amber-950/40">
+                                <div className="text-sm leading-relaxed text-amber-900 dark:text-amber-200">
+                                    <div className="mb-0.5 flex items-center gap-1.5 font-bold">
+                                        <FileDown className="h-4 w-4" aria-hidden />
+                                        New York COJ: PDF only
+                                    </div>
+                                    Never sent through BoldSign. Check the values below, download the filled COJ and
+                                    email it yourself. The oath&rsquo;s state / county and the notary section stay
+                                    blank for the notary.
+                                </div>
+                                <Button
+                                    type="button"
+                                    size="lg"
+                                    disabled={saving || downloadingPdf || !row || !contractId}
+                                    onClick={() => void handleDownloadNyCojPdf()}
+                                    className="h-11 shrink-0 gap-2 bg-amber-600 px-5 text-base font-semibold text-white shadow-md hover:bg-amber-700 focus-visible:ring-amber-500"
+                                >
+                                    <Download className="h-5 w-5" aria-hidden />
+                                    {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
+                                </Button>
                             </div>
                         ) : null}
                         {editorRows.length === 0 ? (
@@ -608,10 +623,9 @@ export function TemplateMappingPrefillEditDialog({
                     {isNyCoj ? (
                         <Button
                             type="button"
-                            variant="outline"
                             disabled={saving || downloadingPdf || !row || !contractId}
                             onClick={() => void handleDownloadNyCojPdf()}
-                            className="mr-auto gap-1.5 border-[var(--brand)]/40 text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                            className="mr-auto gap-2 bg-amber-600 font-semibold text-white shadow-sm hover:bg-amber-700 focus-visible:ring-amber-500"
                         >
                             <Download className="h-4 w-4" aria-hidden />
                             {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
