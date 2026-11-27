@@ -1207,8 +1207,15 @@ export function expandPrefillValues(
   }
 
   // ACH "On the following days" checkboxes (ach_days_*_check): the forms print the
-  // boxes and the layout drops an "X" text tab inside the ticked one. None is ticked
-  // by default — the team ticks one in the PearSign review before sending.
+  // boxes and the layout drops an "X" text tab inside the ticked one. Daily deals tick
+  // "Monday thru Friday" unless the team ticked a box themselves; weekly deals tick none.
+  {
+    const freq = String(out.frequency || '').trim().toLowerCase();
+    const dayBoxes = ['ach_days_mon_fri_check', 'ach_days_mon_fri_holidays_check', 'ach_days_seven_check'];
+    if (freq.startsWith('dai') && !dayBoxes.some((k) => String(out[k] ?? '').trim())) {
+      out.ach_days_mon_fri_check = 'X';
+    }
+  }
 
   // Finance charge = payback − offer when both parse as money.
   {

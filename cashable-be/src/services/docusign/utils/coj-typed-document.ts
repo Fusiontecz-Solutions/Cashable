@@ -194,8 +194,14 @@ function cojFactsFrom(rawValues: Values) {
     V,
     isBold: (group: CojBoldGroup) => bold.has(group),
     /** Business name followed by the additional names, each with its own weight. */
-    M: (): Run[] => {
+    /** `and: true` joins the last two names with "and" ("A, B, C and D") for sentences that list them. */
+    M: (opts: { and?: boolean } = {}): Run[] => {
       const main = upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+      if (opts.and && main && extraNames.length) {
+        if (extraNames.length === 1) return [V('merchant', main), R(' and '), V('additional', extraNames[0])];
+        const head = extraNames.slice(0, -1).join(', ');
+        return [V('merchant', `${main},`), R(' '), V('additional', head), R(' and '), V('additional', extraNames[extraNames.length - 1])];
+      }
       // The comma stays on the name before it, so a line never starts with ",".
       const runs: Run[] = main ? [V('merchant', extraNames.length ? `${main},` : main)] : [];
       if (extraNames.length) runs.push(...(runs.length ? [R(' ')] : []), V('additional', extraNames.join(', ')));
@@ -259,9 +265,12 @@ export const COJ_BOLD_ALL = COJ_BOLD_GROUPS.map(([g]) => g).join(',');
 const NEW_ONLY = new Set(['additional', 'owner_address', 'business_address', 'state', 'county', 'purchase', 'judgment']);
 
 /** "merchant,owner" → those groups bold; empty/unset → all bold; "none" → none. */
+/** Default look: every filled value bold (names, addresses, venue, amounts and dates). */
+export const COJ_BOLD_DEFAULT: string[] = COJ_BOLD_GROUPS.map(([g]) => g as string);
+
 export function cojBoldGroups(raw: unknown): Set<string> {
   const s = String(raw ?? '').trim().toLowerCase();
-  if (!s) return new Set(COJ_BOLD_GROUPS.map(([g]) => g));
+  if (!s) return new Set(COJ_BOLD_DEFAULT);
   const ids = s.split(/[\s,;]+/).filter(Boolean);
   // A value saved by the first version (7 groups): "merchant" covered the additional names too.
   const legacy = ids.some((g) => g in COJ_BOLD_LEGACY) || (ids.includes('merchant') && !ids.some((g) => NEW_ONLY.has(g)));
@@ -570,8 +579,15 @@ async function iowa(values: Values, scale = 1) {
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
-  t.paragraph([R(`${f.owner}, being duly sworn, deposes and says:`)], { align: 'left', gapAfter: 4 });
-  numbered(t, 1, [R('I am a principal, owner, and an officer of '), ...f.M(), R(' (“Merchant Defendant”), and as such, I have the authority to act on behalf of Merchant Defendant.')]);
+  t.paragraph([f.V('owner', f.owner), R(', being duly sworn, deposes and says:')], { align: 'left', gapAfter: 4 });
+  // Lists the defendants exactly as the caption does: the businesses, then "and <owner>".
+  numbered(t, 1, [
+    R('I am a principal, owner, and an officer of '),
+    ...f.M(),
+    R(' and '),
+    f.V('owner', f.owner),
+    R(' (“Merchant Defendant”), and as such, I have the authority to act on behalf of Merchant Defendant.'),
+  ]);
   numbered(t, 2, [R('I reside at '), f.V('owner_address', f.ownerAddress), R(', in the County of '), f.V('county', f.ownerCounty), R('.')]);
   numbered(t, 3, [R('I, individually, and on behalf of Merchant Defendant consent to the jurisdiction of this Court.')]);
   numbered(t, 4, [
@@ -603,12 +619,14 @@ async function iowa(values: Values, scale = 1) {
     f.V('date', f.dayOrdinal),
     R(' day of '),
     f.V('date', f.month),
-    R(`, ${f.year}. I certify under penalty of perjury and pursuant to the laws of the State of Iowa that the preceding is true and correct.`),
+    R(', '),
+    f.V('date', f.year),
+    R('. I certify under penalty of perjury and pursuant to the laws of the State of Iowa that the preceding is true and correct.'),
   ]);
   t.signatureLine('By:', LEFT - 4, 230);
   t.paragraph([f.V('owner', f.owner), R(', individually, and on behalf of')], { left: LEFT - 4, align: 'left', leading: 14 });
-  // Signature block: the merchant line is never bold, names joined with "AND".
-  t.paragraph([R(f.merchantAnd)], { left: LEFT - 4, align: 'left', leading: 14 });
+  // Signature block: the business and additional names joined with "AND", bold like the other names.
+  t.paragraph([f.V('merchant', f.merchantAnd)], { left: LEFT - 4, align: 'left', leading: 14 });
   if (f.cojDate) {
     t.y += 8;
     t.paragraph([R('Date: '), f.V('date', f.cojDate)], { left: LEFT - 4, align: 'left', leading: 14 });
@@ -650,7 +668,7 @@ async function nyBusiness(values: Values, scale = 1) {
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
-  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner, Officer or an authorized representative of '), ...f.M(), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of the Defendant herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner, Officer or an authorized representative of '), ...f.M({ and: true }), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of the Defendant herein.')]);
   indented(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein and authorizes entry of judgment against them as the Judgment Debtor/Defendant in the sum of (a) '),
     f.V('purchase', f.purchase),
@@ -677,7 +695,7 @@ async function nyGeneral(values: Values, scale = 1) {
     venueCounty: f.ownerCounty,
     ss: true,
   });
-  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says: that Deponent is the Owner of Defendant '), ...f.M(), R(' and that he/she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself/herself and on behalf of all of the Defendants herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says: that Deponent is the Owner of Defendant '), ...f.M({ and: true }), R(' and that he/she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself/herself and on behalf of all of the Defendants herein.')]);
   indented(t, [
     R('The Defendants (referred to hereinafter jointly and severally as the “Judgment Debtors/Defendants”) all jointly and severally hereby Confess Judgment herein, and authorize entry of judgment against them as the Judgment Debtors/Defendants in the sum of (a) '),
     f.V('purchase', f.purchase),
@@ -714,7 +732,7 @@ async function nyMerchant(values: Values, scale = 1) {
     venueState: f.ownerState,
     venueCounty: f.ownerCounty,
   });
-  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner or an Officer of '), ...f.M(), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself or herself and on behalf of all of the Defendants herein.')]);
+  indented(t, [f.V('owner', f.owner), R(', being duly sworn, hereby deposes and says that Deponent is the Owner or an Officer of '), ...f.M({ and: true }), R(' and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself or herself and on behalf of all of the Defendants herein.')]);
   indented(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein, and authorizes entry of judgment against him or her as the Judgment Debtor/Defendant in the sum of (a) '),
     f.V('purchase', f.purchase),

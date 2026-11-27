@@ -13,6 +13,7 @@
  */
 
 import prisma from '../config/prismaClient';
+import { withEmailBrandLogo } from '../config/emailBrandLogo';
 import { getAccessTokenForRefreshToken } from '../config/gmail';
 import { getMessageDetails, getGmailProfileEmail, sendEmail, extractGmailMessageBodyHtml, type GmailSendAttachment } from './gmail.service';
 import {
@@ -244,7 +245,8 @@ export async function sendOnSubmissionThreadDirect(params: {
             accessToken: params.thread.accessToken,
             to: toList.length === 1 ? toList[0] : toList,
             subject,
-            body: params.html,
+            // Thread replies (approval / decline to the ISO) show the logo like every CRM email.
+            body: withEmailBrandLogo(params.html),
             threadId: params.gmailThreadId,
             inReplyTo: params.inReplyTo,
             references: params.references,

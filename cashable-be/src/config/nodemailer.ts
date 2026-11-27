@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { withEmailBrandLogo } from './emailBrandLogo';
 import nodemailer from 'nodemailer';
 import { resolveEmailBrandDisplayName } from '../constants/emailBrand';
 import {
@@ -506,20 +507,27 @@ async function deliverViaGmailApi(options: SendMailOptions): Promise<SendMailRes
     };
 }
 
+/** Every outgoing CRM email shows the Cashable logo (templates that already have it are unchanged). */
+function withBrandLogoOptions(options: SendMailOptions): SendMailOptions {
+    return { ...options, html: withEmailBrandLogo(options.html) };
+}
+
 const sendMail = async (
     optionsOrTo: SendMailOptions | string,
     legacySubject?: string,
     legacyHtml?: string,
 ) => {
     try {
-        const options: SendMailOptions = applyMandatoryCc(
-            typeof optionsOrTo === 'string'
-                ? {
-                      to: optionsOrTo,
-                      subject: legacySubject || '',
-                      html: legacyHtml || '',
-                  }
-                : optionsOrTo,
+        const options: SendMailOptions = withBrandLogoOptions(
+            applyMandatoryCc(
+                typeof optionsOrTo === 'string'
+                    ? {
+                          to: optionsOrTo,
+                          subject: legacySubject || '',
+                          html: legacyHtml || '',
+                      }
+                    : optionsOrTo,
+            ),
         );
 
         const routed = await sendThroughFunderProvider(options);
@@ -680,7 +688,7 @@ function shouldSplitTrackedSendGridDelivery(options: SendMailOptions): boolean {
  * otherwise SendGrid. Never uses the acting user's connected Gmail or Gmail SMTP.
  */
 export async function sendSendGridMail(input: SendMailOptions): Promise<SendMailResult> {
-    const options = applyMandatoryCc(input);
+    const options = withBrandLogoOptions(applyMandatoryCc(input));
     const routed = await sendThroughFunderProvider(options);
     if (routed) return routed;
     if (useGmailApi) {

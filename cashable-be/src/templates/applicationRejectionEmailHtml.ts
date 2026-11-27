@@ -1,4 +1,4 @@
-import { BRAND_DISPLAY_NAME } from '../constants/brand';
+import { BRAND_DISPLAY_NAME, BRAND_LOGO_URL } from '../constants/brand';
 import {
     DECLINE_REASONS_DELIMITER,
     escapeHtml,
@@ -6,6 +6,10 @@ import {
 } from './applicationRejectionEmailShared';
 
 const BRAND_NAME = BRAND_DISPLAY_NAME;
+/** Hosted Cashable logo (same as the approval email). */
+const DECLINE_EMAIL_LOGO_URL =
+  BRAND_LOGO_URL ||
+  'https://res.cloudinary.com/ar8iuzlv/image/upload/v1793283654/Copy_of_CASHABLE_FUND_LLC_CONTRACT_2.jpg';
 
 const EMAIL_WIDTH = 600;
 const FONT = "'Segoe UI',Helvetica,Arial,sans-serif";
@@ -48,7 +52,7 @@ export function renderApplicationRejectionEmailHtml(
   const reasonChips = declineReasonList(values, fields)
     .map(
       (reason) =>
-        `<span style="display:inline-block;background-color:#FFFFFF;border:1px solid #F5C6CC;border-radius:999px;padding:5px 12px;margin:3px;font-size:14px;font-weight:700;color:#B42335;">${escapeHtml(reason)}</span>`,
+        `<span style="display:inline-block;background-color:#FFF5F5;border:1px solid #F6CACA;border-radius:999px;padding:4px 11px;margin:2px;font-size:12px;font-weight:700;color:#B42318;">${escapeHtml(reason)}</span>`,
     )
     .join("\n              ");
 
@@ -59,46 +63,46 @@ export function renderApplicationRejectionEmailHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Application Declined</title>
 </head>
-<body style="margin:0;padding:0;background-color:#EEF1F5;font-family:${FONT};-webkit-font-smoothing:antialiased;">
-<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#EEF1F5;">
+<body style="margin:0;padding:0;background-color:#F1F5F2;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#F1F5F2;">
 Thank you for your submission. After careful review, we're unable to approve this application at this time.
 </div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EEF1F5;">
-<tr><td align="center" style="padding:32px 16px;">
-  <table role="presentation" width="${EMAIL_WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${EMAIL_WIDTH}px;font-family:${FONT};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F5F2;">
+<tr><td align="center" style="padding:20px 10px;">
+  <table role="presentation" width="${EMAIL_WIDTH}" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:${EMAIL_WIDTH}px;font-family:${FONT};background-color:#FFFFFF;border:1px solid #DDE7E1;border-radius:14px;">
     <tr>
-      <td align="center" style="background-color:#0B1F3A;padding:14px 24px;border-radius:12px 12px 0 0;">
-        <div style="font-size:18px;font-weight:800;letter-spacing:2.5px;color:#FFFFFF;line-height:1;">${escapeHtml(brandRaw.toUpperCase())}</div>
-        <div style="font-size:9px;font-weight:600;letter-spacing:5px;color:#9FB0C8;margin-top:4px;">FUNDING</div>
+      <td align="center" style="padding:16px 20px 12px 20px;">
+        <img src="${DECLINE_EMAIL_LOGO_URL}" alt="${escapeHtml(brandRaw)} Funding" width="120" border="0" style="display:block;width:120px;max-width:120px;height:auto;margin:0 auto;" />
       </td>
     </tr>
     <tr>
-      <td style="background-color:#FFFFFF;padding:32px 40px 8px 40px;" align="center">
+      <td height="4" bgcolor="#166534" style="height:4px;line-height:4px;font-size:0;background-color:#166534;background-image:linear-gradient(90deg,#0B3D22 0%,#166534 55%,#47A86F 100%);">&nbsp;</td>
+    </tr>
+    <tr>
+      <td align="center" style="background-color:#F7F9F8;padding:18px 28px 16px 28px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="background-color:#FDECEE;color:#B42335;font-size:15px;font-weight:700;letter-spacing:1.2px;padding:9px 20px;border-radius:999px;">
-              &#10005;&nbsp; DECLINED
-            </td>
+            <td style="background-color:#FDECEC;color:#B42318;border:1px solid #F6CACA;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:5px 14px;border-radius:999px;">&#10005;&nbsp; DECLINED</td>
           </tr>
         </table>
-        <h1 style="margin:18px 0 6px 0;font-size:24px;line-height:1.3;color:#0B1F3A;font-weight:700;">Application Declined</h1>
-        <p style="margin:0;font-size:15px;color:#5B6B82;">Thank you for your submission. After careful review, we're unable to approve it at this time.</p>
+        <h1 style="margin:10px 0 4px 0;font-size:20px;line-height:1.3;color:#0B3D22;font-weight:700;">Application Declined</h1>
+        <p style="margin:0;font-size:13px;line-height:1.5;color:#4B5F55;">Thank you for your submission. After careful review, we're unable to approve it at this time.</p>
       </td>
     </tr>
     <tr>
-      <td style="background-color:#FFFFFF;padding:24px 40px 8px 40px;">
-        <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#2B3A4F;">Hi Team,</p>
-        <p style="margin:0;font-size:15px;line-height:1.6;color:#2B3A4F;">
-          Unfortunately, this application does not meet our current underwriting criteria.
-        </p>
+      <td style="padding:16px 28px 4px 28px;">
+        <p style="margin:0 0 8px 0;font-size:14px;line-height:1.5;color:#1F2A24;">Hi Team,</p>
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#1F2A24;">Unfortunately, this application does not meet our current underwriting criteria.</p>
       </td>
     </tr>
     <tr>
-      <td style="background-color:#FFFFFF;padding:22px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FDECEE;border:1px solid #F5C6CC;border-radius:10px;">
+      <td style="padding:14px 28px 0 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #DDE7E1;border-radius:12px;">
           <tr>
-            <td align="center" style="padding:16px 14px;">
-              <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#9A3B47;margin-bottom:8px;">REASONS FOR DECLINE</div>
+            <td style="padding:7px 14px;border-bottom:1px solid #DDE7E1;background-color:#F4FAF6;border-radius:12px 12px 0 0;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#166534;">REASONS FOR DECLINE</td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:10px 10px 11px 10px;">
               ${reasonChips}
             </td>
           </tr>
@@ -106,30 +110,31 @@ Thank you for your submission. After careful review, we're unable to approve thi
       </td>
     </tr>
     <tr>
-      <td style="background-color:#FFFFFF;padding:16px 40px 0 40px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F7F9FB;border:1px solid #E3E8EF;border-radius:8px;">
+      <td style="padding:10px 28px 0 28px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4FAF6;border-radius:10px;">
           <tr>
-            <td style="padding:12px 14px;font-size:13px;line-height:1.6;color:#5B6B82;">
-              &#9432;&nbsp; This decision is based on our review of the application and supporting documents. It applies only to this application and does not affect future submissions.
+            <td style="padding:8px 12px;font-size:12px;line-height:1.5;color:#4B5F55;">
+              <span style="color:#166534;font-weight:700;">&#9432;</span>&nbsp; This decision is based on our review of the application and supporting documents. It applies only to this application and does not affect future submissions.
             </td>
           </tr>
         </table>
       </td>
     </tr>
     <tr>
-      <td style="background-color:#FFFFFF;padding:24px 40px 30px 40px;border-radius:0 0 12px 12px;">
-        <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#2B3A4F;">
+      <td style="padding:14px 28px 0 28px;">
+        <p style="margin:0;font-size:13px;line-height:1.5;color:#1F2A24;">
           Thank you for considering ${brand} Funding as your funding partner. We appreciate the opportunity and look forward to your next submission.
         </p>
-        <p style="margin:0;font-size:14px;line-height:1.6;color:#2B3A4F;">Best regards,<br><strong>${brand} Team</strong></p>
       </td>
     </tr>
     <tr>
-      <td align="center" style="padding:24px 24px 0 24px;">
-        <p style="margin:0;font-size:12px;line-height:1.6;color:#8A97AA;">
-          ${brand} Funding<br>
-          Questions? Simply reply to this email.
-        </p>
+      <td style="padding:14px 28px 18px 28px;">
+        <p style="margin:0;font-size:14px;line-height:1.6;color:#1F2A24;">Best regards,<br><strong style="color:#0B3D22;">${brand} Team</strong></p>
+      </td>
+    </tr>
+    <tr>
+      <td align="center" bgcolor="#0B3D22" style="background-color:#0B3D22;padding:12px 20px;border-radius:0 0 13px 13px;">
+        <p style="margin:0;font-size:12px;line-height:1.6;color:#CFE6D8;"><strong style="color:#FFFFFF;">${brand} Funding</strong> &middot; Questions? Simply reply to this email.</p>
       </td>
     </tr>
   </table>

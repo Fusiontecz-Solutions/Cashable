@@ -63,3 +63,28 @@ describe('additional names', () => {
     }
   });
 });
+
+describe('first paragraph lists the defendants with "and" before the last name', () => {
+  const v = {
+    business_name_with_dba: "THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE",
+    coj_additional_names: 'HIVE GROUP LLC; FORGOTTEN COAST FISHING, INC.; NEWBLACK LLC',
+    owner1_guarantor_name: 'MALCOLM S BEDELL',
+  };
+  const text = (runs: Array<{ text: string }>) => runs.map((r) => r.text).join('');
+  it('several additional names: "A, B, C and D"', () => {
+    expect(text(cojFacts(v).M({ and: true }))).toBe(
+      "THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE, HIVE GROUP LLC, FORGOTTEN COAST FISHING, INC. and NEWBLACK LLC",
+    );
+  });
+  it('one additional name: "A and B"; none: just the business', () => {
+    expect(text(cojFacts({ ...v, coj_additional_names: 'NEWBLACK LLC' }).M({ and: true }))).toBe(
+      "THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE and NEWBLACK LLC",
+    );
+    expect(text(cojFacts({ ...v, coj_additional_names: '' }).M({ and: true }))).toBe("THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE");
+  });
+  it('the caption list is unchanged (commas, then "and <owner>" where the caption names the owner)', () => {
+    expect(text(cojFacts(v).M())).toBe(
+      "THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE, HIVE GROUP LLC, FORGOTTEN COAST FISHING, INC., NEWBLACK LLC",
+    );
+  });
+});

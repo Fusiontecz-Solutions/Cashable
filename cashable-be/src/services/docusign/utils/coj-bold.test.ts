@@ -1,8 +1,9 @@
 import { cojBoldGroups, cojInputs, renderTypedCoj, COJ_BOLD_ALL } from './coj-typed-document';
 
 describe('COJ bold text setting', () => {
-  it('parses the setting: unset = all bold, "none" = none', () => {
+  it('parses the setting: unset = every filled value bold (dates too), "none" = none', () => {
     expect([...cojBoldGroups('')].join(',')).toBe(COJ_BOLD_ALL);
+    expect(cojBoldGroups('').has('date')).toBe(true);
     expect(cojBoldGroups('none').size).toBe(0);
     expect([...cojBoldGroups('merchant,owner_address,judgment')]).toEqual(['merchant', 'owner_address', 'judgment']);
   });

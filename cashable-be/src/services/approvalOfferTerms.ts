@@ -57,15 +57,15 @@ export async function buildApprovalOfferTermsHtml(applicationId: string): Promis
         .map(([label, value], i) => {
             const divider = i < terms.length - 1 ? 'border-right:1px solid #C6E8D4;' : '';
             return `
-                  <td width="20%" align="center" style="padding:10px 2px;border-top:1px solid #C6E8D4;border-bottom:1px solid #C6E8D4;${divider}">
-                    <div style="font-size:10px;letter-spacing:0.8px;color:#3F7A5C;">${label}</div>
-                    <div style="font-size:15px;font-weight:700;color:#0B3D26;margin-top:3px;">${escapeHtml(value)}</div>
+                  <td width="20%" align="center" style="padding:7px 2px;border-top:1px solid #C6E8D4;border-bottom:1px solid #C6E8D4;${divider}">
+                    <div style="font-size:10px;letter-spacing:0.8px;color:#166534;">${label}</div>
+                    <div style="font-size:13px;font-weight:700;color:#0B3D22;margin-top:2px;">${escapeHtml(value)}</div>
                   </td>`;
         })
         .join('');
 
-    return `<div style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#3F7A5C;">APPROVED AMOUNT</div>
-              <div style="font-size:30px;font-weight:800;color:#0B3D26;margin:4px 0 12px 0;line-height:1.1;">${escapeHtml(money(amount))}</div>
+    return `<div style="font-size:11px;font-weight:600;letter-spacing:1.5px;color:#166534;">APPROVED AMOUNT</div>
+              <div style="font-size:24px;font-weight:800;color:#0B3D22;margin:2px 0 8px 0;line-height:1.1;">${escapeHtml(money(amount))}</div>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>${cells}
                 </tr>

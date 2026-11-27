@@ -24,10 +24,13 @@ const NEW_ONLY = new Set(["additional", "owner_address", "business_address", "st
 /** Review key of a COJ's bold setting, e.g. d3__coj1__coj_bold. */
 export const isCojBoldKey = (key: string): boolean => /__coj\d+__coj_bold$/.test(key) || key === "coj_bold";
 
-/** "merchant,judgment" → those groups; empty → all (the default look); "none" → none. */
+/** Default look: every filled value bold (names, addresses, venue, amounts and dates). */
+export const COJ_BOLD_DEFAULT = COJ_BOLD_GROUPS.map(([g]) => g as string);
+
+/** "merchant,judgment" → those groups; empty → the default look; "none" → none. */
 export function cojBoldSet(raw: unknown): Set<string> {
     const s = String(raw ?? "").trim().toLowerCase();
-    if (!s) return new Set(COJ_BOLD_GROUPS.map(([g]) => g));
+    if (!s) return new Set(COJ_BOLD_DEFAULT);
     const ids = s.split(/[\s,;]+/).filter(Boolean);
     // Saved by the first version (7 groups): "merchant" covered the additional names too.
     const legacy = ids.some((g) => g in LEGACY) || (ids.includes("merchant") && !ids.some((g) => NEW_ONLY.has(g)));

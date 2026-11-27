@@ -1255,6 +1255,16 @@ export function ContractPrefillEditForm({
         return highest;
     }, [values]);
     const visibleBankCount = Math.min(MAX_ACH_BANK_ACCOUNTS, Math.max(filledBankCount, bankRowsShown));
+    /**
+     * ACH "On the following days": a daily deal ticks "Monday thru Friday" unless another box is
+     * ticked (the contract does the same when it is built).
+     */
+    const achDayBoxTicked = (key: string): boolean => {
+        if (String(values[key as keyof typeof values] ?? "").trim()) return true;
+        if (key !== "achDaysMonFriCheck") return false;
+        const daily = /^dai/i.test(String(values.frequency ?? "").trim());
+        return daily && ![...ACH_DAY_TICK_KEYS].some((k) => String(values[k as keyof typeof values] ?? "").trim());
+    };
     const removeLastBankAccount = useCallback(() => {
         const n = visibleBankCount;
         if (n < 2) return;
@@ -3126,12 +3136,16 @@ export function ContractPrefillEditForm({
                                                                         id={`prefill-${key}`}
                                                                         type="checkbox"
                                                                         className="h-4 w-4 accent-[var(--brand)]"
-                                                                        checked={String(values[key] ?? "").trim() !== ""}
+                                                                        checked={achDayBoxTicked(key)}
                                                                         onChange={(e) => setField(key, e.target.checked ? "X" : "")}
                                                                         disabled={readOnly}
                                                                     />
                                                                     <span className="text-slate-600 dark:text-slate-300">
-                                                                        {String(values[key] ?? "").trim() ? "Ticked" : "Not ticked"}
+                                                                        {achDayBoxTicked(key)
+                                                                            ? String(values[key] ?? "").trim()
+                                                                                ? "Ticked"
+                                                                                : "Ticked (daily deal)"
+                                                                            : "Not ticked"}
                                                                     </span>
                                                                 </label>
                                                             ) : key === "entityType" ? (

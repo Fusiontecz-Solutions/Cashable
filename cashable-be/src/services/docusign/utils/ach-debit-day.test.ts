@@ -53,3 +53,19 @@ describe('"On the following days" line: weekly deals only', () => {
     expect(daily.ach_following_days_day).toBe('');
   });
 });
+
+describe('"On the following days" tick boxes', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { prefillFieldsToValueMap } = require('./build-envelope-from-layout');
+  it('daily deals tick Monday thru Friday when no box is ticked', () => {
+    const v = prefillFieldsToValueMap([{ id: 'frequency', value: 'Daily' }]);
+    expect(v.ach_days_mon_fri_check).toBe('X');
+  });
+  it('a box the team ticked wins, and weekly deals tick none', () => {
+    const seven = prefillFieldsToValueMap([{ id: 'frequency', value: 'Daily' }, { id: 'ach_days_seven_check', value: 'X' }]);
+    expect(seven.ach_days_mon_fri_check ?? '').toBe('');
+    expect(seven.ach_days_seven_check).toBe('X');
+    const weekly = prefillFieldsToValueMap([{ id: 'frequency', value: 'Weekly' }]);
+    expect(weekly.ach_days_mon_fri_check ?? '').toBe('');
+  });
+});
