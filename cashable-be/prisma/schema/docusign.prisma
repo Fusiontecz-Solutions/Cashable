@@ -124,6 +124,14 @@ model FunderProfile {
   contactPhone             String?
   /// DocuSign carbon-copy address included on every contract envelope for this funder.
   defaultCcEmail           String?
+  /// Verified SendGrid sender used for this funder's outbound mail.
+  /// Null = fall back to SENDGRID_FROM_EMAIL from the environment.
+  sendgridFromEmail        String?
+  /// Display name of that verified SendGrid sender (required whenever sendgridFromEmail is set).
+  sendgridFromName         String?
+  /// Outbound provider for this funder's deal mail: sendgrid (default) | gmail.
+  /// 'gmail' is only accepted while the funder's FunderMailbox is connected and verified.
+  mailProvider             String                  @default("sendgrid")
   addressLine1             String?
   addressCity              String?
   addressState             String?
@@ -161,6 +169,7 @@ model FunderProfile {
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
   docusignAccountProfile   DocuSignAccountProfile? @relation(fields: [docusignAccountProfileId], references: [id], onDelete: SetNull)
+  mailbox                  FunderMailbox?
 
   @@index([docusignAccountProfileId])
   @@index([isActive])

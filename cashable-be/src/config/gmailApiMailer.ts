@@ -79,30 +79,66 @@ function listAddresses(value: Mail.Options['to']): string[] {
         .filter(Boolean);
 }
 
+/** Gmail API rejected or could not take a send; `status` is the HTTP status when there was one. */
+export class GmailApiSendError extends Error {
+    constructor(
+        message: string,
+        readonly status?: number,
+        /** True when Gmail certainly did not accept the message (safe to try another provider). */
+        readonly notSent = false,
+    ) {
+        super(message);
+        this.name = 'GmailApiSendError';
+    }
+}
+
+/** A Gmail mailbox to send from: the server mailer, or a funder's connected mailbox. */
+export type GmailSendMailbox = {
+    /** Address used for Message-ID read-back logs. */
+    email: string;
+    /** From address (the mailbox itself or a verified "Send mail as" alias). */
+    fromEmail: string;
+    /** Short-lived access token; `force` skips any cache (after a 401). */
+    getAccessToken: (force?: boolean) => Promise<string | null>;
+};
+
+/** Gmail API failure → not sent (4xx / no request made) vs. possibly sent (5xx / timeout / reset). */
+function toGmailSendError(error: any): GmailApiSendError {
+    const status: number | undefined = error?.response?.status;
+    const message = `Gmail API send failed: ${error?.response?.data?.error?.message || error?.message || error}`;
+    if (typeof status === 'number') return new GmailApiSendError(message, status, status < 500);
+    const code = String(error?.code ?? '').toUpperCase();
+    const preRequest = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH'].includes(code);
+    return new GmailApiSendError(message, undefined, preRequest);
+}
+
 /**
  * Send a fully composed message (nodemailer `Mail.Options`: html, cc, bcc,
- * attachments incl. inline `cid`, custom headers) through the Gmail API.
+ * attachments incl. inline `cid`, custom headers) from `mailbox` through the Gmail API.
  */
-export async function sendViaGmailApi(
+export async function sendViaGmailMailbox(
     mail: Omit<Mail.Options, 'from'> & {
         fromName?: string;
         /** Gmail thread to add this message to (the sender mailbox's conversation). */
         gmailThreadId?: string;
     },
+    mailbox: GmailSendMailbox,
 ): Promise<GmailApiSendResult> {
-    const senderEmail = getGmailSenderEmail();
-    if (!senderEmail) {
-        throw new Error('Gmail API mailer is not configured. Set GMAIL_SENDER_EMAIL.');
-    }
-
     const { fromName, gmailThreadId, ...rest } = mail;
     const raw = await new MailComposer({
         ...rest,
-        from: fromName ? { name: fromName, address: senderEmail } : senderEmail,
+        from: fromName ? { name: fromName, address: mailbox.fromEmail } : mailbox.fromEmail,
     })
         .compile()
         .build();
 
+    const token = async (force = false) => {
+        const value = await mailbox.getAccessToken(force);
+        if (!value) {
+            throw new GmailApiSendError(`Could not mint a Gmail access token for ${mailbox.email}`, undefined, true);
+        }
+        return value;
+    };
     const post = (accessToken: string) =>
         axios.post(
             GMAIL_SEND_URL,
@@ -118,15 +154,15 @@ export async function sendViaGmailApi(
 
     let response;
     try {
-        response = await post(await getSenderAccessToken(senderEmail));
+        response = await post(await token());
     } catch (error: any) {
-        if (error?.response?.status === 401) {
-            invalidateAccessTokenCache(ACCESS_TOKEN_CACHE_KEY);
-            response = await post(await getSenderAccessToken(senderEmail));
-        } else {
-            throw new Error(
-                `Gmail API send failed: ${error?.response?.data?.error?.message || error?.message || error}`,
-            );
+        if (error instanceof GmailApiSendError) throw error;
+        if (error?.response?.status !== 401) throw toGmailSendError(error);
+        try {
+            response = await post(await token(true));
+        } catch (retryError: any) {
+            if (retryError instanceof GmailApiSendError) throw retryError;
+            throw toGmailSendError(retryError);
         }
     }
 
@@ -136,20 +172,48 @@ export async function sendViaGmailApi(
         gmailThreadId: response.data?.threadId ? String(response.data.threadId) : undefined,
         // Gmail may replace the Message-ID it was given; read back the one recipients see,
         // so later emails can reply to it (In-Reply-To / References).
-        messageId: gmailMessageId ? await readGmailRfcMessageId(senderEmail, gmailMessageId) : undefined,
+        messageId: gmailMessageId ? await readGmailRfcMessageId(mailbox, gmailMessageId) : undefined,
         accepted: [...listAddresses(mail.to), ...listAddresses(mail.cc), ...listAddresses(mail.bcc)],
         rejected: [],
     };
 }
 
-/** The RFC 822 `Message-ID` header of a sent Gmail message (best effort). */
-async function readGmailRfcMessageId(senderEmail: string, gmailMessageId: string): Promise<string | undefined> {
+/** Send through the server mailbox (`GMAIL_SENDER_EMAIL`). */
+export async function sendViaGmailApi(
+    mail: Omit<Mail.Options, 'from'> & {
+        fromName?: string;
+        gmailThreadId?: string;
+    },
+): Promise<GmailApiSendResult> {
+    const senderEmail = getGmailSenderEmail();
+    if (!senderEmail) {
+        throw new Error('Gmail API mailer is not configured. Set GMAIL_SENDER_EMAIL.');
+    }
     try {
+        return await sendViaGmailMailbox(mail, {
+            email: senderEmail,
+            fromEmail: senderEmail,
+            getAccessToken: async (force) => {
+                if (force) invalidateAccessTokenCache(ACCESS_TOKEN_CACHE_KEY);
+                return getSenderAccessToken(senderEmail);
+            },
+        });
+    } catch (error) {
+        if (error instanceof GmailApiSendError) throw new Error(error.message);
+        throw error;
+    }
+}
+
+/** The RFC 822 `Message-ID` header of a sent Gmail message (best effort). */
+async function readGmailRfcMessageId(mailbox: GmailSendMailbox, gmailMessageId: string): Promise<string | undefined> {
+    try {
+        const accessToken = await mailbox.getAccessToken();
+        if (!accessToken) return undefined;
         const res = await axios.get(
             `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(gmailMessageId)}`,
             {
                 params: { format: 'metadata', metadataHeaders: 'Message-ID' },
-                headers: { Authorization: `Bearer ${await getSenderAccessToken(senderEmail)}` },
+                headers: { Authorization: `Bearer ${accessToken}` },
             },
         );
         const headers: Array<{ name?: string; value?: string }> = res.data?.payload?.headers ?? [];

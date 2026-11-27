@@ -1,5 +1,6 @@
 import { axiosDelete, axiosGet, axiosPatch, axiosPatchFormData, axiosPost, axiosPostFormData } from "../axios";
 import type {
+  FunderGmailStatus,
   DocuSignAccountProfile,
   DocuSignAccountProfileInput,
   FunderProfile,
@@ -32,6 +33,9 @@ function appendFunderFormFields(formData: FormData, payload: FunderProfileInput)
   if (payload.contactEmail != null) formData.append("contactEmail", payload.contactEmail);
   if (payload.contactPhone != null) formData.append("contactPhone", payload.contactPhone);
   if (payload.defaultCcEmail != null) formData.append("defaultCcEmail", payload.defaultCcEmail);
+  if (payload.sendgridFromEmail != null) formData.append("sendgridFromEmail", payload.sendgridFromEmail);
+  if (payload.sendgridFromName != null) formData.append("sendgridFromName", payload.sendgridFromName);
+  if (payload.mailProvider) formData.append("mailProvider", payload.mailProvider);
   if (payload.addressLine1 != null) formData.append("addressLine1", payload.addressLine1);
   if (payload.addressCity != null) formData.append("addressCity", payload.addressCity);
   if (payload.addressState != null) formData.append("addressState", payload.addressState);
@@ -331,4 +335,32 @@ export async function updateDropboxSignAccountProfile(
 
 export async function deleteDropboxSignAccountProfile(id: string): Promise<void> {
   await axiosDelete(`/integration-settings/dropboxsign-accounts/${id}`);
+}
+
+/** Funder Gmail connection status (`probe` = live token check). */
+export async function fetchFunderGmailStatus(
+  funderId: string,
+  options?: { probe?: boolean },
+): Promise<FunderGmailStatus> {
+  const res = await axiosGet(`/integration-settings/funders/${funderId}/gmail`, {
+    params: options?.probe ? { probe: 1 } : undefined,
+  });
+  return (res as { data?: { data?: FunderGmailStatus } })?.data?.data as FunderGmailStatus;
+}
+
+/** Google consent URL for connecting (or reconnecting) a funder's Gmail. */
+export async function startFunderGmailConnect(funderId: string, returnPath?: string): Promise<string> {
+  const res = await axiosPost(`/integration-settings/funders/${funderId}/gmail/connect`, { returnPath });
+  return String((res as { data?: { data?: { url?: string } } })?.data?.data?.url ?? "");
+}
+
+export async function verifyFunderGmailConnection(funderId: string): Promise<FunderGmailStatus> {
+  const res = await axiosPost(`/integration-settings/funders/${funderId}/gmail/verify`);
+  return (res as { data?: { data?: FunderGmailStatus } })?.data?.data as FunderGmailStatus;
+}
+
+/** Revokes the grant, clears the stored token and switches the funder back to SendGrid. */
+export async function disconnectFunderGmailAccount(funderId: string): Promise<FunderGmailStatus> {
+  const res = await axiosDelete(`/integration-settings/funders/${funderId}/gmail`);
+  return (res as { data?: { data?: FunderGmailStatus } })?.data?.data as FunderGmailStatus;
 }

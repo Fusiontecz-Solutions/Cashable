@@ -148,6 +148,8 @@ export async function sendTrackedPaymentTemplateMail(
       bcc: input.bcc,
       replyTo: input.replyTo,
       from: getSendGridMailFrom(),
+      // Routes through the deal funder's provider (its SendGrid sender or connected Gmail).
+      applicationId: access.application.id,
       trackingId,
       categories: ['payment-template'],
       ...(mailAttachments.length ? { attachments: mailAttachments } : {}),

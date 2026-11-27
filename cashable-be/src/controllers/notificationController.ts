@@ -579,6 +579,7 @@ class NotificationController {
                 }
 
                 const emailResult = await sendDocumentRequestEmail({
+                    applicationId: application.id,
                     to: uniqueEmailTo,
                     cc: emailCcList,
                     isoName: app.iso?.name || undefined,

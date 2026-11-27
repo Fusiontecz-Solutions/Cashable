@@ -1213,6 +1213,7 @@ export class BoldSignService {
           to,
           subject,
           html,
+          applicationId,
           attachments: [
             {
               filename: 'contract-prefilled.pdf',

@@ -184,6 +184,8 @@ export async function sendWelcomeEmail({
 }
 
 export interface ApplicationApprovalEmailParams {
+    /** Deal this email belongs to — routes it through the deal funder's outbound provider. */
+    applicationId?: string | null;
     to: string | string[];
     /** Optional carbon-copy recipients. */
     cc?: string[];
@@ -319,6 +321,8 @@ export const buildApplicationApprovalEmailHtml = ({
 };
 
 export interface ApplicationRejectionEmailParams {
+    /** Deal this email belongs to — routes it through the deal funder's outbound provider. */
+    applicationId?: string | null;
     to: string | string[];
     /** Optional carbon-copy recipients (e.g. account managers). */
     cc?: string[];
@@ -353,6 +357,7 @@ export async function sendApplicationRejectionEmail({
     trackingId,
     submissionApplication,
     gmailThread,
+    applicationId,
 }: ApplicationRejectionEmailParams): Promise<{
     sent: boolean;
     emailedTo: string[];
@@ -417,6 +422,7 @@ export async function sendApplicationRejectionEmail({
                 ...(pdfAttachment ? [pdfAttachment] : []),
             ],
             trackingId,
+            applicationId,
             categories: ['application-rejection'],
         });
         return {
@@ -460,6 +466,7 @@ export async function sendApplicationApprovalEmail({
     trackingId,
     submissionApplication,
     gmailThread,
+    applicationId,
 }: ApplicationApprovalEmailParams): Promise<{
     sent: boolean;
     sgMessageId?: string;
@@ -527,6 +534,7 @@ export async function sendApplicationApprovalEmail({
             html,
             attachments: pdfAttachment ? [pdfAttachment] : undefined,
             trackingId,
+            applicationId,
             categories: ['application-approval'],
         });
         return {
@@ -805,6 +813,8 @@ function buildIsoOfferEmailApplicationDetailsHtml({
 
 /** Client email when offer values are updated after approval comments. */
 export interface ApplicationOfferUpdatedEmailParams {
+    /** Deal this email belongs to — routes it through the deal funder's outbound provider. */
+    applicationId?: string | null;
     to: string | string[];
     /** Optional carbon-copy recipients. */
     cc?: string[];
@@ -956,6 +966,7 @@ export async function sendApplicationOfferUpdatedEmail({
     trackingId,
     submissionApplication,
     gmailThread,
+    applicationId,
 }: ApplicationOfferUpdatedEmailParams): Promise<{
     sent: boolean;
     sgMessageId?: string;
@@ -1023,6 +1034,7 @@ export async function sendApplicationOfferUpdatedEmail({
             html,
             attachments: pdfAttachment ? [pdfAttachment] : undefined,
             trackingId,
+            applicationId,
             categories: ['offer-updated'],
         });
         return {
@@ -1758,6 +1770,8 @@ function decisionLogicInvitationHostKey(raw: string): string | null {
 }
 
 export interface DocumentRequestEmailParams {
+    /** Deal this email belongs to — routes it through the deal funder's outbound provider. */
+    applicationId?: string | null;
     to: string[];
     cc?: string[];
     isoName?: string;
@@ -1819,6 +1833,7 @@ export async function sendDocumentRequestEmail({
     trackingId,
     submissionApplication,
     gmailThread,
+    applicationId,
 }: DocumentRequestEmailParams): Promise<DocumentRequestEmailResult> {
     const recipients = [...new Set((to || []).map((e) => String(e || '').trim()).filter(Boolean))];
     if (!recipients.length) {
@@ -1927,6 +1942,7 @@ export async function sendDocumentRequestEmail({
             html,
             attachments: buildBrandLogoAttachments(),
             trackingId,
+            applicationId,
             categories: ['document-request'],
         });
         console.info('[email] Document request sent via SendGrid', {

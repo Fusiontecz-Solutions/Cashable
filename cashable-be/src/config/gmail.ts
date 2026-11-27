@@ -3,11 +3,35 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-function getRedirectUri(): string {
+export function getRedirectUri(): string {
   return (
     process.env.GOOGLE_REDIRECT_URI ||
     'https://www.woodmere.finexusai.com/backend/api/v1/google/callback'
   );
+}
+
+/** True when Google OAuth client credentials are present (Gmail connect is available). */
+export function isGoogleOAuthConfigured(): boolean {
+  return Boolean(
+    String(process.env.GOOGLE_CLIENT_ID || '').trim() &&
+      String(process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+  );
+}
+
+/**
+ * The OAuth client every refresh token is minted by. Stored next to each funder
+ * token so a client switch (new GOOGLE_CLIENT_ID) shows "reconnect needed"
+ * instead of failing sends with invalid_client.
+ */
+export function getGoogleOAuthClientId(): string {
+  return String(process.env.GOOGLE_CLIENT_ID || '').trim();
+}
+
+/** True when a token minted by `storedClientId` can be refreshed with the current client. */
+export function isTokenFromCurrentClient(storedClientId: string | null | undefined): boolean {
+  const stored = String(storedClientId || '').trim();
+  // Tokens stored before the client id was tracked are assumed to be from the current client.
+  return !stored || stored === getGoogleOAuthClientId();
 }
 
 /** Create a fresh OAuth2 client — never share instances across users or cron ticks. */

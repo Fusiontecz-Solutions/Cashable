@@ -427,6 +427,7 @@ export async function processApplicationApprovalSideEffects(
                 const results = await Promise.allSettled(
                     recipients.map((r) =>
                         sendApplicationApprovalEmail({
+                            applicationId: application.id,
                             to: r.to,
                             clientName: r.clientName,
                             companyName: businessName || clientName,

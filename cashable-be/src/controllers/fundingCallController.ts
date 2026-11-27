@@ -756,6 +756,7 @@ class FundingCallController {
             'Could not create mail tracking record; approval email was not sent.';
         } else {
         const sendResult = await sendApplicationApprovalEmail({
+          applicationId: appRecord.id,
           to: merchantEmail,
           clientName: merchantGreetingName,
           companyName: clientBusinessName,

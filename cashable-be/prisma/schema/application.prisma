@@ -70,6 +70,7 @@ model User {
   typingIndicators           TypingIndicator[]
   verificationTokens         VerificationToken[]
   outbound_communications    outbound_communications[]
+  funderMailboxesConnected   FunderMailbox[]               @relation("FunderMailboxConnectedBy")
 }
 
 model AccessToken {

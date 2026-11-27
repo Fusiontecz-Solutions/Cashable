@@ -2,16 +2,25 @@ import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { resolveEmailBrandDisplayName } from '../constants/emailBrand';
 import {
+    GmailApiSendError,
     getGmailSenderEmail,
     isGmailApiMailerConfigured,
     sendViaGmailApi,
+    sendViaGmailMailbox,
 } from './gmailApiMailer';
 import { withMandatoryCc } from './mandatoryCc';
+import prisma from './prismaClient';
 
 const useGmailApi = isGmailApiMailerConfigured();
 /** Gmail API takes precedence; SendGrid is only used when GMAIL_SENDER_EMAIL is unset. */
 const sendgridApiKey = useGmailApi ? undefined : process.env.SENDGRID_API_KEY?.trim();
 const useSendgrid = Boolean(sendgridApiKey);
+/**
+ * SendGrid key for funder senders (Settings → Funders → SendGrid From). Available
+ * even when the Gmail API is the server-wide mailer, so a funder with its own
+ * verified SendGrid sender always goes out through SendGrid.
+ */
+const funderSendgridApiKey = process.env.SENDGRID_API_KEY?.trim() || undefined;
 
 export type OutboundMailTransport = 'gmail-api' | 'sendgrid' | 'smtp';
 
@@ -107,6 +116,13 @@ export function buildMailFrom(optionalRaw?: string): { name: string; address: st
     };
 }
 
+/** From header with an optional per-send display name (e.g. a funder's sender name). */
+function resolveFromHeader(from?: string, fromName?: string): { name: string; address: string } {
+    const header = buildMailFrom(from);
+    const name = String(fromName ?? '').trim();
+    return name ? { ...header, name } : header;
+}
+
 function formatMailFromAddress(emailOrFrom: string): string {
     const { name, address } = buildMailFrom(emailOrFrom);
     return `"${name}" <${address}>`;
@@ -122,7 +138,7 @@ export function getSendGridMailFrom(): string {
     return `"${name}" <${address}>`;
 }
 
-function createSendGridTransporter() {
+function createSendGridTransporter(apiKey: string | undefined = sendgridApiKey) {
     const port = Number(process.env.SENDGRID_SMTP_PORT) || 587;
     return nodemailer.createTransport({
         host: process.env.SENDGRID_SMTP_HOST?.trim() || 'smtp.sendgrid.net',
@@ -130,7 +146,7 @@ function createSendGridTransporter() {
         secure: port === 465,
         auth: {
             user: 'apikey',
-            pass: sendgridApiKey,
+            pass: apiKey,
         },
     });
 }
@@ -206,6 +222,17 @@ interface SendMailOptions {
      * that carry a login / reset code or a temporary password.
      */
     skipMandatoryCc?: boolean;
+    /** From display name (the address comes from `from` / the provider's sender). */
+    fromName?: string;
+    /**
+     * Funder this email belongs to — routes it through the funder's outbound
+     * provider (Settings → Funders): its connected Gmail mailbox, or SendGrid
+     * with its verified sender. Without any of these the server default is used.
+     */
+    funderProfileId?: string | null;
+    funderName?: string | null;
+    /** Deal this email belongs to; its funder is looked up when no funder is given. */
+    applicationId?: string | null;
 }
 
 /** Apply the always-copied address unless the mail opted out. */
@@ -284,8 +311,8 @@ function listRecipientEmails(value?: string | string[]): string[] {
 }
 
 /** SendGrid HTTP API is used for tracked mail; multi-To / CC / BCC are more reliable via SMTP relay. */
-function shouldUseSendGridHttpApi(options: SendMailOptions): boolean {
-    if (!useSendgrid || !options.trackingId?.trim()) return false;
+function shouldUseSendGridHttpApi(options: SendMailOptions, sendgridOn: boolean = useSendgrid): boolean {
+    if (!sendgridOn || !options.trackingId?.trim()) return false;
     const hasCc = listRecipientEmails(options.cc).length > 0;
     const hasBcc = listRecipientEmails(options.bcc).length > 0;
     const toCount = listRecipientEmails(options.to).length;
@@ -349,8 +376,11 @@ function buildThreadingHeaders(options: Pick<SendMailOptions, 'inReplyTo' | 'ref
     return Object.keys(headers).length ? headers : undefined;
 }
 
-async function sendViaSendGridHttpApi(options: SendMailOptions): Promise<SendMailResult> {
-    if (!sendgridApiKey) {
+async function sendViaSendGridHttpApi(
+    options: SendMailOptions,
+    apiKey: string | undefined = sendgridApiKey,
+): Promise<SendMailResult> {
+    if (!apiKey) {
         throw new Error('SendGrid API key is not configured');
     }
 
@@ -372,7 +402,7 @@ async function sendViaSendGridHttpApi(options: SendMailOptions): Promise<SendMai
     } = options;
 
     const threadingHeaders = buildThreadingHeaders({ inReplyTo, references });
-    const fromAddr = buildMailFrom(from);
+    const fromAddr = resolveFromHeader(from, options.fromName);
     const wantsTracking = Boolean(trackingId?.trim());
     const openTracking =
         enableOpenTracking ?? (wantsTracking && isSendGridOpenPixelTrackingEnabled());
@@ -418,7 +448,7 @@ async function sendViaSendGridHttpApi(options: SendMailOptions): Promise<SendMai
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
-            Authorization: `Bearer ${sendgridApiKey}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
@@ -454,7 +484,7 @@ async function deliverViaGmailApi(options: SendMailOptions): Promise<SendMailRes
     const { to, subject, html, from, cc, bcc, replyTo, attachments, inReplyTo, references, messageId, gmailThreadId } =
         options;
     const result = await sendViaGmailApi({
-        fromName: buildMailFrom(from).name,
+        fromName: options.fromName || buildMailFrom(from).name,
         to,
         cc,
         bcc,
@@ -491,6 +521,9 @@ const sendMail = async (
                   }
                 : optionsOrTo,
         );
+
+        const routed = await sendThroughFunderProvider(options);
+        if (routed) return routed;
 
         if (useGmailApi) {
             return await deliverViaGmailApi(options);
@@ -532,7 +565,7 @@ const sendMail = async (
             : undefined;
 
         const mailOptions = {
-            from: buildMailFrom(from),
+            from: resolveFromHeader(from, options.fromName),
             to,
             subject,
             html,
@@ -568,16 +601,22 @@ function resolveSendGridFromAddress(from?: string): string | undefined {
 }
 
 /** Deliver one SendGrid message (no CC/BCC/multi-To split). */
-async function deliverSendGridMailOnce(options: SendMailOptions): Promise<SendMailResult> {
+async function deliverSendGridMailOnce(
+    options: SendMailOptions,
+    apiKey: string | undefined = sendgridApiKey,
+): Promise<SendMailResult> {
     // Tracked sends use the HTTP API so `custom_args.ocid` is present on webhooks.
-    if (shouldUseSendGridHttpApi(options)) {
-        return sendViaSendGridHttpApi({
-            ...options,
-            from: resolveSendGridFromAddress(options.from),
-        });
+    if (shouldUseSendGridHttpApi(options, Boolean(apiKey))) {
+        return sendViaSendGridHttpApi(
+            {
+                ...options,
+                from: resolveSendGridFromAddress(options.from),
+            },
+            apiKey,
+        );
     }
 
-    const transporter = createSendGridTransporter();
+    const transporter = createSendGridTransporter(apiKey);
     const {
         to,
         subject,
@@ -603,7 +642,7 @@ async function deliverSendGridMailOnce(options: SendMailOptions): Promise<SendMa
     });
 
     const mailOptions = {
-        from: buildMailFrom(resolveSendGridFromAddress(from)),
+        from: resolveFromHeader(resolveSendGridFromAddress(from), options.fromName),
         to,
         subject,
         html,
@@ -642,6 +681,8 @@ function shouldSplitTrackedSendGridDelivery(options: SendMailOptions): boolean {
  */
 export async function sendSendGridMail(input: SendMailOptions): Promise<SendMailResult> {
     const options = applyMandatoryCc(input);
+    const routed = await sendThroughFunderProvider(options);
+    if (routed) return routed;
     if (useGmailApi) {
         return deliverViaGmailApi(options);
     }
@@ -650,7 +691,11 @@ export async function sendSendGridMail(input: SendMailOptions): Promise<SendMail
             'Outbound mail is not configured. Set GMAIL_SENDER_EMAIL (Gmail API) or SENDGRID_API_KEY and SENDGRID_FROM_EMAIL on the server.',
         );
     }
+    return deliverViaSendGrid(options, sendgridApiKey);
+}
 
+/** SendGrid delivery; tracked mail with copies is split so webhook `ocid` matching stays reliable. */
+async function deliverViaSendGrid(options: SendMailOptions, apiKey: string): Promise<SendMailResult> {
     if (shouldSplitTrackedSendGridDelivery(options)) {
         const toList = listRecipientEmails(options.to);
         const ccList = listRecipientEmails(options.cc);
@@ -660,28 +705,212 @@ export async function sendSendGridMail(input: SendMailOptions): Promise<SendMail
             throw new Error('At least one recipient (to) is required');
         }
 
-        const primaryResult = await deliverSendGridMailOnce({
-            ...options,
-            to: primaryTo,
-            cc: undefined,
-            bcc: undefined,
-        });
+        const primaryResult = await deliverSendGridMailOnce(
+            {
+                ...options,
+                to: primaryTo,
+                cc: undefined,
+                bcc: undefined,
+            },
+            apiKey,
+        );
 
         const copyRecipients = [...extraTo, ...ccList, ...bccList];
         for (const recipient of copyRecipients) {
             const { trackingId: _trackingId, ...copyOptions } = options;
-            await deliverSendGridMailOnce({
-                ...copyOptions,
-                to: recipient,
-                cc: undefined,
-                bcc: undefined,
-            });
+            await deliverSendGridMailOnce(
+                {
+                    ...copyOptions,
+                    to: recipient,
+                    cc: undefined,
+                    bcc: undefined,
+                },
+                apiKey,
+            );
         }
 
         return primaryResult;
     }
 
-    return deliverSendGridMailOnce(options);
+    return deliverSendGridMailOnce(options, apiKey);
+}
+
+// ---------------------------------------------------------------------------
+// Funder routing (Settings → Funders → Outbound email provider)
+// ---------------------------------------------------------------------------
+
+type MailFunder = {
+    id: string;
+    name: string;
+    mailProvider: 'sendgrid' | 'gmail';
+    /** Verified SendGrid sender; also the display name for funder Gmail sends. */
+    sender: { email: string; name: string } | null;
+};
+
+async function funderNameForApplication(
+    applicationId: string,
+): Promise<{ funderName: string; state: string | null } | null> {
+    const contract = await prisma.contract.findFirst({
+        where: { applicationId, funderName: { not: null } },
+        select: { funderName: true, state: true },
+        orderBy: { updatedAt: 'desc' },
+    });
+    const fromContract = String(contract?.funderName ?? '').trim();
+    if (fromContract) return { funderName: fromContract, state: contract?.state ?? null };
+
+    const business = await prisma.businessInfo.findUnique({
+        where: { applicationId },
+        select: { funderName: true, state: true },
+    });
+    const fromBusiness = String(business?.funderName ?? '').trim();
+    return fromBusiness ? { funderName: fromBusiness, state: business?.state ?? null } : null;
+}
+
+/** The funder an email belongs to: explicit id / name, else the deal's contract or business info. */
+async function resolveMailFunder(options: SendMailOptions): Promise<MailFunder | null> {
+    const funderProfileId = String(options.funderProfileId ?? '').trim();
+    let funderName = String(options.funderName ?? '').trim();
+    let state: string | null = null;
+    const applicationId = String(options.applicationId ?? '').trim();
+
+    if (!funderProfileId && !funderName && applicationId) {
+        const found = await funderNameForApplication(applicationId);
+        if (!found) return null;
+        funderName = found.funderName;
+        state = found.state;
+    }
+    if (!funderProfileId && !funderName) return null;
+
+    // Lazy import: funderProfileService pulls in PDF / upload services the mailer must not load eagerly.
+    const { resolveFunderProfile } = await import('../services/funderProfileService');
+    const profile = await resolveFunderProfile({ funderProfileId, funderName, state });
+    if (!profile?.id) return null;
+
+    const row = await prisma.funderProfile.findUnique({
+        where: { id: String(profile.id) },
+        select: { id: true, name: true, mailProvider: true, sendgridFromEmail: true, sendgridFromName: true },
+    });
+    if (!row) return null;
+    const email = row.sendgridFromEmail?.trim();
+    const name = row.sendgridFromName?.trim();
+    return {
+        id: row.id,
+        name: row.name,
+        mailProvider: row.mailProvider === 'gmail' ? 'gmail' : 'sendgrid',
+        sender: email && name ? { email, name } : null,
+    };
+}
+
+/** Send from the funder's connected Gmail mailbox. Throws GmailApiSendError (`notSent`) when it did not send. */
+async function sendViaFunderGmail(options: SendMailOptions, funder: MailFunder): Promise<SendMailResult> {
+    const {
+        getFunderGmailMailboxForSend,
+        markFunderMailboxNeedsReconnect,
+        markFunderMailboxUsed,
+        recordFunderMailboxError,
+    } = await import('../services/gmail/funderGmailOAuthService');
+
+    let mailbox;
+    try {
+        mailbox = await getFunderGmailMailboxForSend(funder.id);
+    } catch (error) {
+        // Token refresh failed before any send request was made.
+        throw new GmailApiSendError((error as Error)?.message || 'Gmail token refresh failed', undefined, true);
+    }
+    if (!mailbox) {
+        throw new GmailApiSendError(`Funder "${funder.name}" Gmail mailbox is not connected.`, undefined, true);
+    }
+    const funderMailboxId = mailbox.funderMailboxId;
+    const firstToken = mailbox.accessToken;
+
+    const { to, subject, html, cc, bcc, replyTo, attachments, inReplyTo, references, messageId, gmailThreadId } =
+        options;
+    try {
+        const result = await sendViaGmailMailbox(
+            {
+                to,
+                cc,
+                bcc,
+                replyTo,
+                subject,
+                html,
+                ...(attachments?.length ? { attachments } : {}),
+                ...(inReplyTo ? { inReplyTo } : {}),
+                ...(references ? { references } : {}),
+                ...(messageId ? { messageId } : {}),
+                ...(gmailThreadId ? { gmailThreadId } : {}),
+                fromName: options.fromName || funder.sender?.name || buildMailFrom(options.from).name,
+            },
+            {
+                email: mailbox.email,
+                fromEmail: mailbox.fromEmail,
+                getAccessToken: async (force) => {
+                    if (!force) return firstToken;
+                    const fresh = await getFunderGmailMailboxForSend(funder.id, { forceRefresh: true }).catch(
+                        () => null,
+                    );
+                    return fresh?.accessToken ?? null;
+                },
+            },
+        );
+        markFunderMailboxUsed(funderMailboxId);
+        return { accepted: result.accepted, rejected: result.rejected, messageId: result.messageId ?? messageId };
+    } catch (error) {
+        const status = (error as GmailApiSendError)?.status;
+        if (status === 401 || status === 403) {
+            await markFunderMailboxNeedsReconnect(
+                funderMailboxId,
+                `Gmail rejected the send (${status}): ${(error as Error).message}`,
+            );
+        } else {
+            await recordFunderMailboxError(funderMailboxId, (error as Error)?.message || 'Gmail send failed');
+        }
+        throw error;
+    }
+}
+
+/**
+ * Route a funder's email through its provider (Settings → Funders):
+ *
+ *   funder on 'gmail'           → its connected Gmail mailbox; when that certainly
+ *                                 did not send (not connected, revoked, 4xx) the
+ *                                 SendGrid / default path below is used
+ *   funder SendGrid sender set  → SendGrid with that verified sender
+ *   otherwise                   → null: the server-default path (unchanged)
+ *
+ * A Gmail failure that may already have been delivered (timeout, 5xx) is thrown,
+ * never resent through another provider.
+ */
+async function sendThroughFunderProvider(options: SendMailOptions): Promise<SendMailResult | null> {
+    if (!options.funderProfileId && !options.funderName && !options.applicationId) return null;
+
+    let funder: MailFunder | null = null;
+    try {
+        funder = await resolveMailFunder(options);
+    } catch (error) {
+        console.warn('[mail] funder lookup failed, using the server default sender:', (error as Error)?.message);
+        return null;
+    }
+    if (!funder) return null;
+
+    if (funder.mailProvider === 'gmail') {
+        try {
+            return await sendViaFunderGmail(options, funder);
+        } catch (error) {
+            if (!(error instanceof GmailApiSendError && error.notSent)) throw error;
+            console.warn(
+                `[mail] funder "${funder.name}" Gmail did not send (${error.message}); falling back to SendGrid`,
+            );
+        }
+    }
+
+    if (funder.sender && funderSendgridApiKey) {
+        return deliverViaSendGrid(
+            { ...options, from: funder.sender.email, fromName: options.fromName || funder.sender.name },
+            funderSendgridApiKey,
+        );
+    }
+    return null;
 }
 
 /**

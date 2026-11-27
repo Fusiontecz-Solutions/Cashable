@@ -1,5 +1,6 @@
 import type { UploadedFile } from 'express-fileupload';
 import { Prisma } from '@prisma/client';
+import { assertFunderMailProviderAllowed } from './gmail/funderGmailOAuthService';
 import prisma from '../config/prismaClient';
 import uploadService from './uploadService';
 import {
@@ -71,6 +72,10 @@ export type FunderProfileInput = {
   contactEmail?: string | null;
   contactPhone?: string | null;
   defaultCcEmail?: string | null;
+  sendgridFromEmail?: string | null;
+  sendgridFromName?: string | null;
+  /** sendgrid (default) | gmail — gmail requires a connected, verified FunderMailbox. */
+  mailProvider?: string;
   addressLine1?: string | null;
   addressCity?: string | null;
   addressState?: string | null;
@@ -143,6 +148,9 @@ export function serializeFunderProfile(row: Record<string, unknown>) {
     contactEmail: row.contactEmail != null ? String(row.contactEmail) : null,
     contactPhone: row.contactPhone != null ? String(row.contactPhone) : null,
     defaultCcEmail: row.defaultCcEmail != null ? String(row.defaultCcEmail) : null,
+    sendgridFromEmail: row.sendgridFromEmail != null ? String(row.sendgridFromEmail) : null,
+    sendgridFromName: row.sendgridFromName != null ? String(row.sendgridFromName) : null,
+    mailProvider: row.mailProvider === 'gmail' ? 'gmail' : 'sendgrid',
     addressLine1: row.addressLine1 != null ? String(row.addressLine1) : null,
     addressCity: row.addressCity != null ? String(row.addressCity) : null,
     addressState: row.addressState != null ? String(row.addressState) : null,
@@ -969,7 +977,26 @@ export async function uploadFunderLetterLogo(funderId: string, file: UploadedFil
   return enriched;
 }
 
+const SINGLE_EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+
+/** A funder's SendGrid sender is an address plus its display name — both or neither. */
+function assertSendGridSenderComplete(email?: string | null, name?: string | null) {
+  const address = String(email ?? '').trim();
+  const display = String(name ?? '').trim();
+  if (address && !SINGLE_EMAIL_RE.test(address)) {
+    throw new Error('SendGrid From Email must be a single valid email address.');
+  }
+  if (Boolean(address) !== Boolean(display)) {
+    throw new Error(
+      'SendGrid From Email and From Name go together — set both or leave both blank.',
+    );
+  }
+}
+
 export async function createFunderProfile(input: FunderProfileInput) {
+  assertSendGridSenderComplete(input.sendgridFromEmail, input.sendgridFromName);
+  // A new funder has no mailbox yet, so only the default provider is accepted.
+  if (input.mailProvider !== undefined) await assertFunderMailProviderAllowed(null, input.mailProvider);
   const contractDefaults = defaultContractFields(input);
   const row = await prisma.funderProfile.create({
     data: {
@@ -986,6 +1013,8 @@ export async function createFunderProfile(input: FunderProfileInput) {
       contactEmail: input.contactEmail ? String(input.contactEmail).trim() : null,
       contactPhone: input.contactPhone ? String(input.contactPhone).trim() : null,
       defaultCcEmail: input.defaultCcEmail ? String(input.defaultCcEmail).trim() : null,
+      sendgridFromEmail: input.sendgridFromEmail ? String(input.sendgridFromEmail).trim() : null,
+      sendgridFromName: input.sendgridFromName ? String(input.sendgridFromName).trim() : null,
       addressLine1: input.addressLine1 ? String(input.addressLine1).trim() : null,
       addressCity: input.addressCity ? String(input.addressCity).trim() : null,
       addressState: input.addressState ? String(input.addressState).trim() : null,
@@ -1105,6 +1134,19 @@ export async function updateFunderProfile(id: string, input: Partial<FunderProfi
   }
   if (input.defaultCcEmail !== undefined) {
     data.defaultCcEmail = input.defaultCcEmail ? String(input.defaultCcEmail).trim() : null;
+  }
+  if (input.sendgridFromEmail !== undefined) {
+    data.sendgridFromEmail = input.sendgridFromEmail ? String(input.sendgridFromEmail).trim() : null;
+  }
+  if (input.sendgridFromName !== undefined) {
+    data.sendgridFromName = input.sendgridFromName ? String(input.sendgridFromName).trim() : null;
+  }
+  assertSendGridSenderComplete(
+    input.sendgridFromEmail !== undefined ? input.sendgridFromEmail : existing.sendgridFromEmail,
+    input.sendgridFromName !== undefined ? input.sendgridFromName : existing.sendgridFromName,
+  );
+  if (input.mailProvider !== undefined && input.mailProvider !== existing.mailProvider) {
+    data.mailProvider = await assertFunderMailProviderAllowed(id, input.mailProvider);
   }
   if (input.addressLine1 !== undefined) {
     data.addressLine1 = input.addressLine1 ? String(input.addressLine1).trim() : null;

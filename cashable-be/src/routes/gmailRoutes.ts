@@ -35,6 +35,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import { createOAuth2Client, invalidateAccessTokenCache } from '../config/gmail';
 import prisma from '../config/prismaClient';
+import { completeFunderGmailConnect, isFunderGmailState } from '../services/gmail/funderGmailOAuthService';
 
 // ==============================
 // 🔵 GET /google/connect
@@ -86,6 +87,11 @@ export const googleCallback = async (req: Request, res: Response) => {
   try {
     const code = String(req.query.code || '');
     const state = String(req.query.state || '');
+
+    // Funder mailbox connect (Settings → Funders): signed state, handled separately.
+    if (isFunderGmailState(state)) {
+      return res.redirect(await completeFunderGmailConnect(code, state, req.query.error));
+    }
 
     if (!code) {
       return res.status(400).json({

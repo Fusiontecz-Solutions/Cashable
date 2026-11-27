@@ -5891,6 +5891,7 @@ class ApplicationController {
                     }
 
                     rejectionEmailDelivery = await sendApplicationRejectionEmail({
+                        applicationId: applicationRecord.id,
                         to: isoDeclineToList,
                         cc: uniqueCcList.length ? uniqueCcList : undefined,
                         inReplyTo: emailThreadContext?.inReplyTo,
@@ -8492,6 +8493,7 @@ class ApplicationController {
                     };
                     const sendResult = resend
                         ? await sendApplicationOfferUpdatedEmail({
+                            applicationId: (application as any).id,
                             to,
                             cc: uniqueCcForSend.length ? uniqueCcForSend : undefined,
                             clientName,
@@ -8511,6 +8513,7 @@ class ApplicationController {
                             submissionApplication,
                         })
                         : await sendApplicationApprovalEmail({
+                            applicationId: (application as any).id,
                             to,
                             cc: uniqueCcForSend.length ? uniqueCcForSend : undefined,
                             clientName,

@@ -88,6 +88,7 @@ export async function sendIsoApprovalEmailAfterUnderwriterApprove(
         );
 
         const result = await sendApplicationApprovalEmail({
+            applicationId: application.id,
             to: toEmail,
             cc: cc.length ? cc : undefined,
             clientName: ctx.isoRecipientName,

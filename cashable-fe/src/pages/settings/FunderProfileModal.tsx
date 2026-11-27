@@ -40,7 +40,12 @@ import {
   uploadFunderDisclosureDocument,
   type FunderProfileFiles,
 } from "@/redux/actions/integrationSettingsActions";
-import type { FunderProfile, FunderProfileInput } from "@/types/integrationSettingsTypes";
+import type {
+  FunderMailProvider,
+  FunderProfile,
+  FunderProfileInput,
+} from "@/types/integrationSettingsTypes";
+import FunderGmailSection from "./FunderGmailSection";
 import {
   DISCLOSURE_FREQUENCY_OPTIONS,
   FUNDER_ADDENDUM_COORDINATE_LAYOUT_OPTIONS,
@@ -71,6 +76,9 @@ type Props = {
 const emptyForm: FunderProfileInput = {
   name: "",
   defaultCcEmail: "",
+  sendgridFromEmail: "",
+  sendgridFromName: "",
+  mailProvider: "sendgrid",
   contactEmail: "",
   contactPhone: "",
   addressLine1: "",
@@ -284,6 +292,9 @@ export default function FunderProfileModal({
         dealIdPrefix: initial.dealIdPrefix ?? "",
         docusignAccountProfileId: initial.docusignAccountProfileId ?? null,
         defaultCcEmail: initial.defaultCcEmail ?? "",
+        sendgridFromEmail: initial.sendgridFromEmail ?? "",
+        sendgridFromName: initial.sendgridFromName ?? "",
+        mailProvider: initial.mailProvider === "gmail" ? "gmail" : "sendgrid",
         contactEmail: initial.contactEmail ?? "",
         contactPhone: initial.contactPhone ?? "",
         addressLine1: initial.addressLine1 ?? "",
@@ -428,6 +439,19 @@ export default function FunderProfileModal({
   const handleSubmit = async () => {
     if (!form.name.trim()) return;
 
+    const sendgridFromEmail = form.sendgridFromEmail?.trim() ?? "";
+    const sendgridFromName = form.sendgridFromName?.trim() ?? "";
+    if (sendgridFromEmail && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(sendgridFromEmail)) {
+      toast.error("SendGrid From Email must be a single valid email address.");
+      return;
+    }
+    if (Boolean(sendgridFromEmail) !== Boolean(sendgridFromName)) {
+      toast.error(
+        "SendGrid From Email and From Name go together — set both (e.g. Cashable Funding) or leave both blank.",
+      );
+      return;
+    }
+
     const allowedStates = statesText
       .split(/[,;\n]+/)
       .map((s) => s.trim())
@@ -445,6 +469,10 @@ export default function FunderProfileModal({
       excludedStates,
       docusignAccountProfileId: form.docusignAccountProfileId || null,
       defaultCcEmail: form.defaultCcEmail?.trim() ?? "",
+      sendgridFromEmail,
+      sendgridFromName,
+      // A new funder has no mailbox yet; the provider can only change once it is saved.
+      ...(initial ? { mailProvider: form.mailProvider === "gmail" ? "gmail" : "sendgrid" } : {}),
       contactEmail: form.contactEmail?.trim() ?? "",
       contactPhone: form.contactPhone?.trim() ?? "",
       addressLine1: form.addressLine1?.trim() ?? "",
@@ -699,6 +727,39 @@ export default function FunderProfileModal({
                   placeholder="comma-separated emails"
                 />
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="f-sendgrid-from">SendGrid From Email</Label>
+                  <Input
+                    id="f-sendgrid-from"
+                    type="email"
+                    value={form.sendgridFromEmail ?? ""}
+                    onChange={(e) => set("sendgridFromEmail", e.target.value)}
+                    placeholder="e.g. contracts@yourfunder.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="f-sendgrid-from-name">SendGrid From Name</Label>
+                  <Input
+                    id="f-sendgrid-from-name"
+                    value={form.sendgridFromName ?? ""}
+                    onChange={(e) => set("sendgridFromName", e.target.value)}
+                    placeholder="e.g. Cashable Funding"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  The verified SendGrid sender identity for this funder's deal, contract and payment
+                  emails. Recipients see "From Name &lt;From Email&gt;". Leave both blank to use the
+                  server default (SENDGRID_FROM_EMAIL / SENDGRID_FROM_NAME).
+                </p>
+              </div>
+
+              <FunderGmailSection
+                funderId={initial?.id ?? null}
+                mailProvider={form.mailProvider === "gmail" ? "gmail" : "sendgrid"}
+                onMailProviderChange={(provider: FunderMailProvider) => set("mailProvider", provider)}
+              />
 
               <div className="grid gap-2">
                 <Label>Dropbox Sign account</Label>

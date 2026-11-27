@@ -15,6 +15,31 @@ export type DocuSignAccountProfile = {
   funderCount?: number;
 };
 
+export type FunderMailProvider = "sendgrid" | "gmail";
+
+/** GET /integration-settings/funders/:id/gmail — never contains tokens. */
+export interface FunderGmailStatus {
+  configured: boolean;
+  funderProfileId: string;
+  mailProvider: FunderMailProvider | string;
+  status: "connected" | "needs_reconnect" | "disconnected" | string;
+  connected: boolean;
+  needsReconnect: boolean;
+  /** True when Gmail may be selected as this funder's provider. */
+  canUseGmail: boolean;
+  gmailEmail: string | null;
+  sendAsEmail: string | null;
+  senderEmail: string | null;
+  senderMatchesMailbox: boolean | null;
+  verifiedAt: string | null;
+  connectedAt: string | null;
+  connectedBy: string | null;
+  lastUsedAt: string | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
+  verified?: boolean;
+}
+
 export type FunderProfile = {
   id: string;
   name: string;
@@ -31,6 +56,12 @@ export type FunderProfile = {
   contactEmail?: string | null;
   contactPhone?: string | null;
   defaultCcEmail?: string | null;
+  /** Verified SendGrid sender for this funder's mail (null = server default). */
+  sendgridFromEmail?: string | null;
+  /** Display name of that sender; required whenever sendgridFromEmail is set. */
+  sendgridFromName?: string | null;
+  /** Outbound provider for this funder's deal mail. */
+  mailProvider?: FunderMailProvider;
   addressLine1?: string | null;
   addressCity?: string | null;
   addressState?: string | null;
@@ -86,6 +117,10 @@ export type FunderProfileInput = {
   contactEmail?: string;
   contactPhone?: string;
   defaultCcEmail?: string;
+  sendgridFromEmail?: string;
+  sendgridFromName?: string;
+  /** Only sent for an existing funder; gmail requires a connected, verified mailbox. */
+  mailProvider?: FunderMailProvider;
   addressLine1?: string;
   addressCity?: string;
   addressState?: string;
