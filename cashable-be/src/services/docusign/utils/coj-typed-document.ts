@@ -128,6 +128,26 @@ const FILLABLE_FIELD_WIDTH: Record<string, number> = {
 /** "{{NAME}}" (optionally followed by punctuation) in a fillable COJ: a blank with a form field. */
 const FILLABLE_TOKEN = /^\{\{([A-Z_]+)\}\}([^A-Za-z0-9{]*)$/;
 
+/** Company suffixes that belong to the name before the comma ("FORGOTTEN COAST FISHING, INC."). */
+const ENTITY_SUFFIX = /^(inc|incorporated|llc|l\.l\.c|ltd|limited|corp|corporation|co|company|llp|l\.l\.p|lp|l\.p|pllc|pc|p\.c|pa|p\.a|na|n\.a|plc|gmbh)\.?$/i;
+
+/**
+ * Typed "Additional names": one entity per ";" or line, and also per comma ("ABC, XYZ, YTV" is three
+ * entities) — except a company suffix after a comma, which stays with its name ("XYZ, INC.").
+ */
+export function splitEntityNames(raw: string): string[] {
+  const out: string[] = [];
+  for (const part of String(raw ?? '').split(/[;\r\n]+/)) {
+    for (const piece of part.split(',')) {
+      const name = piece.trim();
+      if (!name) continue;
+      if (ENTITY_SUFFIX.test(name) && out.length) out[out.length - 1] = `${out[out.length - 1]}, ${name}`;
+      else out.push(name);
+    }
+  }
+  return out;
+}
+
 export function cojFacts(values: Values) {
   // Fillable form (renderFillableCoj): every value is a named blank.
   if (String(values.__fillable ?? '') === '1') {
@@ -184,7 +204,7 @@ function cojFactsFrom(rawValues: Values) {
   );
   const exhibitNames = Array.from({ length: 10 }, (_, i) => String(values[`exhibit_a_value_${i + 1}`] ?? ''));
   const seen = new Set<string>();
-  const extraNames = [...exhibitNames, ...String(values.coj_additional_names ?? '').split(/[;\r\n]+/)]
+  const extraNames = [...exhibitNames, ...splitEntityNames(String(values.coj_additional_names ?? ''))]
     .map((s) => upper(cojKeepSpaces(cojNameCommas(s))))
     .filter((s) => {
       const key = s.replace(/[\s\u00A0]+/g, ' ').trim();
@@ -931,7 +951,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['coj_repayment_amount', 'Repayment amount / RTR (judgment = this + $7,500.00)'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
-    ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_additional_names', 'Additional names (separate with , or ;)'],
     ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
@@ -946,7 +966,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
-    ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_additional_names', 'Additional names (separate with , or ;)'],
     ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
@@ -962,7 +982,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
-    ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_additional_names', 'Additional names (separate with , or ;)'],
     ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],
@@ -976,7 +996,7 @@ const COJ_INPUTS: Record<CojKind, Array<[string, string]>> = {
     ['coj_repayment_amount', 'Repayment amount / RTR'],
     ['agreement_date', 'Agreement date'],
     ['funder_name', 'Plaintiff'],
-    ['coj_additional_names', 'Additional names (separate with ;)'],
+    ['coj_additional_names', 'Additional names (separate with , or ;)'],
     ['coj_date', 'COJ date (under the signature)'],
     ['coj_bold', 'Bold text'],
     ['coj_line_spacing', 'Line spacing'],

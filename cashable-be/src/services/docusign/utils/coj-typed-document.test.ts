@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { cojFacts, renderTypedCoj, typedCojKind } from './coj-typed-document';
+import { cojFacts, renderTypedCoj, splitEntityNames, typedCojKind } from './coj-typed-document';
 
 const values = {
   funder_name: 'Cashable Fund LLC',
@@ -91,5 +91,17 @@ describe('first paragraph lists the defendants with "and" before the last name',
     expect(text(cojFacts(v).M())).toBe(
       "THE HIVE GROUP LLC DBA HONEY'S FRIED CHICKEN PALACE, HIVE GROUP LLC, FORGOTTEN COAST FISHING, INC., NEWBLACK LLC",
     );
+  });
+});
+
+describe('typed additional names split on commas too', () => {
+  it('"ABC, XYZ, YTV" is three entities; company suffixes stay with their name', () => {
+    expect(splitEntityNames('ABC, XYZ, YTV')).toEqual(['ABC', 'XYZ', 'YTV']);
+    expect(splitEntityNames('FORGOTTEN COAST FISHING, INC.; NEWBLACK LLC')).toEqual(['FORGOTTEN COAST FISHING, INC.', 'NEWBLACK LLC']);
+    expect(splitEntityNames('ACME, LLC, BETA CORP, GAMMA, L.P.')).toEqual(['ACME, LLC', 'BETA CORP', 'GAMMA, L.P.']);
+  });
+  it('"and" goes before the last additional entity only', () => {
+    const f = cojFacts({ business_name_with_dba: 'QUICKLYN, INC. DBA QUICKLYN', coj_additional_names: 'ABC, XYZ, YTV' });
+    expect(f.M({ and: true }).map((r) => r.text).join('')).toBe('QUICKLYN, INC. DBA QUICKLYN, ABC, XYZ and YTV');
   });
 });
