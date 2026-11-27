@@ -159,6 +159,7 @@ import {
 } from '../services/paymentMailLogService';
 import { extractPdfPlainTextForParsing } from '../services/pdfIngestionService';
 import { sanitizeEin } from '../services/einSanitizer';
+import { runAfterResponse } from '../utils/runAfterResponse';
 import { parseCalendarDate } from '../utils/parseCalendarDate';
 import { normalizeOcrTextForParsing } from '../services/ocrFieldExtraction';
 import { parseBusinessData } from "../services/parseBusinessData";
@@ -5646,11 +5647,6 @@ class ApplicationController {
                 client: (existingApplication as { client?: { notes?: string | null } | null })
                     .client,
             };
-            const emailThreadContext = await resolveApplicationSubmissionThreadContext(
-                submissionMailSource,
-                properRejectionSubject,
-            );
-
             const storedGmailMessageId = parseGmailMessageIdFromApplicationNote(
                 existingApplication.note,
             );
@@ -5701,6 +5697,21 @@ class ApplicationController {
                     message: 'Application not found',
                 });
             }
+
+            // The decline is saved: answer now. The ISO email (with its Gmail thread lookup),
+            // notifications and the activity log run in the background (a few seconds).
+            res.status(200).json({
+                success: true,
+                message: 'Application rejected successfully',
+                data: application,
+                emailQueued: !isFinalUnderwriter,
+            });
+
+            runAfterResponse('[decline]', async () => {
+            const emailThreadContext = await resolveApplicationSubmissionThreadContext(
+                submissionMailSource,
+                properRejectionSubject,
+            );
 
             // Send notification to Agent and Underwriters (when Underwriter rejects)
             try {
@@ -5953,15 +5964,11 @@ class ApplicationController {
             }
             }
 
-            return res.status(200).json({
-                success: true,
-                message: 'Application rejected successfully',
-                data: application,
-                emailSent: rejectionEmailDelivery.sent,
-                emailedTo: rejectionEmailDelivery.emailedTo,
-                emailedCc: rejectionEmailDelivery.emailedCc,
-                ccErrors: rejectionEmailDelivery.ccErrors,
+            if (rejectionEmailDelivery.ccErrors.length) {
+                console.warn('[decline] CC not delivered:', applicationRecord.id, rejectionEmailDelivery.ccErrors);
+            }
             });
+            return;
         } catch (error) {
             console.error('Reject application error:', error);
             return res.status(500).json({
@@ -8481,6 +8488,52 @@ class ApplicationController {
                 console.error('Failed to create activity log for approval email:', logError);
             }
 
+            // The deal moves to "Approval Sent" now and the CRM gets its answer right away; delivery,
+            // contract re-initiation and the delivery log run in the background (a few seconds).
+            const stageBeforeApproval = {
+                currentQueue: (application as any).currentQueue,
+                currentState: (application as any).currentState,
+            };
+            try {
+                const normalizedActorRole = String(authUser?.role || '')
+                    .toUpperCase()
+                    .replace(/-/g, '_');
+                const shouldCreditUnderwriterApproval =
+                    normalizedActorRole === 'UNDERWRITER';
+                const underwriterApprovalPatch = shouldCreditUnderwriterApproval
+                    ? patchRecordUnderwriterApproval(authUser, {
+                          assignedUnderwriterId: (application as any).assignedUnderwriterId,
+                          claimedByUnderwriterId: (application as any).claimedByUnderwriterId,
+                          approvedByUnderwriterId: (application as any).approvedByUnderwriterId,
+                      })
+                    : undefined;
+
+                await prisma.application.update({
+                    where: { id: fallbackId },
+                    data: {
+                        currentQueue: APPROVAL_SENT_QUEUE,
+                        currentState: APPROVAL_SENT_STATE,
+                        // Approved after an earlier decline: drop the stale decline label.
+                        ...(/declin|reject/i.test(String((application as any).underwriterAction ?? ''))
+                            ? { underwriterAction: UNDERWRITER_ACTION_APPROVED }
+                            : {}),
+                        ...(underwriterApprovalPatch ?? {}),
+                    },
+                });
+            } catch (stageErr) {
+                console.error(
+                    'Send approval email: failed to set application to Approval Sent:',
+                    stageErr,
+                );
+            }
+
+            res.status(200).json({
+                success: true,
+                message: resend ? 'Updated offer email is being sent' : 'Approval email is being sent',
+                data: { queued: true, to: isoToList },
+            });
+
+            runAfterResponse('[approval email]', async () => {
             const deliveryResults = await Promise.all(
                 recipients.map(async ({ to, clientName }) => {
                     const submissionApplication = {
@@ -8531,12 +8584,35 @@ class ApplicationController {
             );
             const anyDelivered = deliveryResults.some((r) => r.ok);
             if (!anyDelivered) {
-                return res.status(502).json({
-                    success: false,
-                    message:
-                        'Could not deliver approval notification email. Check: (1) DISABLE_CLIENT_APPLICATION_EMAILS is not true, (2) SENDGRID_API_KEY or SMTP_AUTH_USER / SMTP_AUTH_PASS, (3) recipient spam folder.',
-                    data: { attempted: deliveryResults },
-                });
+                console.error('[approval email] not delivered:', fallbackId, deliveryResults);
+                // Not sent: put the deal back where it was and mark the email failed in the Mail log.
+                await prisma.application
+                    .update({ where: { id: fallbackId }, data: stageBeforeApproval })
+                    .catch((err) => console.error('[approval email] stage restore failed:', err));
+                try {
+                    const outbound = await prisma.outbound_communications.findUnique({
+                        where: { id: trackingId },
+                        select: { metadata: true },
+                    });
+                    const prior =
+                        outbound?.metadata && typeof outbound.metadata === 'object' && !Array.isArray(outbound.metadata)
+                            ? (outbound.metadata as Record<string, unknown>)
+                            : {};
+                    await prisma.outbound_communications.update({
+                        where: { id: trackingId },
+                        data: {
+                            metadata: {
+                                ...prior,
+                                status: 'failed',
+                                delivery: { status: 'failed', failedAt: new Date().toISOString() },
+                                emailDelivery: deliveryResults,
+                            } as object,
+                        },
+                    });
+                } catch (err) {
+                    console.error('[approval email] failure log failed:', err);
+                }
+                return;
             }
 
             const shouldReinitiateContract = !!resend && !!reinitiateContract;
@@ -8591,44 +8667,8 @@ class ApplicationController {
                 }
             }
 
-            try {
-                const normalizedActorRole = String(authUser?.role || '')
-                    .toUpperCase()
-                    .replace(/-/g, '_');
-                const shouldCreditUnderwriterApproval =
-                    normalizedActorRole === 'UNDERWRITER';
-                const underwriterApprovalPatch = shouldCreditUnderwriterApproval
-                    ? patchRecordUnderwriterApproval(authUser, {
-                          assignedUnderwriterId: (application as any).assignedUnderwriterId,
-                          claimedByUnderwriterId: (application as any).claimedByUnderwriterId,
-                          approvedByUnderwriterId: (application as any).approvedByUnderwriterId,
-                      })
-                    : undefined;
-
-                await prisma.application.update({
-                    where: { id: fallbackId },
-                    data: {
-                        currentQueue: APPROVAL_SENT_QUEUE,
-                        currentState: APPROVAL_SENT_STATE,
-                        // Approved after an earlier decline: drop the stale decline label.
-                        ...(/declin|reject/i.test(String((application as any).underwriterAction ?? ''))
-                            ? { underwriterAction: UNDERWRITER_ACTION_APPROVED }
-                            : {}),
-                        ...(underwriterApprovalPatch ?? {}),
-                    },
-                });
-            } catch (stageErr) {
-                console.error(
-                    'Send approval email: failed to set application to Approval Sent:',
-                    stageErr,
-                );
-            }
-
-            return res.status(200).json({
-                success: true,
-                message: resend ? 'Updated offer email sent' : 'Approval email sent',
-                data: { delivered: deliveryResults.filter((r) => r.ok).map((r) => r.to) },
             });
+            return;
         } catch (error: any) {
             console.error('Send approval email error:', error);
             return res.status(500).json({

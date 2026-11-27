@@ -505,16 +505,18 @@ const RejectApplicationModal = ({
                 emailSubject: buildApplicationRejectionEmailSubject(businessName),
             })).unwrap();
 
-            if (onAfterReject) {
-                await onAfterReject(combinedReason);
-            }
-
             const ccErrors = Array.isArray(result?.ccErrors) ? result.ccErrors : [];
             const emailedCc = Array.isArray(result?.emailedCc) ? result.emailedCc : [];
             const ccFailed =
+                !result?.emailQueued &&
                 ccForSend.length > 0 &&
                 (ccErrors.length > 0 || emailedCc.length < ccForSend.length);
-            if (ccFailed) {
+            if (result?.emailQueued) {
+                // The server saved the decline and sends the email in the background.
+                toast.success(
+                    `Application declined. Decline email is being sent to ${isoRecipients.to.join(", ")}${ccForSend.length ? ` (CC ${ccForSend.join(", ")})` : ""}.`,
+                );
+            } else if (ccFailed) {
                 const undelivered = ccForSend.filter(
                     (e) => !emailedCc.some((sent: string) => sent.toLowerCase() === e.toLowerCase()),
                 );
@@ -533,13 +535,17 @@ const RejectApplicationModal = ({
                 toast.success(`Application rejection template sent to ${isoRecipients.to.join(", ")}`);
             }
 
+            // Close right away; the follow-up and the deal refresh finish behind it.
             onOpenChange(false);
             resetFormState();
 
+            if (onAfterReject) {
+                await onAfterReject(combinedReason);
+            }
             if ((applicationData as any)?.applicationId) {
-                await dispatch(getApplicationByApplicationId(String((applicationData as any).applicationId)));
+                void dispatch(getApplicationByApplicationId(String((applicationData as any).applicationId)));
             } else if ((applicationData as any)?._id) {
-                await dispatch(getApplicationById((applicationData as any)._id));
+                void dispatch(getApplicationById((applicationData as any)._id));
             }
         } catch (error: any) {
             toast.error(error || 'Failed to reject application');

@@ -148,6 +148,13 @@ export function splitEntityNames(raw: string): string[] {
   return out;
 }
 
+/**
+ * The merchant's name as the COJ prints it: legal name and DBAs exactly as entered (upper case).
+ * DBA separators are the team's own; the COJ adds "and" only before the last additional entity.
+ */
+const cojBusinessName = (values: Values) =>
+  upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+
 export function cojFacts(values: Values) {
   // Fillable form (renderFillableCoj): every value is a named blank.
   if (String(values.__fillable ?? '') === '1') {
@@ -196,7 +203,7 @@ function cojFactsFrom(rawValues: Values) {
   // Additional names follow the merchant everywhere: every Exhibit A company of the deal (added or
   // removed there, it follows here), then any typed in this COJ's "Additional names" (";" or new
   // lines). Duplicates and the merchant's own name are dropped.
-  const mainName = upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+  const mainName = cojBusinessName(values);
   const own = new Set(
     [mainName, upper(v(values, 'client_legal_name')), upper(v(values, 'doing_business_as'))]
       .map((s) => s.replace(/\s+/g, ' ').trim())
@@ -212,7 +219,7 @@ function cojFactsFrom(rawValues: Values) {
       seen.add(key);
       return true;
     });
-  const merchant = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames]
+  const merchant = [cojBusinessName(values), ...extraNames]
     .filter(Boolean)
     .join(', ');
   const owner = upper(v(values, 'owner1_guarantor_name', 'guaranty_owner1_name', 'client_name'));
@@ -240,7 +247,7 @@ function cojFactsFrom(rawValues: Values) {
     /** Business name followed by the additional names, each with its own weight. */
     /** `and: true` joins the last two names with "and" ("A, B, C and D") for sentences that list them. */
     M: (opts: { and?: boolean } = {}): Run[] => {
-      const main = upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name'));
+      const main = cojBusinessName(values);
       if (opts.and && main && extraNames.length) {
         if (extraNames.length === 1) return [V('merchant', main), R(' and '), V('additional', extraNames[0])];
         const head = extraNames.slice(0, -1).join(', ');
@@ -256,7 +263,7 @@ function cojFactsFrom(rawValues: Values) {
     merchant,
     /** "A, B AND C": business name then the additional names, for the signature block. */
     merchantAnd: (() => {
-      const names = [upper(v(values, 'business_name_with_dba', 'client_legal_name', 'disclosure_merchant_name')), ...extraNames].filter((n) => n.trim());
+      const names = [cojBusinessName(values), ...extraNames].filter((n) => n.trim());
       return names.length > 1 ? `${names.slice(0, -1).join(', ')} AND ${names[names.length - 1]}` : names.join('');
     })(),
     owner,

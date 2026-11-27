@@ -1103,17 +1103,16 @@ const ApprovedApplicationModal = ({
                         ccEmails: ccResolution.emails,
                     }),
                 ).unwrap();
+                // The server sends the email in the background; refresh the deal without waiting.
                 if (applicationId ?? applicationUuid) {
-                    await dispatch(
-                        getApplicationById(String(applicationId ?? applicationUuid)),
-                    );
+                    void dispatch(getApplicationById(String(applicationId ?? applicationUuid)));
                 }
                 toast.update(toastId, {
                     render: reinitiateContractChecked
-                        ? "Updated offer email sent to the ISO and contract reinitiated for regeneration."
+                        ? "Updated offer email is being sent to the ISO; contract reinitiated for regeneration."
                         : effectiveResendApprovalEmail
-                          ? "Updated offer email sent to the ISO. Application marked as approved by you."
-                          : "Approval email sent to the ISO. Application marked as approved by you.",
+                          ? "Updated offer email is being sent to the ISO. Application marked as approved by you."
+                          : "Approval email is being sent to the ISO. Application marked as approved by you.",
                     type: "success",
                     isLoading: false,
                     autoClose: 3000,
@@ -1182,17 +1181,16 @@ const ApprovedApplicationModal = ({
                             : APPLICATION_APPROVAL_EMAIL_SUBJECT,
                     }),
                 ).unwrap();
+                // The server sends the email in the background; refresh the deal without waiting.
                 if (applicationId ?? applicationUuid) {
-                    await dispatch(
-                        getApplicationById(String(applicationId ?? applicationUuid)),
-                    );
+                    void dispatch(getApplicationById(String(applicationId ?? applicationUuid)));
                 }
                 toast.update(toastId, {
                     render: reinitiateContractChecked
-                        ? "Updated offer email sent to the ISO and contract reinitiated for regeneration."
+                        ? "Updated offer email is being sent to the ISO; contract reinitiated for regeneration."
                         : effectiveResendApprovalEmail
-                          ? "Updated offer email sent to the linked ISO when that ISO has an email on file."
-                          : "Approval email sent to the linked ISO when that ISO has an email on file.",
+                          ? "Updated offer email is being sent to the linked ISO."
+                          : "Approval email is being sent to the linked ISO.",
                     type: "success",
                     isLoading: false,
                     autoClose: 3000,

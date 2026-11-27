@@ -105,3 +105,17 @@ describe('typed additional names split on commas too', () => {
     expect(f.M({ and: true }).map((r) => r.text).join('')).toBe('QUICKLYN, INC. DBA QUICKLYN, ABC, XYZ and YTV');
   });
 });
+
+describe('DBAs print as entered; "and" only before the last additional entity', () => {
+  it('keeps the typed DBA separators and adds no "and" between DBAs', () => {
+    const f = cojFacts({
+      business_name_with_dba: 'EAST END HAMPTONS PAINTING INC. DBA EAST END PAINTING / EAST END HAMPTONS',
+      coj_additional_names: 'ABC, XYZ',
+    });
+    expect(f.M({ and: true }).map((r) => r.text).join('')).toBe(
+      'EAST END HAMPTONS PAINTING INC. DBA EAST END PAINTING / EAST END HAMPTONS, ABC and XYZ',
+    );
+    const noExtras = cojFacts({ business_name_with_dba: 'ACME LLC DBA ONE, TWO; THREE' });
+    expect(noExtras.M({ and: true }).map((r) => r.text).join('')).toBe('ACME LLC DBA ONE, TWO; THREE');
+  });
+});
