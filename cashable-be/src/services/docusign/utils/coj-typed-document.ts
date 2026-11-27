@@ -625,12 +625,10 @@ async function iowa(values: Values, scale = 1) {
     venueCounty: f.ownerCounty,
   });
   t.paragraph([f.V('owner', f.owner), R(', being duly sworn, deposes and says:')], { align: 'left', gapAfter: 4 });
-  // Lists the defendants exactly as the caption does: the businesses, then "and <owner>".
+  // The businesses only (the "Merchant Defendant"), "and" before the last one: "A, B and C".
   numbered(t, 1, [
     R('I am a principal, owner, and an officer of '),
-    ...f.M(),
-    R(' and '),
-    f.V('owner', f.owner),
+    ...f.M({ and: true }),
     R(' (“Merchant Defendant”), and as such, I have the authority to act on behalf of Merchant Defendant.'),
   ]);
   numbered(t, 2, [R('I reside at '), f.V('owner_address', f.ownerAddress), R(', in the County of '), f.V('county', f.ownerCounty), R('.')]);
