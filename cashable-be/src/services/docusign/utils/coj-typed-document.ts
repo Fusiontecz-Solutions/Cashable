@@ -69,6 +69,13 @@ const v = (values: Values, ...keys: string[]) => {
   return '';
 };
 const upper = (s: string) => s.toUpperCase();
+/** An address on one tidy line: single spaces (typed doubles dropped) and ", " between parts. */
+export const oneLineAddress = (s: string) =>
+  String(s ?? '')
+    .replace(/[\s\u00A0]+/g, ' ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/(,\s*)+,/g, ',')
+    .replace(/^[\s,]+|[\s,]+$/g, '');
 
 function money(raw: string): string {
   const n = parseFloat(String(raw || '').replace(/[^0-9.]/g, ''));
@@ -235,8 +242,8 @@ function cojFactsFrom(rawValues: Values) {
     owner,
     ownerState: upper(fullUsStateName(v(values, 'owner_state'))),
     ownerCounty: upper(v(values, 'owner_county')),
-    ownerAddress: upper(v(values, 'guarantor_address_full', 'mailing_address_full')),
-    businessAddress: upper(v(values, 'business_address_full')),
+    ownerAddress: upper(oneLineAddress(v(values, 'guarantor_address_full', 'mailing_address_full'))),
+    businessAddress: upper(oneLineAddress(v(values, 'business_address_full'))),
     businessCounty: upper(v(values, 'business_county', 'owner_county')),
     purchase,
     judgment,
@@ -375,7 +382,12 @@ class Typesetter {
   width(text: string, bold: boolean | undefined, size: number) {
     const field = FILLABLE_TOKEN.exec(text);
     if (field) return (FILLABLE_FIELD_WIDTH[field[1]] ?? 120) * (size / BODY) + this.font(bold).widthOfTextAtSize(encodable(field[2]), size);
-    return this.font(bold).widthOfTextAtSize(encodable(text), size);
+    // Letter by letter: the width as drawn. (The font's own measure applies kerning, which drawText
+    // does not, so words such as "STATE" or "MATVEY" printed wider than measured and closed the gap.)
+    const font = this.font(bold);
+    let w = 0;
+    for (const ch of encodable(text)) w += font.widthOfTextAtSize(ch, size);
+    return w;
   }
 
   draw(text: string, x: number, baseline: number, opts: { bold?: boolean; size?: number } = {}) {
@@ -465,7 +477,12 @@ class Typesetter {
       const last = i === lines.length - 1;
       let extra = 0;
       let x = x0;
-      if (align === 'justify' && !last && gaps > 0) extra = (avail - natural) / gaps;
+      if (align === 'justify' && !last && gaps > 0) {
+        // Justify only while the gaps stay even; a line that would need big holes (a few long
+        // words, e.g. an address) stays left-aligned instead.
+        const stretch = (avail - natural) / gaps;
+        extra = stretch <= space * 2 ? stretch : 0;
+      }
       if (align === 'center') x = left + (right - left - natural) / 2;
       line.forEach((w, k) => {
         if (k > 0 && w.spaceBefore) x += space + extra;
@@ -502,7 +519,7 @@ class Typesetter {
 function caption(
   t: Typesetter,
   o: {
-    court: string[];
+    court: Array<string | Run[]>;
     plaintiff: string;
     defendants: Run[];
     rightTitle: string;
@@ -518,7 +535,8 @@ function caption(
   const bold = (g: CojBoldGroup) => o.isBold?.(g) ?? true;
   t.y = 70;
   for (const line of o.court) {
-    t.paragraph([o.courtLeft ? R(line) : B(line)], { align: o.courtLeft ? 'left' : 'center', leading: 14 });
+    const runs = Array.isArray(line) ? line : [o.courtLeft ? R(line) : B(line)];
+    t.paragraph(runs, { align: o.courtLeft ? 'left' : 'center', leading: 14 });
   }
   const top = t.y + 4;
   const boxRight = 316;
@@ -670,10 +688,10 @@ function vline(t: Typesetter, x: number, fromTop: number, toTop: number) {
  */
 function nyVsCaption(
   t: Typesetter,
-  o: { court: string[]; plaintiff: Run; defendants: Run[] },
+  o: { court: Array<string | Run[]>; plaintiff: Run; defendants: Run[] },
 ) {
   t.y = 70;
-  for (const line of o.court) t.paragraph([R(line)], { align: 'left', leading: 14 });
+  for (const line of o.court) t.paragraph(Array.isArray(line) ? line : [R(line)], { align: 'left', leading: 14 });
   const top = t.y + 6;
   const boxRight = 330;
   t.y = top + 14;
@@ -716,12 +734,14 @@ function nyBySignature(t: Typesetter, lines: Run[][], x = 300) {
 }
 
 /** NY Business / Individual jurat: "Sworn to before me this ____, <year>" and the notary line. */
-function nyJurat(t: Typesetter, year: string) {
+function nyJurat(t: Typesetter, year: Run) {
   t.ensure(90);
   t.y += 10;
   t.draw('Sworn to before me this', LEFT, t.y);
   t.y += 26;
-  t.draw(`___________________, ${year}`, LEFT, t.y);
+  const blank = '___________________, ';
+  t.draw(blank, LEFT, t.y);
+  t.draw(year.text, LEFT + t.width(blank, false, t.body), t.y, { bold: year.bold });
   t.y += 36;
   t.line(LEFT, LEFT + 150, t.y);
   t.y += 14;
@@ -740,6 +760,13 @@ function nyNumberedInitialsFooter(t: Typesetter, pageNo: number) {
   t.line(lineX, RIGHT, base + 1);
 }
 
+/** Court line "COUNTY OF <county>" with the filled county in bold (a blank line when empty). */
+const courtCounty = (f: ReturnType<typeof cojFacts>, county: string): Run[] =>
+  county ? [R('COUNTY OF '), f.V('county', county)] : [R('COUNTY OF ___________')];
+
+/** NY COJ body paragraph: first-line indent and one blank line after it, as on the forms. */
+const nyParagraph = (t: Typesetter, runs: Run[]) => t.paragraph(runs, { indent: NUM_INDENT, gapAfter: t.leading });
+
 /** The year the forms print ("in the year 2026"): the agreement's, else this year. */
 const nyYear = (f: ReturnType<typeof cojFacts>) => f.year || String(new Date().getFullYear());
 
@@ -748,22 +775,22 @@ async function nyBusiness(values: Values, scale = 1) {
   const t = new Typesetter({ scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   nyVsCaption(t, {
-    court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty || '___________'}`],
+    court: ['SUPREME COURT OF THE STATE OF NEW YORK', courtCounty(f, f.businessCounty)],
     plaintiff: f.V('plaintiff', f.plaintiff),
     defendants: [...f.M()],
   });
-  indented(t, [
+  nyParagraph(t, [
     f.V('owner', f.owner),
     R(', being duly sworn, hereby deposes and says that Deponent is the Owner, Officer or an authorized representative of '),
     ...f.M({ and: true }),
     R(', and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of the Defendant herein.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein and authorizes entry of judgment against them as the Judgment Debtor/Defendant in the sum of (a) '),
     f.V('purchase', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 9% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and (d) default fees in the amount of $7,500.00 pursuant to the Merchant Agreement. Such amount shall be set-forth in an affidavit under oath by an authorized representative of Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     ...f.M(),
     R(' is located at '),
     f.V('business_address', f.businessAddress),
@@ -771,13 +798,13 @@ async function nyBusiness(values: Values, scale = 1) {
     f.V('county', f.businessCounty),
     R('.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '),
     f.V('date', f.agreementDate),
     R(' (hereinafter, the “Merchant Agreement”) and Judgment Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.'),
   ]);
   nyBySignature(t, [[f.V('owner', f.owner), R(', on behalf of '), ...regular(f.M())]]);
-  nyJurat(t, nyYear(f));
+  nyJurat(t, f.V('date', nyYear(f)));
   return t;
 }
 
@@ -787,7 +814,7 @@ async function nyGeneral(values: Values, scale = 1) {
   await t.init();
   caption(t, {
     isBold: f.isBold,
-    court: ['SUPREME COURT OF THE STATE OF NEW YORK', `COUNTY OF ${f.businessCounty || '___________'}`],
+    court: ['SUPREME COURT OF THE STATE OF NEW YORK', courtCounty(f, f.businessCounty)],
     plaintiff: `${f.plaintiff},`,
     defendants: [...f.M(), R(' and '), f.V('owner', `${f.owner},`)],
     rightTitle: 'Index No.',
@@ -796,18 +823,18 @@ async function nyGeneral(values: Values, scale = 1) {
     ss: true,
     courtLeft: true,
   });
-  indented(t, [
+  nyParagraph(t, [
     f.V('owner', f.owner),
     R(', being duly sworn, hereby deposes and says; that Deponent is the Owner of Defendant '),
     ...f.M({ and: true }),
     R(' and that he/she is duly authorized to make this affidavit (the "Affidavit") on behalf of himself/herself and on behalf of all of the Defendants herein.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('The Defendants (referred to hereinafter jointly and severally as the "Judgment Debtors/Defendants") all jointly and severally hereby Confess Judgment herein, and authorize entry of judgment against them as the Judgment Debtors/Defendants in the sum of (a) '),
     f.V('purchase', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 16% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and (d) default fees in the amount of $7,500.00 pursuant to the Merchant Agreement. Such amount shall be set-forth in an affidavit under oath by Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     f.V('owner', f.owner),
     R(' resides at '),
     f.V('owner_address', f.ownerAddress),
@@ -819,7 +846,7 @@ async function nyGeneral(values: Values, scale = 1) {
     f.V('county', f.businessCounty),
     R('.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('This confession of judgment is for a debt due to Plaintiff arising from '),
     ...f.M(),
     R('’s accounts-receivable, which were purchased by Plaintiff pursuant to the Merchant Agreement, dated '),
@@ -832,7 +859,9 @@ async function nyGeneral(values: Values, scale = 1) {
   t.y += 22;
   t.paragraph(
     [
-      R(`On the ____ day of _____________, in the year ${nyYear(f)}, before me, the undersigned Notary Public in and for said state, personally appeared `),
+      R('On the ____ day of _____________, in the year '),
+      f.V('date', nyYear(f)),
+      R(', before me, the undersigned Notary Public in and for said state, personally appeared '),
       f.V('owner', f.owner),
       R(' personally known to me or proved to me on the basis of satisfactory evidence to be the individual whose name is subscribed to the within instrument and acknowledged to me that he/she executed the same in his/her capacity, and that by his/her signature on the instrument, the individual, or the person upon behalf of which the individual acted, executed the instrument.'),
     ],
@@ -856,23 +885,23 @@ async function nyMerchant(values: Values, scale = 1) {
   const t = new Typesetter({ scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   nyVsCaption(t, {
-    // The court county is left blank on this form.
-    court: ['SUPREME COURT OF THE STATE OF NEW YORK', 'COUNTY OF ___________'],
+    // The county entered for the individual (blank line when there is none).
+    court: ['SUPREME COURT OF THE STATE OF NEW YORK', courtCounty(f, f.ownerCounty)],
     plaintiff: f.V('plaintiff', f.plaintiff),
     defendants: [f.V('owner', f.owner)],
   });
-  indented(t, [
+  nyParagraph(t, [
     f.V('owner', f.owner),
     R(', being duly sworn, hereby deposes and says that Deponent is the Owner or an Officer of '),
     ...f.M({ and: true }),
     R(', and that he or she is duly authorized to make this affidavit (the “Affidavit”) on behalf of himself or herself and on behalf of all of the Defendants herein.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('The Defendant (referred to hereinafter as the “Judgment Debtor/Defendant”) hereby confesses judgment herein, and authorizes entry of judgment against him or her as the Judgment Debtor/Defendant in the sum of (a) '),
     f.V('purchase', f.purchase),
     R(', less any payments made, plus (b) interest thereon at 9% per annum from the date of default to the date of the entry of the Judgment, and (c) all of the costs and disbursements, and (d) default fees in the amount of $7,500.00 pursuant to the Merchant Agreement. Such amount shall be set-forth in an affidavit under oath by an authorized representative of Plaintiff, which shall be attached hereto and filed contemporaneously with this Confession of Judgment.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     f.V('owner', f.owner),
     R(' resides at '),
     f.V('owner_address', f.ownerAddress),
@@ -880,13 +909,13 @@ async function nyMerchant(values: Values, scale = 1) {
     f.V('county', f.ownerCounty),
     R('.'),
   ]);
-  indented(t, [
+  nyParagraph(t, [
     R('This confession of judgment arises from a debt due to Plaintiff arising from the agreement and guarantee executed between the parties on '),
     f.V('date', f.agreementDate),
     R(' (hereinafter, the “Merchant Agreement”) and Debtor/Defendant’s breach thereof. This Affidavit is made in connection with the Merchant Agreement which was solely for the purchase of commercial or business assets. This Affidavit may be filed ex parte by Plaintiff, without further notice.'),
   ]);
   nyBySignature(t, [[f.V('owner', f.owner)]], 260);
-  nyJurat(t, nyYear(f));
+  nyJurat(t, f.V('date', nyYear(f)));
   return t;
 }
 
