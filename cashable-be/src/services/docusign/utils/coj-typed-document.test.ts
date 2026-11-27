@@ -40,12 +40,9 @@ describe('renderTypedCoj', () => {
     const out = await renderTypedCoj(kind, values);
     const doc = await PDFDocument.load(out.pdf);
     expect(doc.getPageCount()).toBe(out.pageCount);
-    if (kind === 'coj_iowa') {
-      expect(out.placements.filter((p) => p.type === 'signature')).toHaveLength(1);
-      expect(out.placements.filter((p) => p.type === 'initial')).toHaveLength(out.pageCount);
-    } else {
-      expect(out.placements).toHaveLength(0); // notarised: signed on paper
-    }
+    // Every COJ (Iowa and New York) is signed in BoldSign: one signature, an initial per page.
+    expect(out.placements.filter((p) => p.type === 'signature')).toHaveLength(1);
+    expect(out.placements.filter((p) => p.type === 'initial')).toHaveLength(out.pageCount);
     for (const p of out.placements) {
       expect(Number(p.pageNumber)).toBeLessThanOrEqual(out.pageCount);
       expect(Number(p.y)).toBeGreaterThan(0);

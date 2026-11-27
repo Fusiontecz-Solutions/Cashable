@@ -778,7 +778,7 @@ const PREFILL_SYNC_GROUPS: PrefillSyncGroup[] = [
     {
         id: "ssn",
         label: "Owner 1 / guarantor SSN",
-        keys: ["guarantyOwner1Ss", "guarantyGuarantor1Ss"],
+        keys: ["guarantyOwner1Ss", "guarantyGuarantor1Ss", "guarantySs"],
     },
     {
         id: "owner2Ssn",
@@ -879,6 +879,9 @@ function toPayload(values: Record<keyof BuildContractPrefillFieldsArgs, string>)
     for (const k of Object.keys(FIELD_LABELS) as (keyof BuildContractPrefillFieldsArgs)[]) {
         (out as Record<string, string>)[k] = toPrefillUppercase(values[k] ?? "", String(k));
     }
+    // The main contract's hidden "SSN" box always carries Owner 1's SSN (never a stale copy).
+    const owner1Ssn = String(values.guarantyOwner1Ss ?? "").trim() || String(values.guarantyGuarantor1Ss ?? "").trim();
+    if (owner1Ssn) out.guarantySs = owner1Ssn;
     return out;
 }
 
@@ -1056,8 +1059,14 @@ function validatePrefillValues(values: Record<keyof BuildContractPrefillFieldsAr
         const msg = validateMoney(trimField(values, key));
         if (msg) err[key] = msg;
     }
+    const owner1Ssn = trimField(values, "guarantyOwner1Ss") || trimField(values, "guarantyGuarantor1Ss");
     for (const key of SSN_KEYS) {
-        const msg = validateSsnDigits(trimField(values, key));
+        // Hidden main-contract "SSN" box: it is replaced by Owner 1's SSN on save, so an old
+        // value in it must not block saving (it was the "SSN" error no one could see).
+        if (key === "guarantySs" && owner1Ssn) continue;
+        const raw = trimField(values, key);
+        if (raw.startsWith("enc:v1:")) continue; // stored encrypted: not typed here
+        const msg = validateSsnDigits(raw);
         if (msg) err[key] = msg;
     }
 

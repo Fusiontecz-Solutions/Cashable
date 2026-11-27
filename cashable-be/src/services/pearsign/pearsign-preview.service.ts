@@ -126,7 +126,14 @@ function layout(font: PDFFont, text: string, box: FieldPos, fontSize?: number): 
   return { size: MIN_FONT, lines: wrap(font, text, MIN_FONT, width) };
 }
 
-function drawValue(page: PDFPage, font: PDFFont, raw: string, box: FieldPos, fontSize?: number) {
+function drawValue(
+  page: PDFPage,
+  font: PDFFont,
+  raw: string,
+  box: FieldPos,
+  fontSize?: number,
+  align: 'left' | 'right' = 'left',
+) {
   const text = encodable(font, raw.trim());
   if (!text) return;
   const pageHeight = page.getHeight();
@@ -136,7 +143,8 @@ function drawValue(page: PDFPage, font: PDFFont, raw: string, box: FieldPos, fon
   const boxBottom = pageHeight - box.y - box.height;
   let baseline = boxBottom + (box.height + blockHeight) / 2 - size * 0.95;
   for (const line of lines) {
-    page.drawText(line, { x: box.x + PAD_X, y: baseline, size, font, color: TEXT_COLOR });
+    const x = align === 'right' ? box.x + box.width - PAD_X - font.widthOfTextAtSize(line, size) : box.x + PAD_X;
+    page.drawText(line, { x, y: baseline, size, font, color: TEXT_COLOR });
     baseline -= lineHeight;
   }
 }
@@ -202,6 +210,8 @@ export async function buildPearSignPreviewPdf(input: {
   styles?: Record<string, PearSignFieldStyle>;
   /** Size for one box (by field name), when boxes sharing a value key are sized separately. */
   fieldStyleFor?: (fieldName: string) => PearSignFieldStyle | undefined;
+  /** Right-align this box's value (disclosure amounts). */
+  alignRightFor?: (fieldName: string, value: string) => boolean;
   /** Base PDF bytes to draw on instead of downloading `sourcePdfUrl` (e.g. with rebuilt COJ pages). */
   basePdf?: Buffer;
   title: string;
@@ -239,7 +249,8 @@ export async function buildPearSignPreviewPdf(input: {
     const v = String(input.values[key] ?? '').trim();
     if (!v) continue;
     const fontSize = input.fieldStyleFor?.(f.fieldName)?.fontSize ?? input.styles?.[key]?.fontSize;
-    drawValue(page, font, v, pearSignBoxForFont(box, fontSize), fontSize);
+    const align = input.alignRightFor?.(f.fieldName, v) ? 'right' : 'left';
+    drawValue(page, font, v, pearSignBoxForFont(box, fontSize), fontSize, align);
     filled++;
   }
 

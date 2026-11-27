@@ -22,7 +22,7 @@ import { axiosGet, axiosPost, axiosPut } from "@/redux/axios";
  */
 
 /** `fontSize`: the size this box is drawn and sent at (boxes sharing a value are sized separately). */
-export type PearSignFieldBox = { key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number };
+export type PearSignFieldBox = { key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number; disclosure?: boolean };
 export type PearSignFieldStyle = { fontSize?: number };
 
 /** Font sizes offered in Review (PearSign accepts 6–36pt). */

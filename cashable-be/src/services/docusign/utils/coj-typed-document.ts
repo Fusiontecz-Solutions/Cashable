@@ -620,6 +620,8 @@ function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, owner
   t.ensure(120);
   t.y += 34;
   t.line(240, RIGHT, t.y);
+  // Signed in BoldSign: the signature box sits on the "BY (SIGNATURE)" line.
+  t.marks.push({ kind: 'signature', page: t.pages.length, x: 244, y: t.y - 21 });
   t.y += 12;
   t.draw('BY (SIGNATURE)', 240, t.y, { size: 9 });
   t.y += 24;
@@ -637,7 +639,7 @@ function nySignature(t: Typesetter, owner: string, onBehalf: Run[] | null, owner
 
 async function nyBusiness(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -663,7 +665,7 @@ async function nyBusiness(values: Values, scale = 1) {
 
 async function nyGeneral(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -701,7 +703,7 @@ async function nyGeneral(values: Values, scale = 1) {
 
 async function nyMerchant(values: Values, scale = 1) {
   const f = cojFacts(values);
-  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, false, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
+  const t = new Typesetter({ footer: (tt, n) => initialsFooter(tt, n, true, 'Initials:'), scale, spacing: cojLineSpacingFactor(values.coj_line_spacing) });
   await t.init();
   caption(t, {
     isBold: f.isBold,
@@ -836,8 +838,8 @@ export function cojInputs(kind: CojKind, values: Values): Array<{ variable: stri
 }
 
 /**
- * The typed COJ PDF and its signer spots (Iowa: signature + an initial on every page; the New
- * York COJs are signed in front of a notary, so they carry none — same as the old forms).
+ * The typed COJ PDF and its signer spots: a signature box on the signature line and an initials
+ * box in every page footer (Iowa and the New York COJs alike).
  */
 export async function renderTypedCoj(
   kind: CojKind,

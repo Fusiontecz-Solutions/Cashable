@@ -45,6 +45,8 @@ import {
 } from './pearsign-contract.service';
 import { notifyPearSignContractSent, pearSignShouldEmailSigners } from './pearsign-mail.service';
 import { buildPearSignPreviewPdf, loadBasePdf, primeBasePdfCache } from './pearsign-preview.service';
+import { isOwnerStateFieldId } from '../docusign/utils/prefill-uppercase';
+import { fullUsStateName } from '../../utils/usStateNames';
 import { renderTypedCoj, type CojKind, type PackageTypedCoj } from '../docusign/utils/coj-typed-document';
 import {
   BOLDSIGN_PX_PER_PT,
@@ -586,6 +588,11 @@ export function isDisclosureDocument(d: { name: string; layoutKey?: string | nul
   return /disclos/i.test(d.name) || /(^|_)(daily|weekly)(_|$)/.test(key);
 }
 
+/** "15,000.00", "$ 0.00", "36.5%": amounts and percentages print right-aligned on disclosures. */
+export function isDisclosureAmountValue(value: string): boolean {
+  return /^\(?\$?\s*-?[\d,]+(\.\d+)?\)?\s*%?$/.test(String(value ?? '').trim());
+}
+
 function disclosurePageSet(pkg: Pick<DrawablePackage, 'documents'>): Set<number> {
   const pages = new Set<number>();
   for (const d of pkg.documents ?? []) {
@@ -625,6 +632,10 @@ export function contractValueCase(value: string, key?: string): string {
   if (!v || v.includes('@') || /^(https?:|www\.|enc:v1:)/i.test(v.trim())) return v;
   // Weekly ACH note ("- If a Weekly ACH bounces …") keeps sentence case; the day box stays capitals.
   if (key && /ach_following_days(?!_day)/i.test(key)) return v;
+  // COJ owner / sworn state box: full state name (NY → NEW YORK).
+  if (key && isOwnerStateFieldId(key)) {
+    return fullUsStateName(v).toUpperCase();
+  }
   return v.toUpperCase();
 }
 
@@ -725,6 +736,11 @@ export async function drawPearSignPackage(
       const sizes = await fieldFontSizes(pkg, values);
       return (name: string) => (sizes.has(name) ? { fontSize: sizes.get(name) } : undefined);
     })(),
+    alignRightFor: (() => {
+      const disclosure = disclosurePageSet(pkg);
+      const pageOf = new Map(built.fields.map((f) => [f.name, f.page]));
+      return (name: string, value: string) => disclosure.has(pageOf.get(name) ?? -1) && isDisclosureAmountValue(value);
+    })(),
     title,
   });
 }
@@ -737,7 +753,9 @@ export async function getPearSignPackageReview(contractId: number) {
   const docName = new Map(pkg.documents.map((d) => [d.index, d.name]));
 
   const fieldsByKey = new Map<string, { key: string; label: string; pages: number[]; document: string; docIndex: number }>();
-  const fieldLayout: Array<{ key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number }> = [];
+  const fieldLayout: Array<{ key: string; page: number; x: number; y: number; width: number; height: number; fontSize?: number; disclosure?: boolean }> = [];
+  /** Disclosure pages: amounts there are drawn right-aligned (Review shows them the same way). */
+  const reviewDisclosurePages = disclosurePageSet(pkg);
   const boxSizes = await fieldFontSizes(pkg, values);
   const signerBoxes: Array<{ kind: string; roleName: string; page: number; x: number; y: number; width: number; height: number }> = [];
   const roleName = new Map(pkg.recipients.map((r) => [r.roleId, r.roleName]));
@@ -753,7 +771,12 @@ export async function getPearSignPackageReview(contractId: number) {
       });
       continue;
     }
-    fieldLayout.push({ key: f.key, ...box, fontSize: boxSizes.get(f.name) });
+    fieldLayout.push({
+      key: f.key,
+      ...box,
+      fontSize: boxSizes.get(f.name),
+      ...(reviewDisclosurePages.has(f.page) ? { disclosure: true } : {}),
+    });
     const cur = fieldsByKey.get(f.key) ?? { key: f.key, label: f.label, pages: [], document: docName.get(f.docIndex) ?? '', docIndex: f.docIndex };
     if (!cur.pages.includes(f.page)) cur.pages.push(f.page);
     fieldsByKey.set(f.key, cur);
@@ -1036,6 +1059,7 @@ export function boldSignSignersFor(
     usedIds.add(id);
     return id;
   };
+  const disclosurePages = disclosurePageSet(prep.pkg);
   return prep.pkg.recipients.map((r, i) => ({
     name: r.name,
     emailAddress: r.email,
@@ -1057,6 +1081,8 @@ export function boldSignSignersFor(
           ...base,
           fieldType: 'TextBox',
           font: 'Helvetica',
+          // Disclosure amounts line up on the right edge of their column.
+          ...(value && disclosurePages.has(p.page) && isDisclosureAmountValue(value) ? { textAlign: 'Right' as const } : {}),
           // BoldSign sizes are in 96-DPI pixels like its bounds: a 10pt value is 13px.
           ...(f.fontSize ? { fontSize: Math.round(f.fontSize * BOLDSIGN_PX_PER_PT) } : {}),
           ...(value

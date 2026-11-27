@@ -1,3 +1,15 @@
+import { fullUsStateName } from '../../../utils/usStateNames';
+
+/** COJ "Owner state" / "Sworn state" boxes always print the full state name (NY → NEW YORK). */
+export function isOwnerStateFieldId(fieldId?: string | null): boolean {
+  // owner_state, d1_owner_state_p3, OwnerState, sworn_state, "Sworn State"
+  const k = String(fieldId ?? '')
+    .trim()
+    .replace(/([a-z])([A-Z])/g, '$1_$2')
+    .replace(/[\s-]+/g, '_');
+  return /(^|_)(owner|sworn)_?state(_|$)/i.test(k);
+}
+
 /** Prefill / DocuSign values that must keep original casing. */
 export function shouldSkipPrefillUppercase(fieldId?: string | null): boolean {
   const k = String(fieldId ?? '')
@@ -33,6 +45,7 @@ export function toPrefillUppercase(value: string, fieldId?: string | null): stri
   if (!raw) return raw;
   if (raw.startsWith('enc:v1:')) return raw;
   if (shouldSkipPrefillUppercase(fieldId)) return raw;
+  if (isOwnerStateFieldId(fieldId)) return fullUsStateName(raw).toUpperCase();
   return raw.toUpperCase();
 }
 

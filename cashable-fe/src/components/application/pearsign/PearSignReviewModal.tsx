@@ -269,6 +269,10 @@ function PdfPages({
                                                               ...style,
                                                               whiteSpace: fit.wrap ? "normal" : "pre",
                                                               overflowWrap: "anywhere",
+                                                              // Disclosure amounts sit on the right edge of their column (as sent).
+                                                              ...(b.disclosure && isDisclosureAmountText(text)
+                                                                  ? { justifyContent: "flex-end", textAlign: "right" as const }
+                                                                  : {}),
                                                           }}
                                                       >
                                                           {text}
@@ -286,6 +290,9 @@ function PdfPages({
         </>
     );
 }
+
+/** "15,000.00", "$ 0.00", "36.5%" (same rule as the server). */
+const isDisclosureAmountText = (v: string) => /^\(?\$?\s*-?[\d,]+(\.\d+)?\)?\s*%?$/.test(String(v ?? "").trim());
 
 // ---------- Review modal ----------
 
