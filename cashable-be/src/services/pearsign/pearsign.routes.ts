@@ -25,6 +25,7 @@ import {
   sendPearSignPackage,
 } from './pearsign-package.service';
 import { listPearSignTemplatesForFunder } from './pearsign-template-registry';
+import { renderTypedCoj, typedCojKind } from '../docusign/utils/coj-typed-document';
 
 /**
  * PearSign main-contract API (mounted at /api/v1/pearsign). The API key never leaves the server.
@@ -183,6 +184,42 @@ router.get(
       // BoldSign's editor needs a plan with embedded requests; without it the CRM reviews and sends itself.
       embeddedEditor: provider !== 'boldsign' || boldSignEmbeddedAvailable(),
     };
+  }),
+);
+
+/**
+ * POST /contracts/:contractId/coj-pdf  { layoutKey?, templateName?, values: { field id → value } }
+ * The filled New York COJ as a PDF download. NY COJs are never sent for e-signature: the team
+ * downloads this file and emails it. Values are the COJ editor's current fields.
+ */
+router.post(
+  '/contracts/:contractId/coj-pdf',
+  handle(async (req, res) => {
+    contractIdParam(req);
+    const body = (req.body ?? {}) as { layoutKey?: unknown; templateName?: unknown; values?: unknown };
+    const kind = typedCojKind({ key: String(body.layoutKey ?? '') }) ?? typedCojKind({ key: String(body.templateName ?? '') });
+    if (!kind || !kind.startsWith('coj_ny')) {
+      throw new PearSignContractError('Only New York COJs are downloaded as a PDF.', 400);
+    }
+    const raw = body.values && typeof body.values === 'object' ? (body.values as Record<string, unknown>) : {};
+    const values: Record<string, string> = {};
+    for (const [k, v] of Object.entries(raw)) if (typeof v === 'string' || typeof v === 'number') values[k] = String(v);
+    // Business name with DBA, as the contract builds it ("LEGAL DBA TRADE NAME").
+    if (!String(values.business_name_with_dba ?? '').trim() && String(values.client_legal_name ?? '').trim()) {
+      const legal = values.client_legal_name.trim();
+      const dba = String(values.doing_business_as ?? '').trim();
+      values.business_name_with_dba = dba && dba.toUpperCase() !== legal.toUpperCase() ? `${legal} DBA ${dba}` : legal;
+    }
+    const { pdf } = await renderTypedCoj(kind, values);
+    const label = { coj_ny_general: 'NY General', coj_ny_business: 'NY Business', coj_ny_merchant: 'NY Individual' }[kind as 'coj_ny_general'];
+    const who = String(values.client_legal_name || values.business_name_with_dba || values.owner1_guarantor_name || '')
+      .replace(/[^A-Za-z0-9 &.,'-]+/g, ' ')
+      .trim()
+      .slice(0, 80);
+    const fileName = `COJ - ${label}${who ? ` - ${who}` : ''}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '')}"`);
+    res.send(pdf);
   }),
 );
 

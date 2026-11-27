@@ -40,9 +40,14 @@ describe('renderTypedCoj', () => {
     const out = await renderTypedCoj(kind, values);
     const doc = await PDFDocument.load(out.pdf);
     expect(doc.getPageCount()).toBe(out.pageCount);
-    // Every COJ (Iowa and New York) is signed in BoldSign: one signature, an initial per page.
-    expect(out.placements.filter((p) => p.type === 'signature')).toHaveLength(1);
-    expect(out.placements.filter((p) => p.type === 'initial')).toHaveLength(out.pageCount);
+    if (kind === 'coj_iowa') {
+      // Iowa is signed in BoldSign: one signature, an initial on every page.
+      expect(out.placements.filter((p) => p.type === 'signature')).toHaveLength(1);
+      expect(out.placements.filter((p) => p.type === 'initial')).toHaveLength(out.pageCount);
+    } else {
+      // New York COJs are PDF only (downloaded and emailed): no e-sign boxes.
+      expect(out.placements).toHaveLength(0);
+    }
     for (const p of out.placements) {
       expect(Number(p.pageNumber)).toBeLessThanOrEqual(out.pageCount);
       expect(Number(p.y)).toBeGreaterThan(0);

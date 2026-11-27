@@ -1,5 +1,5 @@
 jest.mock('puppeteer', () => ({ __esModule: true, default: {} }));
-import { renderTypedCoj } from '../docusign/utils/coj-typed-document';
+import { isNewYorkCojLayout, renderTypedCoj, typedCojKind } from '../docusign/utils/coj-typed-document';
 import { isOwnerStateFieldId, toPrefillUppercase } from '../docusign/utils/prefill-uppercase';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { contractValueCase, isDisclosureAmountValue } = jest.requireActual('./pearsign-package.service');
@@ -17,16 +17,26 @@ const values = {
   agreement_date: '11/27/2026',
 };
 
-describe('New York COJs are signed in BoldSign', () => {
-  it.each(['coj_ny_merchant', 'coj_ny_general', 'coj_ny_business'] as const)(
-    '%s has a signature box and an initials box on every page',
-    async (kind) => {
-      const { placements, pageCount } = await renderTypedCoj(kind, values);
-      expect(placements.filter((p) => p.type === 'signature').length).toBeGreaterThanOrEqual(1);
-      const initialPages = new Set(placements.filter((p) => p.type === 'initial').map((p) => p.pageNumber));
-      expect(initialPages.size).toBe(pageCount);
-    },
-  );
+describe('New York COJs are PDF only, never e-signed', () => {
+  it.each(['coj_ny_merchant', 'coj_ny_general', 'coj_ny_business'] as const)('%s renders with no e-sign boxes', async (kind) => {
+    const { placements, pageCount } = await renderTypedCoj(kind, values);
+    expect(pageCount).toBeGreaterThan(0);
+    expect(placements).toHaveLength(0);
+  });
+  it('recognises NY COJs by layout key or uploaded template name, and nothing else', () => {
+    for (const key of ['coj_ny_merchant', 'acme_coj_ny_business', 'coj_ny_general', 'coj_ny_individual_only', 'COJ - NY Business only', 'Coj — Ny General']) {
+      expect(isNewYorkCojLayout({ key })).toBe(true);
+    }
+    expect(isNewYorkCojLayout({ key: 'x', name: 'COJ — NY Individual Only' })).toBe(true);
+    for (const key of ['coj_iowa', 'Coj — Iowa', 'waiver_personal_service', 'Waiver Of Personal Service (NY)', 'deposit_control_ny_tx']) {
+      expect(isNewYorkCojLayout({ key })).toBe(false);
+    }
+  });
+  it('maps uploaded NY template names to the right form', () => {
+    expect(typedCojKind({ key: 'coj_ny_individual_only' })).toBe('coj_ny_merchant');
+    expect(typedCojKind({ key: 'COJ - NY Business only' })).toBe('coj_ny_business');
+    expect(typedCojKind({ key: 'Coj — Ny General' })).toBe('coj_ny_general');
+  });
 });
 
 describe('owner state prints in full everywhere', () => {

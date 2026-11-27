@@ -60,7 +60,7 @@ import { toEnvelopeSubjectUppercase } from '../../../utils/contractEnvelopeEmail
 import { isTexasFundingGroupFunderProfile } from '../../../utils/funderProfileResolver';
 import { stampFunderLogoOnPdfBase64 } from './stamp-funder-logo';
 import { fullUsStateName, normalizeUsAddress } from '../../../utils/usStateNames';
-import { cojInputs, renderTypedCoj, typedCojKind, type CojKind } from './coj-typed-document';
+import { cojInputs, isNewYorkCojLayout, renderTypedCoj, typedCojKind, type CojKind } from './coj-typed-document';
 
 const DOCUSIGN_SECONDARY_SIGNER_ROLE_NAME = DOCUSIGN_SECONDARY_ROLE_NAME;
 
@@ -633,6 +633,18 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   };
   const layouts: DocumentLayoutWithBase64[] = [];
   const layoutValues: Array<Record<string, string> | undefined> = [];
+  /**
+   * New York COJs are never sent for e-signature (BoldSign or any other): they are downloaded as a
+   * filled PDF from the COJ editor and emailed by hand. Every other document is added as usual.
+   */
+  const addSupplemental = (layout: DocumentLayoutWithBase64, values: Record<string, string> | undefined) => {
+    if (isNewYorkCojLayout(layout)) {
+      console.info(`[contracts] "${layout.key}" is a New York COJ: PDF download only, left out of the signing package.`);
+      return;
+    }
+    layouts.push(layout);
+    layoutValues.push(values);
+  };
   const supplementalItems = options.supplementalDocuments || [];
   // Envelope order: `before_main` docs (state disclosure) → main contract → remaining docs (addenda).
   const leadingSupplementalItems = supplementalItems.filter(
@@ -642,8 +654,7 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
     (item) => item.position !== 'before_main',
   );
   for (const item of leadingSupplementalItems) {
-    layouts.push(await loadSupplementalLayoutPackage(item.documentRef, funderContext));
-    layoutValues.push(prefillFieldsToValueMap(item.prefillFields || []));
+    addSupplemental(await loadSupplementalLayoutPackage(item.documentRef, funderContext), prefillFieldsToValueMap(item.prefillFields || []));
   }
   let mainLayoutIndex = -1;
   if (includeMainContract) {
@@ -666,18 +677,15 @@ export async function buildPlatformLayoutEnvelopeDefinition(options: {
   }
   if (supplementalItems.length) {
     for (const item of trailingSupplementalItems) {
-      layouts.push(await loadSupplementalLayoutPackage(item.documentRef, funderContext));
-      layoutValues.push(prefillFieldsToValueMap(item.prefillFields || []));
+      addSupplemental(await loadSupplementalLayoutPackage(item.documentRef, funderContext), prefillFieldsToValueMap(item.prefillFields || []));
     }
   } else {
     for (const ref of options.supplementalRefs || []) {
-      layouts.push(await loadSupplementalLayoutPackage(ref, funderContext));
-      layoutValues.push(undefined);
+      addSupplemental(await loadSupplementalLayoutPackage(ref, funderContext), undefined);
     }
   }
   for (const ref of standaloneRefs) {
-    layouts.push(await loadSupplementalLayoutPackage(ref, funderContext));
-    layoutValues.push(undefined);
+    addSupplemental(await loadSupplementalLayoutPackage(ref, funderContext), undefined);
   }
   if (!layouts.length) {
     throw new Error('At least one document layout is required.');

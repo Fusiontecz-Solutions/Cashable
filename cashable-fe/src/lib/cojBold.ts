@@ -57,3 +57,14 @@ export const COJ_LINE_SPACINGS = [
 ] as const;
 
 export const isCojLineSpacingKey = (key: string): boolean => /__coj\d+__coj_line_spacing$/.test(key) || key === "coj_line_spacing";
+
+/**
+ * A New York COJ (layout key or template name: "coj_ny_merchant", "COJ — NY Business only", …).
+ * NY COJs are PDF only: downloaded from the COJ editor and emailed, never sent through BoldSign.
+ */
+export function isNewYorkCojTemplate(...names: Array<string | null | undefined>): boolean {
+    return names.some((n) => {
+        const k = String(n ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        return /(^|_)coj(_|$)/.test(k) && (/(^|_)ny(_|$)/.test(k) || k.includes("new_york"));
+    });
+}

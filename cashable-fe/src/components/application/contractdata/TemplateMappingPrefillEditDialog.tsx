@@ -22,6 +22,9 @@ import {
     updateContract,
 } from "@/redux/actions/contractActions";
 import { toast } from "react-toastify";
+import { Download } from "lucide-react";
+import { axiosPost } from "@/redux/axios";
+import { isNewYorkCojTemplate } from "@/lib/cojBold";
 import type {
     BuildContractPrefillFieldsArgs,
     ContractPrefillContractRecords,
@@ -118,6 +121,10 @@ export function TemplateMappingPrefillEditDialog({
     const hydratedSessionKeyRef = useRef<string | null>(null);
 
     const coordinateLayout = usesCoordinateLayoutTemplate(row);
+
+    /** New York COJs are PDF only: downloaded here and emailed, never sent through BoldSign. */
+    const isNyCoj = isNewYorkCojTemplate(row?.template?.layoutKey, row?.template?.name);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
 
     const effectiveMainPrefillOverrides = useMemo(
         () =>
@@ -222,6 +229,45 @@ export function TemplateMappingPrefillEditDialog({
         hydratedSessionKeyRef.current = sessionKey;
         setFieldValues(Object.fromEntries(editorRows.map((r) => [r.id, r.value ?? ""])));
     }, [open, row?.id, editorRows]);
+
+    /** The filled NY COJ as a PDF, from the values on screen (unsaved edits included). */
+    const handleDownloadNyCojPdf = useCallback(async () => {
+        if (!row || !contractId) return;
+        setDownloadingPdf(true);
+        try {
+            const values: Record<string, string> = {};
+            for (const r of editorRows) values[r.id] = String(fieldValues[r.id] ?? r.value ?? "");
+            const res = await axiosPost(
+                `/pearsign/contracts/${contractId}/coj-pdf`,
+                { layoutKey: row.template?.layoutKey ?? "", templateName: row.template?.name ?? "", values },
+                { responseType: "blob" },
+            );
+            const disposition = String((res.headers as Record<string, unknown>)?.["content-disposition"] ?? "");
+            const name = /filename="([^"]+)"/.exec(disposition)?.[1] || "COJ - New York.pdf";
+            const url = URL.createObjectURL(res.data as Blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10_000);
+            toast.success(`${name} downloaded.`);
+        } catch (error: unknown) {
+            let message = "Could not build the COJ PDF.";
+            const data = (error as { response?: { data?: unknown } })?.response?.data;
+            if (data instanceof Blob) {
+                try {
+                    message = (JSON.parse(await data.text()) as { message?: string }).message || message;
+                } catch {
+                    /* not JSON */
+                }
+            }
+            toast.error(message);
+        } finally {
+            setDownloadingPdf(false);
+        }
+    }, [row, contractId, editorRows, fieldValues]);
 
     const handleSave = useCallback(async () => {
         const cid = contractId != null && Number.isFinite(Number(contractId)) ? Number(contractId) : null;
@@ -434,6 +480,14 @@ export function TemplateMappingPrefillEditDialog({
                 </DialogHeader>
                 <div className="max-h-[min(65vh,520px)] overflow-y-auto px-6 py-4">
                     <div className="space-y-4">
+                        {isNyCoj ? (
+                            <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                                <strong>New York COJ: PDF only.</strong> It is never sent through BoldSign with the
+                                contract. Fill the values below, then use <strong>Download PDF</strong> and email the
+                                filled COJ yourself. The state / county of the oath and the notary section stay blank
+                                for the notary.
+                            </div>
+                        ) : null}
                         {editorRows.length === 0 ? (
                             <p className="text-muted-foreground text-sm">
                                 No registered field map for this template. For state disclosures, set
@@ -551,6 +605,18 @@ export function TemplateMappingPrefillEditDialog({
                     </div>
                 </div>
                 <DialogFooter className="shrink-0 gap-2 border-t px-6 py-4">
+                    {isNyCoj ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={saving || downloadingPdf || !row || !contractId}
+                            onClick={() => void handleDownloadNyCojPdf()}
+                            className="mr-auto gap-1.5 border-[var(--brand)]/40 text-[var(--brand)] hover:bg-[var(--brand)]/10"
+                        >
+                            <Download className="h-4 w-4" aria-hidden />
+                            {downloadingPdf ? "Preparing PDF…" : "Download PDF"}
+                        </Button>
+                    ) : null}
                     <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
